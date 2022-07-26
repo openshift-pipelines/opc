@@ -1,5 +1,4 @@
-POC - single binary for pac and tkn
-
+Proof of concept of a single binary including pac and tkn functionalities
 
 Usage: `go build -o tkno` 
 
@@ -40,3 +39,4 @@ Flags:
 Use "tkn [command] --help" for more information about a command.
 ```
 
+TODO: avoid tkn-pac plugins showing up
