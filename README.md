@@ -71,4 +71,16 @@ Flags:
 Use "tkn pac [command] --help" for more information about a command.
 ```
 
-TODO: avoid tkn-pac plugin showing up in the plugin section
+### NOTES
+
+Only add 18mb : 
+
+```
+% du $GOPATH/src/github.com/tektoncd/cli/bin/tkn
+120M	tkn
+% du tkno
+138M	tkno
+```
+
+### TODO
+* avoid tkn-pac plugin showing up in the plugin section
