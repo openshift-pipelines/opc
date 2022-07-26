@@ -9,10 +9,12 @@ import (
 	"github.com/tektoncd/cli/pkg/cmd"
 )
 
-const pacLongDesc = `Manage your Pipelines as Code installation and resources
+const (
+	pacLongDesc = `Manage your Pipelines as Code installation and resources
 See https://pipelinesascode.com for more details`
-const pacShortdesc = "Manage Pipelines as Code resources"
-const tknShortDesc = `CLI to manage Openshift Pipelines resources`
+	pacShortdesc = "Manage Pipelines as Code resources"
+	tknShortDesc = `CLI to manage Openshift Pipelines resources`
+)
 
 func main() {
 	tp := &cli.TektonParams{}
