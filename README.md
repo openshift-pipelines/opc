@@ -39,4 +39,4 @@ Flags:
 Use "tkn [command] --help" for more information about a command.
 ```
 
-TODO: avoid tkn-pac plugins showing up
+TODO: avoid tkn-pac plugin showing up in the plugin section
