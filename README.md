@@ -1,9 +1,9 @@
 Proof of concept of a single binary including pac and tkn functionalities
 
-Usage: `go build -o tkno` 
+Usage: `go build -o tktpoto` 
 
 ```
-$ ./tkno
+$ ./tktpoto
 CLI to manage Openshift Pipelines resources
 
 Usage:
@@ -40,7 +40,7 @@ Use "tkn [command] --help" for more information about a command.
 ```
 
 ```
-$ ./tkno pac --help
+$ ./tktpoto pac --help
 Manage your Pipelines as Code installation and resources
 See https://pipelinesascode.com for more details
 
@@ -78,6 +78,6 @@ Only add 18mb :
 ```
 % du $GOPATH/src/github.com/tektoncd/cli/bin/tkn
 120M	tkn
-% du tkno
-138M	tkno
+% du tktpoto
+138M	tktpoto
 ```
