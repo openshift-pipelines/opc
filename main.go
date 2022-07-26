@@ -7,6 +7,7 @@ import (
 
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
+	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd"
 	"github.com/tektoncd/cli/pkg/plugins"
@@ -29,9 +30,19 @@ func main() {
 	pac.Short = pacShortdesc
 	pac.Long = pacLongDesc
 	tkn.AddCommand(pac)
+	pluginList := plugins.GetAllTknPluginFromPaths()
+	newPluginList := []string{}
+	// remove pac from the plugin list
+	for _, value := range pluginList {
+		if value != "pac" {
+			newPluginList = append(newPluginList, value)
+		}
+	}
+	cobra.AddTemplateFunc("pluginList", func() []string { return newPluginList })
 
 	args := os.Args[1:]
 	cmd, _, _ := tkn.Find(args)
+
 	if cmd != nil && cmd == tkn && len(args) > 0 {
 		exCmd, err := plugins.FindPlugin(os.Args[1])
 		// if we can't find command then execute the normal tkn command.

@@ -81,6 +81,3 @@ Only add 18mb :
 % du tkno
 138M	tkno
 ```
-
-### TODO
-* avoid tkn-pac plugin showing up in the plugin section
