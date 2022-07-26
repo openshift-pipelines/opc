@@ -4,7 +4,7 @@ Usage: `go build -o tkno`
 
 ```
 $ ./tkno
-CLI for tekton pipelines
+CLI to manage Openshift Pipelines resources
 
 Usage:
 tkn [flags]
@@ -17,7 +17,7 @@ Available Commands:
   clustertriggerbinding Manage ClusterTriggerBindings
   eventlistener         Manage EventListeners
   hub                   Interact with tekton hub
-  pac                   Pipelines as Code CLI
+  pac                   Manage Pipelines as Code resources
   pipeline              Manage pipelines
   pipelinerun           Manage PipelineRuns
   resource              Manage pipeline resources
@@ -37,6 +37,38 @@ Flags:
   -h, --help   help for tkn
 
 Use "tkn [command] --help" for more information about a command.
+```
+
+```
+$ ./tkno pac --help
+Manage your Pipelines as Code installation and resources
+See https://pipelinesascode.com for more details
+
+Usage:
+tkn pac [command]
+
+Available Commands:
+  bootstrap   Bootstrap Pipelines as Code.
+  completion  Prints shell completion scripts
+  create      Create Pipelines as Code resources
+  delete      Delete Pipelines as Code resources
+  describe    Describe a repository
+  generate    Generate PipelineRun
+  list        List Pipelines as Code Repository
+  logs        Display the PipelineRun logs from a Repository
+  resolve     Embed PipelineRun references as a single resource.
+  setup       Setup provider app or webhook
+  version     Print tkn pac version
+
+Available Plugins:
+  watch
+
+Flags:
+  -h, --help                help for pac
+  -k, --kubeconfig string   Path to the kubeconfig file to use for CLI requests (default: /Users/chmouel/.kube/config.kind) (default "/Users/chmouel/.kube/config.kind")
+  -n, --namespace string    If present, the namespace scope for this CLI request
+
+Use "tkn pac [command] --help" for more information about a command.
 ```
 
 TODO: avoid tkn-pac plugin showing up in the plugin section

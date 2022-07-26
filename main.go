@@ -9,12 +9,20 @@ import (
 	"github.com/tektoncd/cli/pkg/cmd"
 )
 
+const pacLongDesc = `Manage your Pipelines as Code installation and resources
+See https://pipelinesascode.com for more details`
+const pacShortdesc = "Manage Pipelines as Code resources"
+const tknShortDesc = `CLI to manage Openshift Pipelines resources`
+
 func main() {
 	tp := &cli.TektonParams{}
 	tkn := cmd.Root(tp)
+	tkn.Short = tknShortDesc
 	clients := params.New()
 	pac := tknpac.Root(clients)
 	pac.Use = "pac"
+	pac.Short = pacShortdesc
+	pac.Long = pacLongDesc
 	tkn.AddCommand(pac)
 
 	if err := tkn.Execute(); err != nil {
