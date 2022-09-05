@@ -1,6 +1,6 @@
 Proof of concept of a single binary including pac and tkn functionalities
 
-Usage: `go build -o tktpoto` 
+Usage: `go build -o tktpoto`
 
 ```
 $ ./tktpoto
@@ -71,9 +71,13 @@ Flags:
 Use "tkn pac [command] --help" for more information about a command.
 ```
 
+### TODO
+
+need to figure out version, maybe add our own rootcommand and add tkncli/pac into it with our redefined version commands....
+
 ### NOTES
 
-Only add 18mb : 
+Only add 18mb :
 
 ```
 % du $GOPATH/src/github.com/tektoncd/cli/bin/tkn

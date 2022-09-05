@@ -5,11 +5,15 @@ import (
 	"os"
 	"syscall"
 
+	paccli "github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac"
+	pacversion "github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac/version"
+
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd"
+
 	"github.com/tektoncd/cli/pkg/plugins"
 )
 
@@ -19,6 +23,20 @@ See https://pipelinesascode.com for more details`
 	pacShortdesc = "Manage Pipelines as Code resources"
 	tknShortDesc = `CLI to manage Openshift Pipelines resources`
 )
+
+func iversion() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "version",
+		Short: "Print tkn pac version",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Hello moto")
+		},
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
+	}
+	return cmd
+}
 
 func main() {
 	tp := &cli.TektonParams{}
@@ -39,6 +57,8 @@ func main() {
 		}
 	}
 	cobra.AddTemplateFunc("pluginList", func() []string { return newPluginList })
+	paciostreams := paccli.NewIOStreams()
+	tkn.RemoveCommand(pacversion.Command(paciostreams))
 
 	args := os.Args[1:]
 	cmd, _, _ := tkn.Find(args)
