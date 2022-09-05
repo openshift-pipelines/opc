@@ -31,7 +31,7 @@ import (
 )
 
 func (r *Reader) readPipelineLog() (<-chan Log, <-chan error, error) {
-	pr, err := pipelinerun.GetV1beta1(r.clients, r.run, metav1.GetOptions{}, r.ns)
+	pr, err := pipelinerun.Get(r.clients, r.run, metav1.GetOptions{}, r.ns)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -126,7 +126,7 @@ func (r *Reader) waitUntilAvailable() error {
 	opts := metav1.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector("metadata.name", r.run).String(),
 	}
-	run, err := pipelinerun.GetV1beta1(r.clients, r.run, metav1.GetOptions{}, r.ns)
+	run, err := pipelinerun.Get(r.clients, r.run, metav1.GetOptions{}, r.ns)
 	if err != nil {
 		return err
 	}
@@ -210,7 +210,7 @@ func (r *Reader) getOrderedTasks(pr *v1beta1.PipelineRun) ([]trh.Run, error) {
 
 	switch {
 	case pr.Spec.PipelineRef != nil:
-		pl, err := pipeline.GetV1beta1(r.clients, pr.Spec.PipelineRef.Name, metav1.GetOptions{}, r.ns)
+		pl, err := pipeline.Get(r.clients, pr.Spec.PipelineRef.Name, metav1.GetOptions{}, r.ns)
 		if err != nil {
 			return nil, err
 		}
