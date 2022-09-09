@@ -71,6 +71,11 @@ Flags:
 Use "tkn pac [command] --help" for more information about a command.
 ```
 
+## Completions working
+
+[![completion with tktpoto](https://asciinema.org/a/BbYcYRipEXPDPTG94cA56Otav.svg)](https://asciinema.org/a/BbYcYRipEXPDPTG94cA56Otav)
+
+
 ### TODO
 
 * need to figure out version, maybe add our own rootcommand and add tkncli/pac into it with our redefined version commands....
