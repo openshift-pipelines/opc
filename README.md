@@ -73,7 +73,7 @@ Use "tkn pac [command] --help" for more information about a command.
 
 ### TODO
 
-need to figure out version, maybe add our own rootcommand and add tkncli/pac into it with our redefined version commands....
+* need to figure out version, maybe add our own rootcommand and add tkncli/pac into it with our redefined version commands....
 
 ### NOTES
 
