@@ -22,6 +22,7 @@ const (
 See https://pipelinesascode.com for more details`
 	pacShortdesc = "Manage Pipelines as Code resources"
 	tknShortDesc = `CLI to manage Openshift Pipelines resources`
+	binaryName   = `tktpoto`
 )
 
 func iversion() *cobra.Command {
@@ -41,6 +42,7 @@ func iversion() *cobra.Command {
 func main() {
 	tp := &cli.TektonParams{}
 	tkn := cmd.Root(tp)
+	tkn.Use = binaryName
 	tkn.Short = tknShortDesc
 	clients := params.New()
 	pac := tknpac.Root(clients)
