@@ -263,6 +263,7 @@ func (v *Provider) getPullRequest(ctx context.Context, runevent *info.Event) (*i
 	runevent.URL = pr.GetBase().GetRepo().GetHTMLURL()
 	runevent.SHA = pr.GetHead().GetSHA()
 	runevent.SHAURL = fmt.Sprintf("%s/commit/%s", pr.GetHTMLURL(), pr.GetHead().GetSHA())
+	runevent.PullRequestTitle = pr.GetTitle()
 
 	// TODO: check if we really need this
 	if runevent.Sender == "" {
@@ -272,6 +273,34 @@ func (v *Provider) getPullRequest(ctx context.Context, runevent *info.Event) (*i
 	runevent.BaseBranch = pr.GetBase().GetRef()
 	runevent.EventType = "pull_request"
 	return runevent, nil
+}
+
+// GetFiles get a files from pull request
+func (v *Provider) GetFiles(ctx context.Context, runevent *info.Event) ([]string, error) {
+	if runevent.TriggerTarget == "pull_request" {
+		repoCommit, _, err := v.Client.PullRequests.ListFiles(ctx, runevent.Organization, runevent.Repository, runevent.PullRequestNumber, &github.ListOptions{})
+		if err != nil {
+			return []string{}, err
+		}
+		result := []string{}
+		for j := range repoCommit {
+			result = append(result, *repoCommit[j].Filename)
+		}
+		return result, nil
+	}
+
+	if runevent.TriggerTarget == "push" {
+		result := []string{}
+		rC, _, err := v.Client.Repositories.GetCommit(ctx, runevent.Organization, runevent.Repository, runevent.SHA, &github.ListOptions{})
+		if err != nil {
+			return []string{}, err
+		}
+		for i := range rC.Files {
+			result = append(result, *rC.Files[i].Filename)
+		}
+		return result, nil
+	}
+	return []string{}, nil
 }
 
 // getObject Get an object from a repository
@@ -291,6 +320,10 @@ func (v *Provider) getObject(ctx context.Context, sha string, runevent *info.Eve
 // Detect processes event and detect if it is a github event, whether to process or reject it
 // returns (if is a GH event, whether to process or reject, error if any occurred)
 func (v *Provider) Detect(req *http.Request, payload string, logger *zap.SugaredLogger) (bool, bool, *zap.SugaredLogger, string, error) {
+	// gitea set x-github-event too, so skip it for the gitea driver
+	if h := req.Header.Get("X-Gitea-Event-Type"); h != "" {
+		return false, false, logger, "", nil
+	}
 	isGH := false
 	event := req.Header.Get("X-Github-Event")
 	if event == "" {

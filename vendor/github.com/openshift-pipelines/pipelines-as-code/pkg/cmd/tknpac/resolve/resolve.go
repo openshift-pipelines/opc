@@ -3,7 +3,6 @@ package resolve
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -74,7 +73,7 @@ func Command(run *params.Run, streams *cli.IOStreams) *cobra.Command {
 				}
 			} else {
 				// it's okay if pac is not installed, ignore the error
-				_ = run.GetConfigFromConfigMap(ctx)
+				_ = run.UpdatePACInfo(ctx)
 			}
 
 			if len(filenames) == 0 {
@@ -167,7 +166,7 @@ func resolveFilenames(cs *params.Run, filenames []string, params map[string]stri
 }
 
 func appendYaml(filename string) string {
-	b, err := ioutil.ReadFile(filename)
+	b, err := os.ReadFile(filename)
 	if err != nil {
 		log.Fatal(err)
 	}

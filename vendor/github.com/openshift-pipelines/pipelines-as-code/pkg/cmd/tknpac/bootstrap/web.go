@@ -6,36 +6,18 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli/browser"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
 )
 
-// openWebBrowser opens the specified URL in the default browser of the user.
-func openWebBrowser(url string) error {
-	var cmd string
-	var args []string
-
-	switch runtime.GOOS {
-	case "windows":
-		cmd = "cmd"
-		args = []string{"/c", "start"}
-	case "darwin":
-		cmd = "open"
-	default: // "linux", "freebsd", "openbsd", "netbsd"
-		cmd = "xdg-open"
-	}
-	args = append(args, url)
-	return exec.Command(cmd, args...).Start()
-}
-
 // startWebServer starts a webserver that will redirect the user to the github app creation page.
 func startWebServer(ctx context.Context, opts *bootstrapOpts, run *params.Run, jeez string) error {
 	m := http.NewServeMux()
+	//nolint: gosec
 	s := http.Server{Addr: fmt.Sprintf(":%d", opts.webserverPort), Handler: m}
 	codeCh := make(chan string)
 	m.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
@@ -54,8 +36,8 @@ func startWebServer(ctx context.Context, opts *bootstrapOpts, run *params.Run, j
 	go func() {
 		url := fmt.Sprintf("http://localhost:%d", opts.webserverPort)
 		fmt.Fprintf(opts.ioStreams.Out, "🌍 Starting a web browser on %s, click on the button to create your GitHub APP\n", url)
-		// nolint:errcheck
-		go openWebBrowser(url)
+		//nolint:errcheck
+		go browser.OpenWebBrowser(url)
 		if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal(err)
 		}

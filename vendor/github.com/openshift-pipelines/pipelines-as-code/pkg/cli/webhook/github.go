@@ -2,8 +2,10 @@ package webhook
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -93,11 +95,15 @@ func (gh *gitHubConfig) askGHWebhookConfig(repoURL, controllerURL, apiURL string
 		}
 	}
 
-	if err := prompt.SurveyAskOne(&survey.Password{
-		Message: "Please enter the secret to configure the webhook for payload validation: ",
-	}, &gh.webhookSecret, survey.WithValidator(survey.Required)); err != nil {
-		return err
+	RandomCrypto, randErr := rand.Prime(rand.Reader, 16)
+	if randErr != nil {
+		return randErr
 	}
+	data, marshalErr := json.Marshal(RandomCrypto)
+	if marshalErr != nil {
+		return marshalErr
+	}
+	gh.webhookSecret = string(data)
 
 	fmt.Fprintln(gh.IOStream.Out, "ℹ ️You now need to create a GitHub personal access token, please checkout the docs at https://is.gd/KJ1dDH for the required scopes")
 	if err := prompt.SurveyAskOne(&survey.Password{
@@ -147,7 +153,7 @@ func (gh *gitHubConfig) create(ctx context.Context) error {
 	}
 
 	if res.Response.StatusCode != http.StatusCreated {
-		payload, err := ioutil.ReadAll(res.Body)
+		payload, err := io.ReadAll(res.Body)
 		if err != nil {
 			return fmt.Errorf("failed to read response body: %w", err)
 		}

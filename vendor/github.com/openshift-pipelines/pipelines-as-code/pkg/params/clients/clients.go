@@ -3,7 +3,7 @@ package clients
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/consoleui"
@@ -44,7 +44,7 @@ func (c *Clients) GetURL(ctx context.Context, url string) ([]byte, error) {
 		return nil, fmt.Errorf("Non-OK HTTP status: %d", res.StatusCode)
 	}
 
-	data, err := ioutil.ReadAll(res.Body)
+	data, err := io.ReadAll(res.Body)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -129,6 +129,8 @@ func (c *Clients) NewClients(ctx context.Context, info *info.Info) error {
 	if err != nil {
 		return err
 	}
+	config.QPS = 50
+	config.Burst = 50
 
 	c.Kube, err = c.kubeClient(config)
 	if err != nil {
@@ -150,10 +152,6 @@ func (c *Clients) NewClients(ctx context.Context, info *info.Info) error {
 	}
 
 	c.ConsoleUI = c.consoleUIClient(ctx, c.Dynamic, info)
-	if err != nil {
-		return err
-	}
-
 	c.ClientInitialized = true
 	return nil
 }

@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -48,12 +49,12 @@ func (rt RemoteTasks) getTask(ctx context.Context, logger *zap.SugaredLogger, pr
 	// TODO: print a log info when getting the task from which location
 	switch {
 	case strings.HasPrefix(task, "https://"), strings.HasPrefix(task, "http://"):
-		// TODO: Add a context
-		res, err := rt.Run.Clients.HTTP.Get(task)
+		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, task, nil)
+		res, err := rt.Run.Clients.HTTP.Do(req)
 		if err != nil {
 			return ret, err
 		}
-		data, _ := ioutil.ReadAll(res.Body)
+		data, _ := io.ReadAll(res.Body)
 		defer res.Body.Close()
 		return rt.convertTotask(string(data))
 	case strings.Contains(task, "/"):
@@ -99,7 +100,7 @@ func (rt RemoteTasks) GetTaskFromAnnotations(ctx context.Context, logger *zap.Su
 		for _, v := range tasks {
 			task, err := rt.getTask(ctx, logger, providerintf, event, v)
 			if err != nil {
-				return ret, err
+				return ret, fmt.Errorf("error getting remote task %s: %w", v, err)
 			}
 			ret = append(ret, task)
 		}
@@ -119,7 +120,7 @@ func getTaskFromLocalFS(taskName string, logger *zap.SugaredLogger) (string, err
 		return "", nil
 	}
 
-	b, err := ioutil.ReadFile(taskName)
+	b, err := os.ReadFile(taskName)
 	data = string(b)
 	if err != nil {
 		return "", err
