@@ -1,6 +1,6 @@
 GO := go
 GOVERSION := 1.17
-BINARYNAME := tktpoto
+BINARYNAME := opc
 
 all: build
 

@@ -26,6 +26,10 @@ Support completion :
 
 `opc completions [bash|zsh|...]`
 
+Plugins :
+
+`opc foo will resolve to opc-foo`
+
 ### TODO
 
 - Versioning are a bit all over the place
