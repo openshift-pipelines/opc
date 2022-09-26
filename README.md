@@ -47,7 +47,7 @@ opc shows tkn plugins, it doesn't try to show opc plugins. (may change).
 
 Only add 18mb :
 
-```
+```shell
 % du $GOPATH/src/github.com/tektoncd/cli/bin/tkn
 120M tkn
 % du opc
