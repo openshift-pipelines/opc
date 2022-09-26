@@ -1,6 +1,6 @@
-module github.com/chmouel/tktpoto
+module github.com/openshift-pipelines/opc
 
-go 1.17
+go 1.18
 
 require (
 	github.com/fatih/color v1.13.0 // indirect

@@ -1,84 +1,34 @@
-Proof of concept of a single binary including pac and tkn functionalities
+# OPC - A CLI for OpenShift Pipeline
 
-Usage: `go build -o tktpoto`
+The OPC project merge multiple upstream CLI and specific cli features for
+OpenShift Pipelines.
 
-```
-$ ./tktpoto
-CLI to manage Openshift Pipelines resources
+It contains :
 
-Usage:
-tkn [flags]
-tkn [command]
+- TektonCD CLI (tkn) - <https://github.com/tektoncd/cli>
+- Pipelines as Code CLI (tkn-pac) - <https://pipelinesascode.com/docs/guide/cli/>
 
-Available Commands:
-  bundle                Manage Tekton Bundles
-  chain                 Manage Chains
-  clustertask           Manage ClusterTasks
-  clustertriggerbinding Manage ClusterTriggerBindings
-  eventlistener         Manage EventListeners
-  hub                   Interact with tekton hub
-  pac                   Manage Pipelines as Code resources
-  pipeline              Manage pipelines
-  pipelinerun           Manage PipelineRuns
-  resource              Manage pipeline resources
-  task                  Manage Tasks
-  taskrun               Manage TaskRuns
-  triggerbinding        Manage TriggerBindings
-  triggertemplate       Manage TriggerTemplates
+## Build
 
-Other Commands:
-  completion            Prints shell completion scripts
-  version               Prints version information
+Use the default target of the Makefile:
 
-Available Plugins:
-  watch
+i.e:
 
-Flags:
-  -h, --help   help for tkn
+`make`
 
-Use "tkn [command] --help" for more information about a command.
-```
+## Usage
 
-```
-$ ./tktpoto pac --help
-Manage your Pipelines as Code installation and resources
-See https://pipelinesascode.com for more details
+Same as tkn with the addition of the pac command which redirect to tkn-pac.
 
-Usage:
-tkn pac [command]
+## Features
 
-Available Commands:
-  bootstrap   Bootstrap Pipelines as Code.
-  completion  Prints shell completion scripts
-  create      Create Pipelines as Code resources
-  delete      Delete Pipelines as Code resources
-  describe    Describe a repository
-  generate    Generate PipelineRun
-  list        List Pipelines as Code Repository
-  logs        Display the PipelineRun logs from a Repository
-  resolve     Embed PipelineRun references as a single resource.
-  setup       Setup provider app or webhook
-  version     Print tkn pac version
+Support completion :
 
-Available Plugins:
-  watch
-
-Flags:
-  -h, --help                help for pac
-  -k, --kubeconfig string   Path to the kubeconfig file to use for CLI requests (default: /Users/chmouel/.kube/config.kind) (default "/Users/chmouel/.kube/config.kind")
-  -n, --namespace string    If present, the namespace scope for this CLI request
-
-Use "tkn pac [command] --help" for more information about a command.
-```
-
-## Completions working
-
-[![completion with tktpoto](https://asciinema.org/a/BbYcYRipEXPDPTG94cA56Otav.svg)](https://asciinema.org/a/BbYcYRipEXPDPTG94cA56Otav)
-
+`opc completions [bash|zsh|...]`
 
 ### TODO
 
-* need to figure out version, maybe add our own rootcommand and add tkncli/pac into it with our redefined version commands....
+- Versioning are a bit all over the place
 
 ### NOTES
 
@@ -86,7 +36,7 @@ Only add 18mb :
 
 ```
 % du $GOPATH/src/github.com/tektoncd/cli/bin/tkn
-120M	tkn
-% du tktpoto
-138M	tktpoto
+120M tkn
+% du opc
+138M opc
 ```

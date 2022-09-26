@@ -22,7 +22,7 @@ const (
 See https://pipelinesascode.com for more details`
 	pacShortdesc = "Manage Pipelines as Code resources"
 	tknShortDesc = `CLI to manage Openshift Pipelines resources`
-	binaryName   = `tktpoto`
+	binaryName   = `opc`
 )
 
 func iversion() *cobra.Command {
