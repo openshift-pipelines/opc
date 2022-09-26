@@ -28,7 +28,7 @@ Support completion :
 
 Plugins :
 
-`opc foo will resolve to opc-foo`
+opc shows tkn plugins, it doesn't try to show opc plugins. (may change).
 
 ### TODO
 
