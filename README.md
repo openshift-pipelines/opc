@@ -1,12 +1,6 @@
-# OPC - A CLI for OpenShift Pipeline
+# opc - A CLI for OpenShift Pipeline
 
-The OPC project merge multiple upstream CLI and specific cli features for
-OpenShift Pipelines.
-
-It contains :
-
-- TektonCD CLI (tkn) - <https://github.com/tektoncd/cli>
-- Pipelines as Code CLI (tkn-pac) - <https://pipelinesascode.com/docs/guide/cli/>
+`opc` make it easy to work with Tekton resources in OpenShift Pipelines. It is built on top of `tkn` and `tkn-pac` and expands their capablities to the functionality and user-experience that is available on OpenShift. 
 
 ## Build
 
@@ -16,9 +10,24 @@ i.e:
 
 `make`
 
-## Usage
+## Useful commands
 
-Same as tkn with the addition of the pac command which redirect to tkn-pac.
+The following commands help you understand and effectively use the OpenShift Pipelines CLI:
+
+`opc hub`: search and install from Tekton Hub  
+
+`opc pac`: add and manage git repositories (pipelines as code)
+
+`opc pipeline`: manage Pipelines  
+`opc pipelinerun`: manage PipelineRuns  
+`opc task`: manage Tasks  
+`opc clustertask`: manage ClusterTasks  
+`opc taskrun`: manage TaskRuns  
+
+`opc triggerbinding`: manage TriggerBindings  
+`opc clustertriggerbinding`: manage ClusterTriggerBindings  
+`opc triggertemplate`: manage TriggerTemplates  
+`opc eventlistener`: manage EventListeners  
 
 ## Features
 
