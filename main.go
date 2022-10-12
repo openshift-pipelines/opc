@@ -25,20 +25,6 @@ See https://pipelinesascode.com for more details`
 	binaryName   = `opc`
 )
 
-func iversion() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "version",
-		Short: "Print tkn pac version",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Hello moto")
-		},
-		Annotations: map[string]string{
-			"commandType": "main",
-		},
-	}
-	return cmd
-}
-
 func main() {
 	tp := &cli.TektonParams{}
 	tkn := cmd.Root(tp)
