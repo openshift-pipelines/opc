@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/google/go-github/v45/github"
+	"github.com/google/go-github/v47/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
@@ -18,14 +18,67 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const apiPublicURL = "https://api.github.com/"
+const (
+	apiPublicURL = "https://api.github.com/"
+	// TODO: makes this configurable for GHE in the ConfigMap.
+	// on our GHE instance, it looks like this :
+	// https://raw.ghe.openshiftpipelines.com/pac/chmouel-test/main/README.md
+	// we can perhaps do some autodetction with event.Provider.GHEURL and adding
+	// a raw into it
+	publicRawURLHost = "raw.githubusercontent.com"
+)
 
 type Provider struct {
-	Client        *github.Client
-	Logger        *zap.SugaredLogger
-	Token, APIURL *string
-	ApplicationID *int64
-	providerName  string
+	Client                *github.Client
+	Logger                *zap.SugaredLogger
+	Token, APIURL         *string
+	ApplicationID         *int64
+	providerName          string
+	AutoConfigureNewRepos bool
+}
+
+// splitGithubURL Take a Github url and split it with org/repo path ref, supports rawURL
+func splitGithubURL(uri string) (string, string, string, string, error) {
+	pURL, err := url.Parse(uri)
+	splitted := strings.Split(pURL.Path, "/")
+	if len(splitted) <= 3 {
+		return "", "", "", "", fmt.Errorf("URL %s does not seem to be a proper provider url: %w", uri, err)
+	}
+	var spOrg, spRepo, spRef, spPath string
+	switch {
+	case pURL.Host == publicRawURLHost && len(splitted) >= 5:
+		spOrg = splitted[1]
+		spRepo = splitted[2]
+		spRef = splitted[3]
+		spPath = strings.Join(splitted[4:], "/")
+	case splitted[3] == "blob" && len(splitted) >= 5:
+		spOrg = splitted[1]
+		spRepo = splitted[2]
+		spRef = splitted[4]
+		spPath = strings.Join(splitted[5:], "/")
+	default:
+		return "", "", "", "", fmt.Errorf("cannot recognize task as a Github URL to fetch: %s", uri)
+	}
+	return spOrg, spRepo, spPath, spRef, nil
+}
+
+func (v *Provider) GetTaskURI(ctx context.Context, params *params.Run, event *info.Event, uri string) (bool, string, error) {
+	if ret := provider.CompareHostOfURLS(uri, event.URL); !ret {
+		return false, "", nil
+	}
+
+	spOrg, spRepo, spPath, spRef, err := splitGithubURL(uri)
+	if err != nil {
+		return false, "", err
+	}
+	nEvent := info.NewEvent()
+	nEvent.Organization = spOrg
+	nEvent.Repository = spRepo
+	ret, err := v.GetFileInsideRepo(ctx, nEvent, spPath, spRef)
+	if err != nil {
+		return false, "", err
+	}
+	return true, ret, nil
 }
 
 func (v *Provider) InitAppClient(ctx context.Context, kube kubernetes.Interface, event *info.Event) error {
@@ -41,15 +94,8 @@ func (v *Provider) SetLogger(logger *zap.SugaredLogger) {
 	v.Logger = logger
 }
 
-func (v *Provider) Validate(ctx context.Context, cs *params.Run, event *info.Event) error {
+func (v *Provider) Validate(_ context.Context, _ *params.Run, event *info.Event) error {
 	signature := event.Request.Header.Get(github.SHA256SignatureHeader)
-
-	// detect if we run gitea and validate the signature
-	// there is currently an issue while validating the signature with gitea, so we are not enforcing the need webhook secret like we do for github.
-	if event.Request.Header.Get("X-Gitea-Event") != "" && event.Request.Header.Get("X-Gitea-Signature") == "" && event.Provider.WebhookSecret == "" {
-		v.Logger.Debug("no secret and signature found, skipping validation for gitea")
-		return nil
-	}
 
 	if signature == "" {
 		signature = event.Request.Header.Get(github.SHA1SignatureHeader)
@@ -69,65 +115,34 @@ func (v *Provider) GetConfig() *info.ProviderConfig {
 	}
 }
 
-func (v *Provider) getGiteaClient(apiURL string, tc *http.Client) (*github.Client, error) {
-	// add /api/v1 to the base url
-	baseEndpoint, err := url.Parse(apiURL)
-	if err != nil {
-		return nil, err
-	}
-	if !strings.HasSuffix(baseEndpoint.Path, "/") {
-		baseEndpoint.Path += "/"
-	}
-	if !strings.HasSuffix(baseEndpoint.Path, "/api/v1/") && !strings.HasPrefix(baseEndpoint.Host, "api.") && !strings.Contains(baseEndpoint.Host, ".api.") {
-		baseEndpoint.Path += "api/v1/"
-	}
-	uploadURL, err := url.Parse(apiURL)
-	if err != nil {
-		return nil, err
-	}
-	if !strings.HasSuffix(uploadURL.Path, "/") {
-		uploadURL.Path += "/"
-	}
-	if !strings.HasSuffix(uploadURL.Path, "/api/v1/") && !strings.HasPrefix(uploadURL.Host, "api.") && !strings.Contains(uploadURL.Host, ".api.") {
-		uploadURL.Path += "api/v1/"
-	}
-	client := github.NewClient(tc)
-	client.BaseURL = baseEndpoint
-	client.UploadURL = uploadURL
-	return client, nil
-}
-
-func (v *Provider) SetClient(ctx context.Context, event *info.Event) error {
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: event.Provider.Token},
-	)
-	tc := oauth2.NewClient(ctx, ts)
+func makeClient(ctx context.Context, apiURL, token string) (*github.Client, string, *string) {
 	var client *github.Client
-	apiURL := event.Provider.URL
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
+	)
+
+	tc := oauth2.NewClient(ctx, ts)
 	if apiURL != "" {
 		if !strings.HasPrefix(apiURL, "https") && !strings.HasPrefix(apiURL, "http") {
 			apiURL = "https://" + apiURL
 		}
 	}
 
-	v.providerName = "github"
+	providerName := "github"
 	if apiURL != "" && apiURL != apiPublicURL {
-		v.providerName = "github-enterprise"
+		providerName = "github-enterprise"
 		client, _ = github.NewEnterpriseClient(apiURL, apiURL, tc)
 	} else {
 		client = github.NewClient(tc)
 		apiURL = client.BaseURL.String()
 	}
 
-	// if we have gitea events then do our own client thing
-	if event.Request != nil && event.Request.Header.Get("X-Gitea-Event") != "" {
-		var err error
-		client, err = v.getGiteaClient(apiURL, tc)
-		if err != nil {
-			return fmt.Errorf("cannot make a gitea client: %w", err)
-		}
-		v.providerName = "gitea"
-	}
+	return client, providerName, github.String(apiURL)
+}
+
+func (v *Provider) SetClient(ctx context.Context, event *info.Event) error {
+	client, providerName, apiURL := makeClient(ctx, event.Provider.URL, event.Provider.Token)
+	v.providerName = providerName
 
 	// Make sure Client is not already set, so we don't override our fakeclient
 	// from unittesting.
@@ -135,8 +150,7 @@ func (v *Provider) SetClient(ctx context.Context, event *info.Event) error {
 		v.Client = client
 	}
 
-	v.APIURL = &apiURL
-
+	v.APIURL = apiURL
 	return nil
 }
 
