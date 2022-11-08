@@ -2,7 +2,6 @@ package matcher
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -49,7 +48,7 @@ func getAnnotationValues(annotation string) ([]string, error) {
 	annotation = strings.TrimSpace(annotation)
 	match := re.Match([]byte(annotation))
 	if !match {
-		return nil, errors.New("annotations in pipeline are in wrong format")
+		return nil, fmt.Errorf("annotations in pipeline are in wrong format: %s", annotation)
 	}
 
 	// if it's not an array then it would be a single string
@@ -64,7 +63,7 @@ func getAnnotationValues(annotation string) ([]string, error) {
 	}
 
 	if splitted[0] == "" {
-		return nil, errors.New("annotations in pipeline are empty")
+		return nil, fmt.Errorf("annotation \"%s\" has empty values", annotation)
 	}
 
 	return splitted, nil
@@ -156,7 +155,7 @@ func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger
 		if celExpr, ok := prun.GetObjectMeta().GetAnnotations()[filepath.Join(pipelinesascode.GroupName, onCelExpression)]; ok {
 			out, err := celEvaluate(ctx, celExpr, event, vcx)
 			if err != nil {
-				logger.Error(fmt.Errorf("there was an error evaluating CEL expression, skipping: %w", err))
+				logger.Errorf("there was an error evaluating CEL expression, skipping: %w", err)
 				continue
 			}
 			if out != types.True {
@@ -196,7 +195,7 @@ func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger
 		event.EventType, event.BaseBranch)
 }
 
-func matchOnAnnotation(annotations string, eventType string, branchMatching bool) (bool, error) {
+func matchOnAnnotation(annotations, eventType string, branchMatching bool) (bool, error) {
 	targets, err := getAnnotationValues(annotations)
 	if err != nil {
 		return false, err

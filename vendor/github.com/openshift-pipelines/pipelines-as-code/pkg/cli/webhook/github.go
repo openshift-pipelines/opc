@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/google/go-github/v45/github"
+	"github.com/google/go-github/v47/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli/prompt"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/formatting"
@@ -60,6 +60,7 @@ func (gh *gitHubConfig) askGHWebhookConfig(repoURL, controllerURL, apiURL string
 		return err
 	}
 
+	defaultRepo = strings.TrimSuffix(defaultRepo, "/")
 	repoArr := strings.Split(defaultRepo, "/")
 	if len(repoArr) != 2 {
 		return fmt.Errorf("invalid repository, needs to be of format 'org-name/repo-name'")
