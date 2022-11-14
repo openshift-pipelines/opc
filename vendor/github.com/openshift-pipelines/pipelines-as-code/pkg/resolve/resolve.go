@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	apipac "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode"
@@ -24,11 +25,13 @@ type Types struct {
 	Tasks        []*tektonv1beta1.Task
 }
 
+var yamlDocSeparatorRe = regexp.MustCompile(`(?m)^---\s*$`)
+
 func readTypes(log *zap.SugaredLogger, data string) Types {
 	types := Types{}
 	decoder := k8scheme.Codecs.UniversalDeserializer()
 
-	for _, doc := range strings.Split(strings.Trim(data, "-"), "---") {
+	for _, doc := range yamlDocSeparatorRe.Split(data, -1) {
 		if strings.TrimSpace(doc) == "" {
 			continue
 		}
@@ -123,14 +126,23 @@ func Resolve(ctx context.Context, cs *params.Run, logger *zap.SugaredLogger, pro
 	for _, pipelinerun := range types.PipelineRuns {
 		if ropt.RemoteTasks && pipelinerun.GetObjectMeta().GetAnnotations() != nil {
 			rt := matcher.RemoteTasks{
-				Run: cs,
+				Run:               cs,
+				Event:             event,
+				ProviderInterface: providerintf,
+				Logger:            logger,
 			}
-			remoteTasks, err := rt.GetTaskFromAnnotations(ctx, logger, providerintf, event, pipelinerun.GetObjectMeta().GetAnnotations())
+			remoteTasks, err := rt.GetTaskFromAnnotations(ctx, pipelinerun.GetObjectMeta().GetAnnotations())
 			if err != nil {
 				return []*tektonv1beta1.PipelineRun{}, err
 			}
 			// Merge remote tasks with local tasks
 			types.Tasks = append(types.Tasks, remoteTasks...)
+
+			remotePipelines, err := rt.GetPipelineFromAnnotations(ctx, pipelinerun.GetObjectMeta().GetAnnotations())
+			if err != nil {
+				return []*tektonv1beta1.PipelineRun{}, err
+			}
+			types.Pipelines = append(types.Pipelines, remotePipelines...)
 		}
 	}
 
