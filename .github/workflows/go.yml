@@ -54,9 +54,11 @@ jobs:
 
       - name: Build
         run: |
-          make
+          mkdir -p bin
+          go build -v -o bin/opc ./...
+          go test -v ./...
           [[ $(git status --porcelain) != "" ]] && {
               echo "There is changes in the repo like new vendor files"
               git status --verbose
               exit 1
-          }
+          } || true
