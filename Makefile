@@ -10,7 +10,7 @@ vendor: tidy
 
 .PHONY: build
 build: vendor mkbin
-	$(GO) build -o bin/$(BINARYNAME) main.go
+	$(GO) build -v -o bin/$(BINARYNAME) main.go
 
 .PHONY: tidy
 tidy:
@@ -23,7 +23,6 @@ lint-go: ## runs go linter on all go files
 							--max-issues-per-linter=0 \
 							--max-same-issues=0 \
 							--deadline 5m
-
 
 mkbin:
 	mkdir -p ./bin

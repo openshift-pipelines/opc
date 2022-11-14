@@ -14,20 +14,20 @@ i.e:
 
 The following commands help you understand and effectively use the OpenShift Pipelines CLI:
 
-`opc hub`: search and install from Tekton Hub  
+`opc hub`: search and install from Tekton Hub
 
 `opc pac`: add and manage git repositories (pipelines as code)
 
-`opc pipeline`: manage Pipelines  
-`opc pipelinerun`: manage PipelineRuns  
-`opc task`: manage Tasks  
-`opc clustertask`: manage ClusterTasks  
-`opc taskrun`: manage TaskRuns  
+`opc pipeline`: manage Pipelines
+`opc pipelinerun`: manage PipelineRuns
+`opc task`: manage Tasks
+`opc clustertask`: manage ClusterTasks
+`opc taskrun`: manage TaskRuns
 
-`opc triggerbinding`: manage TriggerBindings  
-`opc clustertriggerbinding`: manage ClusterTriggerBindings  
-`opc triggertemplate`: manage TriggerTemplates  
-`opc eventlistener`: manage EventListeners  
+`opc triggerbinding`: manage TriggerBindings
+`opc clustertriggerbinding`: manage ClusterTriggerBindings
+`opc triggertemplate`: manage TriggerTemplates
+`opc eventlistener`: manage EventListeners
 
 ## Features
 
