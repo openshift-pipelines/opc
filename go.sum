@@ -1504,8 +1504,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.0.3-0.20220114050600-8b9d41f48198 h1:+czc/J8SlhPKLOtVLMQc+xDCFBT73ZStMsRhSsUhsSg=
 github.com/opencontainers/image-spec v1.0.3-0.20220114050600-8b9d41f48198/go.mod h1:j4h1pJW6ZcJTgMZWP3+7RlG3zTaP02aDZ/Qw0sppK7Q=
-github.com/openshift-pipelines/pipelines-as-code v0.13.0 h1:k3QjGbQqPNzgkoAKm8HV1/c/hpc33mZbj35E+5WKCxY=
-github.com/openshift-pipelines/pipelines-as-code v0.13.0/go.mod h1:4oe67+pzT1JwOe2pQ4+uXy/YbFC6PCDIR7xdS3wbHKQ=
+github.com/openshift-pipelines/pipelines-as-code v0.13.1 h1:FCLZqJK8aQD/yI+UbsbsjNCdFgBQtzmnczs8R42kKDs=
+github.com/openshift-pipelines/pipelines-as-code v0.13.1/go.mod h1:4oe67+pzT1JwOe2pQ4+uXy/YbFC6PCDIR7xdS3wbHKQ=
 github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492/go.mod h1:Ngi6UdF0k5OKD5t5wlmGhe/EDKPoUM3BXZSSfIuJbis=
 github.com/opentracing/basictracer-go v1.0.0/go.mod h1:QfBfYuafItcjQuMwinw9GhYKwFXS9KnPs5lxoYwgW74=
 github.com/opentracing/opentracing-go v1.0.2/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=

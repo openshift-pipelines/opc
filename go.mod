@@ -34,7 +34,7 @@ require (
 )
 
 require (
-	github.com/openshift-pipelines/pipelines-as-code v0.13.0
+	github.com/openshift-pipelines/pipelines-as-code v0.13.1
 	github.com/spf13/cobra v1.5.0
 	github.com/tektoncd/cli v0.27.0
 )
