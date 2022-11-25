@@ -20,16 +20,20 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/formatting"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/sort"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 var (
-	namespaceFlag   = "namespace"
-	targetPRFlag    = "target-pipelinerun"
-	useRealTimeFlag = "use-realtime"
-	showEventflag   = "show-events"
+	namespaceFlag     = "namespace"
+	targetPRFlag      = "target-pipelinerun"
+	useRealTimeFlag   = "use-realtime"
+	showEventflag     = "show-events"
+	creationTimestamp = "{.metadata.creationTimestamp}"
+	maxEventLimit     = 50
 )
 
 //go:embed templates/describe.tmpl
@@ -74,7 +78,9 @@ func Root(run *params.Run, ioStreams *cli.IOStreams) *cobra.Command {
 		Annotations: map[string]string{
 			"commandType": "main",
 		},
-		ValidArgsFunction: completion.ParentCompletion,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return completion.BaseCompletion("repositories", args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			var repoName string
@@ -182,7 +188,12 @@ func describe(ctx context.Context, cs *params.Run, clock clockwork.Clock, opts *
 			return err
 		}
 		events, _ := kinteract.GetEvents(ctx, repository.GetNamespace(), "Repository", repository.GetName())
-		eventList = events.Items
+
+		// events to runtime obj
+		runTimeObj := []runtime.Object{}
+		for i := range events.Items {
+			runTimeObj = append(runTimeObj, &events.Items[i])
+		}
 
 		// we do twice the prun list, but since it's behind a flag and not the default behavior, it's ok (i guess)
 		label := "pipelinesascode.tekton.dev/repository=" + repository.Name
@@ -197,7 +208,21 @@ func describe(ctx context.Context, cs *params.Run, clock clockwork.Clock, opts *
 			if err != nil {
 				continue
 			}
-			eventList = append(eventList, pevents.Items...)
+			for i := range pevents.Items {
+				runTimeObj = append(runTimeObj, &pevents.Items[i])
+			}
+		}
+		sort.ByField(creationTimestamp, runTimeObj)
+
+		// append event in reverse order as they are sorted
+		for i := len(runTimeObj) - 1; i >= 0; i-- {
+			event, _ := runTimeObj[i].(*corev1.Event)
+			eventList = append(eventList, *event)
+		}
+		// if there are more events than the max limit, take only the latest
+		// equal to max limit
+		if len(eventList) > maxEventLimit {
+			eventList = eventList[:maxEventLimit-1]
 		}
 	}
 

@@ -2,18 +2,17 @@ package webhook
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/google/go-github/v47/github"
+	"github.com/google/go-github/v48/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli/prompt"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/formatting"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/random"
 	"golang.org/x/oauth2"
 )
 
@@ -31,7 +30,7 @@ type gitHubConfig struct {
 }
 
 func (gh *gitHubConfig) Run(ctx context.Context, opts *Options) (*response, error) {
-	err := gh.askGHWebhookConfig(opts.RepositoryURL, opts.ControllerURL, opts.ProviderAPIURL)
+	err := gh.askGHWebhookConfig(opts.RepositoryURL, opts.ControllerURL, opts.ProviderAPIURL, opts.PersonalAccessToken)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +43,7 @@ func (gh *gitHubConfig) Run(ctx context.Context, opts *Options) (*response, erro
 	}, gh.create(ctx)
 }
 
-func (gh *gitHubConfig) askGHWebhookConfig(repoURL, controllerURL, apiURL string) error {
+func (gh *gitHubConfig) askGHWebhookConfig(repoURL, controllerURL, apiURL, personalAccessToken string) error {
 	if repoURL == "" {
 		msg := "Please enter the git repository url you want to be configured: "
 		if err := prompt.SurveyAskOne(&survey.Input{Message: msg}, &repoURL,
@@ -96,21 +95,24 @@ func (gh *gitHubConfig) askGHWebhookConfig(repoURL, controllerURL, apiURL string
 		}
 	}
 
-	RandomCrypto, randErr := rand.Prime(rand.Reader, 16)
-	if randErr != nil {
-		return randErr
-	}
-	data, marshalErr := json.Marshal(RandomCrypto)
-	if marshalErr != nil {
-		return marshalErr
-	}
-	gh.webhookSecret = string(data)
-
-	fmt.Fprintln(gh.IOStream.Out, "ℹ ️You now need to create a GitHub personal access token, please checkout the docs at https://is.gd/KJ1dDH for the required scopes")
-	if err := prompt.SurveyAskOne(&survey.Password{
-		Message: "Please enter the GitHub access token: ",
-	}, &gh.personalAccessToken, survey.WithValidator(survey.Required)); err != nil {
+	data := random.AlphaString(12)
+	msg := fmt.Sprintf("Please enter the secret to configure the webhook for payload validation (default: %s): ", data)
+	var webhookSecret string
+	if err := prompt.SurveyAskOne(&survey.Input{Message: msg, Default: data}, &webhookSecret); err != nil {
 		return err
+	}
+
+	gh.webhookSecret = webhookSecret
+
+	if personalAccessToken == "" {
+		fmt.Fprintln(gh.IOStream.Out, "ℹ ️You now need to create a GitHub personal access token, please checkout the docs at https://is.gd/KJ1dDH for the required scopes")
+		if err := prompt.SurveyAskOne(&survey.Password{
+			Message: "Please enter the GitHub access token: ",
+		}, &gh.personalAccessToken, survey.WithValidator(survey.Required)); err != nil {
+			return err
+		}
+	} else {
+		gh.personalAccessToken = personalAccessToken
 	}
 
 	if apiURL == "" && !strings.HasPrefix(repoURL, "https://github.com") {
