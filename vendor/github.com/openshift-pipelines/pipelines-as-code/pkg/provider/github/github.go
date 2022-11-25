@@ -3,14 +3,14 @@ package github
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
-	"github.com/google/go-github/v47/github"
+	"github.com/google/go-github/v48/github"
+	"github.com/jonboulle/clockwork"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
@@ -24,7 +24,7 @@ const (
 	// TODO: makes this configurable for GHE in the ConfigMap.
 	// on our GHE instance, it looks like this :
 	// https://raw.ghe.openshiftpipelines.com/pac/chmouel-test/main/README.md
-	// we can perhaps do some autodetction with event.Provider.GHEURL and adding
+	// we can perhaps do some autodetection with event.Provider.GHEURL and adding
 	// a raw into it
 	publicRawURLHost = "raw.githubusercontent.com"
 )
@@ -36,6 +36,7 @@ type Provider struct {
 	ApplicationID *int64
 	providerName  string
 	skippedRun
+	Run *params.Run
 }
 
 type skippedRun struct {
@@ -76,7 +77,7 @@ func splitGithubURL(uri string) (string, string, string, string, error) {
 	return spOrg, spRepo, spPath, spRef, nil
 }
 
-func (v *Provider) GetTaskURI(ctx context.Context, params *params.Run, event *info.Event, uri string) (bool, string, error) {
+func (v *Provider) GetTaskURI(ctx context.Context, _ *params.Run, event *info.Event, uri string) (bool, string, error) {
 	if ret := provider.CompareHostOfURLS(uri, event.URL); !ret {
 		return false, "", nil
 	}
@@ -118,6 +119,9 @@ func (v *Provider) Validate(_ context.Context, _ *params.Run, event *info.Event)
 		// if no signature is present then don't validate, because user hasn't set one
 		return fmt.Errorf("no signature has been detected, for security reason we are not allowing webhooks that has no secret")
 	}
+	if event.Provider.WebhookSecret == "" {
+		return fmt.Errorf("no webhook secret has been set, in repository CR or secret")
+	}
 	return github.ValidateSignature(signature, event.Request.Payload, []byte(event.Provider.WebhookSecret))
 }
 
@@ -154,9 +158,25 @@ func makeClient(ctx context.Context, apiURL, token string) (*github.Client, stri
 	return client, providerName, github.String(apiURL)
 }
 
-func (v *Provider) SetClient(ctx context.Context, event *info.Event) error {
+func (v *Provider) checkWebhookSecretValidity(ctx context.Context, cw clockwork.Clock) error {
+	rl, resp, err := v.Client.RateLimits(ctx)
+	// check if resp.TokenExpiration is after now
+	if resp.TokenExpiration.After(cw.Now()) {
+		return fmt.Errorf("token has expired at %s, err: %w", resp.TokenExpiration.Time.Format(time.RFC1123), err)
+	}
+	if err != nil {
+		return fmt.Errorf("error using token to access API: %w", err)
+	}
+	if rl.SCIM.Remaining == 0 {
+		return fmt.Errorf("token is ratelimited, it will be available again at %s", rl.SCIM.Reset.Time.Format(time.RFC1123))
+	}
+	return nil
+}
+
+func (v *Provider) SetClient(ctx context.Context, run *params.Run, event *info.Event) error {
 	client, providerName, apiURL := makeClient(ctx, event.Provider.URL, event.Provider.Token)
 	v.providerName = providerName
+	v.Run = run
 
 	// Make sure Client is not already set, so we don't override our fakeclient
 	// from unittesting.
@@ -165,6 +185,13 @@ func (v *Provider) SetClient(ctx context.Context, event *info.Event) error {
 	}
 
 	v.APIURL = apiURL
+
+	if event.Provider.WebhookSecretFromRepo {
+		// Make sure the webhook secret is still valid
+		if err := v.checkWebhookSecretValidity(ctx, clockwork.NewRealClock()); err != nil {
+			return fmt.Errorf("the webhook secret is not valid: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -235,7 +262,7 @@ func (v *Provider) GetCommitInfo(ctx context.Context, runevent *info.Event) erro
 }
 
 // GetFileInsideRepo Get a file via Github API using the runinfo information, we
-// branch is true, the user the branch as ref isntead of the SHA
+// branch is true, the user the branch as ref instead of the SHA
 // TODO: merge GetFileInsideRepo amd GetTektonDir
 func (v *Provider) GetFileInsideRepo(ctx context.Context, runevent *info.Event, path, target string) (string, error) {
 	ref := runevent.SHA
@@ -343,71 +370,4 @@ func (v *Provider) getObject(ctx context.Context, sha string, runevent *info.Eve
 		return nil, err
 	}
 	return decoded, err
-}
-
-// Detect processes event and detect if it is a github event, whether to process or reject it
-// returns (if is a GH event, whether to process or reject, error if any occurred)
-func (v *Provider) Detect(req *http.Request, payload string, logger *zap.SugaredLogger) (bool, bool, *zap.SugaredLogger, string, error) {
-	// gitea set x-github-event too, so skip it for the gitea driver
-	if h := req.Header.Get("X-Gitea-Event-Type"); h != "" {
-		return false, false, logger, "", nil
-	}
-	isGH := false
-	event := req.Header.Get("X-Github-Event")
-	if event == "" {
-		return false, false, logger, "", nil
-	}
-
-	// it is a Github event
-	isGH = true
-
-	setLoggerAndProceed := func(processEvent bool, reason string, err error) (bool, bool, *zap.SugaredLogger,
-		string, error,
-	) {
-		logger = logger.With("provider", "github", "event-id", req.Header.Get("X-GitHub-Delivery"))
-		return isGH, processEvent, logger, reason, err
-	}
-
-	eventInt, err := github.ParseWebHook(event, []byte(payload))
-	if err != nil {
-		return setLoggerAndProceed(false, "", err)
-	}
-
-	_ = json.Unmarshal([]byte(payload), &eventInt)
-
-	switch gitEvent := eventInt.(type) {
-	case *github.CheckRunEvent:
-		if gitEvent.GetAction() == "rerequested" && gitEvent.GetCheckRun() != nil {
-			return setLoggerAndProceed(true, "", nil)
-		}
-		return setLoggerAndProceed(false, fmt.Sprintf("check_run: unsupported action \"%s\"", gitEvent.GetAction()), nil)
-
-	case *github.IssueCommentEvent:
-		if gitEvent.GetAction() == "created" &&
-			gitEvent.GetIssue().IsPullRequest() &&
-			gitEvent.GetIssue().GetState() == "open" {
-			if provider.IsTestRetestComment(gitEvent.GetComment().GetBody()) {
-				return setLoggerAndProceed(true, "", nil)
-			}
-			if provider.IsOkToTestComment(gitEvent.GetComment().GetBody()) {
-				return setLoggerAndProceed(true, "", nil)
-			}
-			return setLoggerAndProceed(false, "", nil)
-		}
-		return setLoggerAndProceed(false, "issue: not a gitops pull request comment", nil)
-	case *github.PushEvent:
-		if gitEvent.GetPusher() != nil {
-			return setLoggerAndProceed(true, "", nil)
-		}
-		return setLoggerAndProceed(false, "push: no pusher in event", nil)
-
-	case *github.PullRequestEvent:
-		if provider.Valid(gitEvent.GetAction(), []string{"opened", "synchronize", "synchronized", "reopened"}) {
-			return setLoggerAndProceed(true, "", nil)
-		}
-		return setLoggerAndProceed(false, fmt.Sprintf("pull_request: unsupported action \"%s\"", gitEvent.GetAction()), nil)
-
-	default:
-		return setLoggerAndProceed(false, fmt.Sprintf("github: event \"%v\" is not supported", event), nil)
-	}
 }

@@ -2,8 +2,6 @@ package webhook
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +10,7 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli/prompt"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/random"
 	"github.com/xanzy/go-gitlab"
 )
 
@@ -30,7 +29,7 @@ func (gl *gitLabConfig) GetName() string {
 }
 
 func (gl *gitLabConfig) Run(_ context.Context, opts *Options) (*response, error) {
-	err := gl.askGLWebhookConfig(opts.RepositoryURL, opts.ControllerURL, opts.ProviderAPIURL)
+	err := gl.askGLWebhookConfig(opts.RepositoryURL, opts.ControllerURL, opts.ProviderAPIURL, opts.PersonalAccessToken)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +42,7 @@ func (gl *gitLabConfig) Run(_ context.Context, opts *Options) (*response, error)
 	}, gl.create()
 }
 
-func (gl *gitLabConfig) askGLWebhookConfig(repoURL, controllerURL, apiURL string) error {
+func (gl *gitLabConfig) askGLWebhookConfig(repoURL, controllerURL, apiURL, personalAccessToken string) error {
 	if repoURL == "" {
 		msg := "Please enter the git repository url you want to be configured: "
 		if err := prompt.SurveyAskOne(&survey.Input{Message: msg}, &repoURL,
@@ -87,22 +86,25 @@ func (gl *gitLabConfig) askGLWebhookConfig(repoURL, controllerURL, apiURL string
 		}
 	}
 
-	RandomCrypto, randErr := rand.Prime(rand.Reader, 16)
-	if randErr != nil {
-		return randErr
-	}
-	data, marshalErr := json.Marshal(RandomCrypto)
-	if marshalErr != nil {
-		return marshalErr
-	}
-	gl.webhookSecret = string(data)
-
-	fmt.Fprintln(gl.IOStream.Out, "ℹ ️You now need to create a GitLab personal access token with `api` scope")
-	fmt.Fprintln(gl.IOStream.Out, "ℹ ️Go to this URL to generate one https://gitlab.com/-/profile/personal_access_tokens, see https://is.gd/rOEo9B for documentation ")
-	if err := prompt.SurveyAskOne(&survey.Password{
-		Message: "Please enter the GitLab access token: ",
-	}, &gl.personalAccessToken, survey.WithValidator(survey.Required)); err != nil {
+	data := random.AlphaString(12)
+	msg = fmt.Sprintf("Please enter the secret to configure the webhook for payload validation (default: %s): ", data)
+	var webhookSecret string
+	if err := prompt.SurveyAskOne(&survey.Input{Message: msg, Default: data}, &webhookSecret); err != nil {
 		return err
+	}
+
+	gl.webhookSecret = webhookSecret
+
+	if personalAccessToken == "" {
+		fmt.Fprintln(gl.IOStream.Out, "ℹ ️You now need to create a GitLab personal access token with `api` scope")
+		fmt.Fprintln(gl.IOStream.Out, "ℹ ️Go to this URL to generate one https://gitlab.com/-/profile/personal_access_tokens, see https://is.gd/rOEo9B for documentation ")
+		if err := prompt.SurveyAskOne(&survey.Password{
+			Message: "Please enter the GitLab access token: ",
+		}, &gl.personalAccessToken, survey.WithValidator(survey.Required)); err != nil {
+			return err
+		}
+	} else {
+		gl.personalAccessToken = personalAccessToken
 	}
 
 	if apiURL == "" {

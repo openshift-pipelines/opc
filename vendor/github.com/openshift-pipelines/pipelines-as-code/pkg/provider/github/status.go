@@ -4,16 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v47/github"
-	apipac "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode"
+	"github.com/google/go-github/v48/github"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction"
+	kstatus "github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction/status"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -33,8 +35,6 @@ const taskStatusTemplate = `
 </td></tr>
 {{- end }}
 </table>`
-
-const checkRunIDKey = "check-run-id"
 
 func getCheckName(status provider.StatusOpts, pacopts *info.PacOpts) string {
 	if pacopts.ApplicationName != "" {
@@ -114,17 +114,82 @@ func (v *Provider) createCheckRunStatus(ctx context.Context, runevent *info.Even
 	return checkRun.ID, nil
 }
 
+func (v *Provider) getFailuresMessageAsAnnotations(ctx context.Context, pr *tektonv1beta1.PipelineRun) []*github.CheckRunAnnotation {
+	annotations := []*github.CheckRunAnnotation{}
+	r, err := regexp.Compile(v.Run.Info.Pac.ErrorDetectionSimpleRegexp)
+	if err != nil {
+		v.Run.Clients.Log.Errorf("invalid regexp for filtering failure messages: %v", v.Run.Info.Pac.ErrorDetectionSimpleRegexp)
+		return annotations
+	}
+	intf, err := kubeinteraction.NewKubernetesInteraction(v.Run)
+	if err != nil {
+		v.Run.Clients.Log.Errorf("failed to create kubeinteraction: %v", err)
+		return annotations
+	}
+	taskinfos := kstatus.CollectFailedTasksLogSnippet(ctx, v.Run, intf, pr, int64(v.Run.Info.Pac.ErrorDetectionNumberOfLines))
+	for _, taskinfo := range taskinfos {
+		for _, errline := range strings.Split(taskinfo.LogSnippet, "\n") {
+			results := map[string]string{}
+			if !r.MatchString(errline) {
+				continue
+			}
+			matches := r.FindStringSubmatch(errline)
+			for i, name := range r.SubexpNames() {
+				if i != 0 && name != "" {
+					results[name] = matches[i]
+				}
+			}
+
+			// check if we  have file in results
+			var linenumber, errmsg, filename string
+			var ok bool
+
+			if filename, ok = results["filename"]; !ok {
+				v.Run.Clients.Log.Errorf("regexp for filtering failure messages does not contain a filename regexp group: %v", v.Run.Info.Pac.ErrorDetectionSimpleRegexp)
+				continue
+			}
+			// remove ./ cause it would bug github otherwise
+			filename = strings.TrimPrefix(filename, "./")
+
+			if linenumber, ok = results["line"]; !ok {
+				v.Run.Clients.Log.Errorf("regexp for filtering failure messages does not contain a line regexp group: %v", v.Run.Info.Pac.ErrorDetectionSimpleRegexp)
+				continue
+			}
+
+			if errmsg, ok = results["error"]; !ok {
+				v.Run.Clients.Log.Errorf("regexp for filtering failure messages does not contain a error regexp group: %v", v.Run.Info.Pac.ErrorDetectionSimpleRegexp)
+				continue
+			}
+
+			ilinenumber, err := strconv.Atoi(linenumber)
+			if err != nil {
+				// can't do much regexp has probably failed to detect
+				v.Run.Clients.Log.Errorf("cannot convert %s as integer: %v", linenumber, err)
+				continue
+			}
+			annotations = append(annotations, &github.CheckRunAnnotation{
+				Path:            github.String(filename),
+				StartLine:       github.Int(ilinenumber),
+				EndLine:         github.Int(ilinenumber),
+				AnnotationLevel: github.String("failure"),
+				Message:         github.String(errmsg),
+			})
+		}
+	}
+	return annotations
+}
+
 // getOrUpdateCheckRunStatus create a status via the checkRun API, which is only
 // available with Github apps tokens.
-func (v *Provider) getOrUpdateCheckRunStatus(ctx context.Context, tekton versioned.Interface, runevent *info.Event, pacopts *info.PacOpts, status provider.StatusOpts) error {
+func (v *Provider) getOrUpdateCheckRunStatus(ctx context.Context, tekton versioned.Interface, runevent *info.Event, pacopts *info.PacOpts, statusOpts provider.StatusOpts) error {
 	var err error
 	var checkRunID *int64
 	var found bool
 
 	// check if pipelineRun has the label with checkRun-id
-	if status.PipelineRun != nil {
+	if statusOpts.PipelineRun != nil {
 		var id string
-		id, found = status.PipelineRun.GetLabels()[filepath.Join(apipac.GroupName, checkRunIDKey)]
+		id, found = statusOpts.PipelineRun.GetLabels()[keys.CheckRunID]
 		if found {
 			checkID, err := strconv.Atoi(id)
 			if err != nil {
@@ -134,49 +199,58 @@ func (v *Provider) getOrUpdateCheckRunStatus(ctx context.Context, tekton version
 		}
 	}
 	if !found {
-		if checkRunID, _ = v.getExistingCheckRunID(ctx, runevent, status); checkRunID == nil {
-			checkRunID, err = v.createCheckRunStatus(ctx, runevent, pacopts, status)
+		if checkRunID, _ = v.getExistingCheckRunID(ctx, runevent, statusOpts); checkRunID == nil {
+			checkRunID, err = v.createCheckRunStatus(ctx, runevent, pacopts, statusOpts)
 			if err != nil {
 				return err
 			}
 		}
-		if err := v.updatePipelineRunWithCheckRunID(ctx, tekton, status.PipelineRun, checkRunID); err != nil {
+		if err := v.patchPipelinerunWithMetadata(ctx, tekton, statusOpts.PipelineRun, checkRunID, pacopts.LogURL); err != nil {
 			return err
 		}
 	}
 
+	text := statusOpts.Text
 	checkRunOutput := &github.CheckRunOutput{
-		Title:   &status.Title,
-		Summary: &status.Summary,
-		Text:    &status.Text,
+		Title:   &statusOpts.Title,
+		Summary: &statusOpts.Summary,
 	}
+
+	if statusOpts.PipelineRun != nil {
+		if v.Run.Info.Pac.ErrorDetection {
+			checkRunOutput.Annotations = v.getFailuresMessageAsAnnotations(ctx, statusOpts.PipelineRun)
+		}
+	}
+
+	checkRunOutput.Text = github.String(text)
+
 	opts := github.UpdateCheckRunOptions{
-		Name:   getCheckName(status, pacopts),
-		Status: github.String(status.Status),
+		Name:   getCheckName(statusOpts, pacopts),
+		Status: github.String(statusOpts.Status),
 		Output: checkRunOutput,
 	}
-	if status.PipelineRunName != "" {
-		opts.ExternalID = github.String(status.PipelineRunName)
+	if statusOpts.PipelineRunName != "" {
+		opts.ExternalID = github.String(statusOpts.PipelineRunName)
 	}
 	if pacopts.LogURL != "" {
 		opts.DetailsURL = github.String(pacopts.LogURL)
 	}
 
-	if status.DetailsURL != "" {
-		opts.DetailsURL = &status.DetailsURL
+	if statusOpts.DetailsURL != "" {
+		opts.DetailsURL = &statusOpts.DetailsURL
 	}
 
 	// Only set completed-at if conclusion is set (which means finished)
-	if status.Conclusion != "" && status.Conclusion != "pending" {
+	if statusOpts.Conclusion != "" && statusOpts.Conclusion != "pending" {
 		opts.CompletedAt = &github.Timestamp{Time: time.Now()}
-		opts.Conclusion = &status.Conclusion
+		opts.Conclusion = &statusOpts.Conclusion
 	}
 
 	_, _, err = v.Client.Checks.UpdateCheckRun(ctx, runevent.Organization, runevent.Repository, *checkRunID, opts)
 	return err
 }
 
-func (v *Provider) updatePipelineRunWithCheckRunID(ctx context.Context, tekton versioned.Interface, pr *v1beta1.PipelineRun, checkRunID *int64) error {
+func (v *Provider) patchPipelinerunWithMetadata(ctx context.Context, tekton versioned.Interface, pr *tektonv1beta1.PipelineRun, checkRunID *int64, logURL string) error {
 	if pr == nil {
 		return nil
 	}
@@ -185,7 +259,10 @@ func (v *Provider) updatePipelineRunWithCheckRunID(ctx context.Context, tekton v
 		mergePatch := map[string]interface{}{
 			"metadata": map[string]interface{}{
 				"labels": map[string]string{
-					filepath.Join(apipac.GroupName, checkRunIDKey): strconv.FormatInt(*checkRunID, 10),
+					keys.CheckRunID: strconv.FormatInt(*checkRunID, 10),
+				},
+				"annotations": map[string]string{
+					keys.LogURL: logURL,
 				},
 			},
 		}
@@ -194,16 +271,16 @@ func (v *Provider) updatePipelineRunWithCheckRunID(ctx context.Context, tekton v
 			return err
 		}
 
-		updatedPR, err := tekton.TektonV1beta1().PipelineRuns(pr.Namespace).Patch(ctx, pr.GetName(), types.MergePatchType, patch, v1.PatchOptions{})
+		_, err = tekton.TektonV1beta1().PipelineRuns(pr.Namespace).Patch(ctx, pr.GetName(), types.MergePatchType, patch, v1.PatchOptions{})
 		if err != nil {
-			v.Logger.Infof("Could not patch Pipelinerun with checkRunID, retrying %v/%v: %v", pr.GetNamespace(), pr.GetName(), err)
+			v.Logger.Infof("Could not patch Pipelinerun, retrying %v/%v: %v", pr.GetNamespace(), pr.GetName(), err)
 			continue
 		}
 
-		v.Logger.Infof("PipelineRun %v/%v patched with checkRunID : %v", pr.GetNamespace(), pr.GetName(), updatedPR.Labels[filepath.Join(apipac.GroupName, checkRunIDKey)])
+		v.Logger.Infof("PipelineRun %v/%v patched with checkRunID & logURL", pr.GetNamespace(), pr.GetName())
 		return nil
 	}
-	return fmt.Errorf("cannot patch pipelineRun %v/%v with checkRunID", pr.GetNamespace(), pr.GetName())
+	return fmt.Errorf("cannot patch pipelineRun %v/%v with checkRunID & logURL", pr.GetNamespace(), pr.GetName())
 }
 
 // createStatusCommit use the classic/old statuses API which is available when we
