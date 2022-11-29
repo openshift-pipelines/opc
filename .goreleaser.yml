@@ -3,7 +3,7 @@ before:
     # you may remove this if you don't use vgo
     - go mod tidy
 builds:
-- main: ./cmd/opc
+- main: .
   binary: opc
   env:
   - CGO_ENABLED=0
