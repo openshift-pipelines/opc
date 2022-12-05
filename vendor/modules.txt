@@ -1129,7 +1129,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.17
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-pipelines/pipelines-as-code v0.14.2
+# github.com/openshift-pipelines/pipelines-as-code v0.14.3
 ## explicit; go 1.18
 github.com/openshift-pipelines/pipelines-as-code/pkg/acl
 github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode
@@ -1174,6 +1174,8 @@ github.com/openshift-pipelines/pipelines-as-code/pkg/provider
 github.com/openshift-pipelines/pipelines-as-code/pkg/provider/github
 github.com/openshift-pipelines/pipelines-as-code/pkg/random
 github.com/openshift-pipelines/pipelines-as-code/pkg/resolve
+github.com/openshift-pipelines/pipelines-as-code/pkg/secrets
+github.com/openshift-pipelines/pipelines-as-code/pkg/secrets/types
 github.com/openshift-pipelines/pipelines-as-code/pkg/sort
 github.com/openshift-pipelines/pipelines-as-code/pkg/templates
 # github.com/opentracing/opentracing-go v1.2.0
