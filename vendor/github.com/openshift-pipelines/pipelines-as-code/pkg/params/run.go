@@ -15,7 +15,13 @@ import (
 )
 
 const (
-	PACConfigmapName = "pipelines-as-code"
+	PACConfigmapName        = "pipelines-as-code"
+	StartingPipelineRunText = `Starting Pipelinerun <b>%s</b> in namespace
+  <b>%s</b><br><br>You can follow the execution on the [OpenShift console](%s) pipelinerun viewer or via
+  the command line with :
+	<br><code>tkn pac logs -L -n %s %s</code>`
+	QueuingPipelineRunText = `PipelineRun <b>%s</b> has been queued Queuing in namespace
+  <b>%s</b><br><br>`
 )
 
 type Run struct {
@@ -51,7 +57,7 @@ func (r *Run) WatchConfigMapChanges(ctx context.Context, run *Run) error {
 }
 
 // getConfigFromConfigMapWatcher get config from configmap, we should remove all the
-// logics from cobra flags and just support configmap config and env config in the future.
+// logics from cobra flags and just support configmap config and environment config in the future.
 func (r *Run) getConfigFromConfigMapWatcher(ctx context.Context, eventChannel <-chan watch.Event) error {
 	for {
 		event, open := <-eventChannel
