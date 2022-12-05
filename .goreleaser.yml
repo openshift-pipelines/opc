@@ -19,7 +19,7 @@ builds:
   - amd64
   - arm64
   - s390x
-  - 386
+  - "386"
   - mips64le
   - ppc64le
 archives:
@@ -41,3 +41,47 @@ changelog:
     exclude:
     - '^docs:'
     - '^test:'
+
+brews:
+  - name: opc
+    tap:
+      owner: openshift-pipelines
+      name: opc
+    folder: Formula
+    homepage: "https://github.com/openshift-pipelines/opc"
+    description: "A CLI for OpenShift Pipeline"
+    install: |
+      bin.install "opc" => "opc"
+      output = Utils.popen_read("SHELL=bash #{bin}/opc completion bash")
+      (bash_completion/"opc").write output
+      output = Utils.popen_read("SHELL=zsh #{bin}/opc completion zsh")
+      (zsh_completion/"_opc").write output
+      prefix.install_metafiles
+
+aurs:
+  - homepage: "https://docs.openshift.com/container-platform/latest/cicd/pipelines/understanding-openshift-pipelines.html"
+    provides:
+      - openshift-pipelines-client
+    description: "A CLI for OpenShift Pipeline"
+    maintainers:
+      - "Openshift Pipelines <pipelines-dev@redhat.com>"
+    license: Apache 2.0
+    private_key: "{{ .Env.AUR_PRIVATE_KEY }}"
+    git_url: ssh://aur@aur.archlinux.org/opc-bin.git
+    package: |-
+      # bin
+      install -Dm755 "./opc" "${pkgdir}/usr/bin/opc"
+
+      # license
+      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/opc/LICENSE"
+
+      # completions
+      mkdir -p "${pkgdir}/usr/share/bash-completion/completions/"
+      mkdir -p "${pkgdir}/usr/share/zsh/site-functions/"
+
+      ./opc completion zsh > opc.zsh
+      ./opc completion bash > opc.bash
+
+      install -Dm644 "opc.bash" "${pkgdir}/usr/share/bash-completion/completions/opc"
+      install -Dm644 "opc.zsh" "${pkgdir}/usr/share/zsh/site-functions/_opc"
+
