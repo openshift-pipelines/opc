@@ -28,7 +28,6 @@ version-updates:
 	go get -u github.com/openshift-pipelines/pipelines-as-code@v$(PAC_VERSION)
 	go get -u github.com/tektoncd/cli@v$(TKN_VERSION)
 
-
 tidy:
 	$(GO) mod tidy -compat=$(GOVERSION)
 

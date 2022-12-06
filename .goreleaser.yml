@@ -1,7 +1,6 @@
 before:
   hooks:
-    # you may remove this if you don't use vgo
-    - go mod tidy
+    - sed -i 's/devel/{{ .Tag }}/' ./pkg/version.json
 builds:
 - main: .
   binary: opc
@@ -9,8 +8,6 @@ builds:
   - CGO_ENABLED=0
   flags:
   - -trimpath
-  ldflags:
-  - -w -X github.com/tektoncd/cli/pkg/cmd/version.clientVersion={{.Version}}
   goos:
   - windows
   - linux
