@@ -62,11 +62,10 @@ jobs:
 
       - name: Build
         run: |
-          mkdir -p bin
-          go build -v -o bin/opc ./...
-          go test -v ./...
+          make
           [[ $(git status --porcelain) != "" ]] && {
-              echo "There is changes in the repo like new vendor files"
+              echo "There is changes in the repo like new vendor files or version not regenerated"
               git status --verbose
+              git diff  pkg/version.json
               exit 1
           } || true

@@ -5,14 +5,16 @@ import (
 	"os"
 	"syscall"
 
+	opccli "github.com/openshift-pipelines/opc/pkg"
 	paccli "github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac"
 	pacversion "github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac/version"
 
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/spf13/cobra"
-	"github.com/tektoncd/cli/pkg/cli"
+	tkncli "github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd"
+	tknversion "github.com/tektoncd/cli/pkg/cmd/version"
 
 	"github.com/tektoncd/cli/pkg/plugins"
 )
@@ -26,7 +28,7 @@ See https://pipelinesascode.com for more details`
 )
 
 func main() {
-	tp := &cli.TektonParams{}
+	tp := &tkncli.TektonParams{}
 	tkn := cmd.Root(tp)
 	tkn.Use = binaryName
 	tkn.Short = tknShortDesc
@@ -47,9 +49,16 @@ func main() {
 	cobra.AddTemplateFunc("pluginList", func() []string { return newPluginList })
 	paciostreams := paccli.NewIOStreams()
 	tkn.RemoveCommand(pacversion.Command(paciostreams))
+	tkn.RemoveCommand(tknversion.Command(tp))
+	tkn.AddCommand(opccli.VersionCommand(paciostreams))
 
 	args := os.Args[1:]
-	cmd, _, _ := tkn.Find(args)
+	var cmd *cobra.Command
+	if len(args) > 0 && args[0] == "version" {
+		cmd = opccli.VersionCommand(paciostreams)
+	} else {
+		cmd, _, _ = tkn.Find(args)
+	}
 
 	if cmd != nil && cmd == tkn && len(args) > 0 {
 		exCmd, err := plugins.FindPlugin(os.Args[1])
@@ -67,7 +76,7 @@ func main() {
 	}
 
 CoreTkn:
-	if err := tkn.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }
