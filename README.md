@@ -44,3 +44,41 @@ The following commands help you understand and effectively use the OpenShift Pip
 
 tkn plugins are used for opc plugins (ie: [tkn-watch](https://github.com/chmouel/tkn-watch/) become opc watch), it doesn't try to show any opc plugins. (may change).
 
+## Install
+
+### Release
+
+## Release download
+
+Go to the [release](https://github.com/openshift-pipelines/opc/releases) page and choose your archive or package for your platform.
+
+## Homebrew
+
+```shell
+brew tap openshift-pipelines/opc https://github.com/openshift-pipelines/opc
+brew install opc
+```
+
+## [Arch](https://aur.archlinux.org/packages/opc-bin)
+
+```shell
+yay -S opc-bin
+```
+
+## GO
+
+```shell
+go install -v github.com/openshift-pipelines/opc@latest
+```
+
+### Git
+
+Checkout the directory and use :
+
+```shell
+-$ make
+-$ ./bin/opc --help
+```
+
+
+
