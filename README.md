@@ -31,25 +31,16 @@ The following commands help you understand and effectively use the OpenShift Pip
 
 ## Features
 
-Support completion :
+### Versions :
+
+- `opc version`: Show all versions of all components
+- `opc version [pac|tkn|opc]` show version of a specific component
+
+### Completion :
 
 `opc completions [bash|zsh|...]`
 
-Plugins :
+### Plugins :
 
-opc shows tkn plugins, it doesn't try to show opc plugins. (may change).
+tkn plugins are used for opc plugins (ie: [tkn-watch](https://github.com/chmouel/tkn-watch/) become opc watch), it doesn't try to show any opc plugins. (may change).
 
-### TODO
-
-- Versioning are a bit all over the place
-
-### NOTES
-
-Only add 18mb :
-
-```shell
-% du $GOPATH/src/github.com/tektoncd/cli/bin/tkn
-120M tkn
-% du opc
-138M opc
-```
