@@ -56,9 +56,9 @@ func main() {
 	var cmd *cobra.Command
 	if len(args) > 0 && args[0] == "version" {
 		cmd = opccli.VersionCommand(paciostreams)
-	} else {
-		cmd, _, _ = tkn.Find(args)
+		goto CoreTkn
 	}
+	cmd, _, _ = tkn.Find(args)
 
 	if cmd != nil && cmd == tkn && len(args) > 0 {
 		exCmd, err := plugins.FindPlugin(os.Args[1])
