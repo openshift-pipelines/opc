@@ -35,8 +35,10 @@ type Provider struct {
 	Token, APIURL *string
 	ApplicationID *int64
 	providerName  string
+	Run           *params.Run
+	repositoryIDs []int64
+
 	skippedRun
-	Run *params.Run
 }
 
 type skippedRun struct {
@@ -52,8 +54,18 @@ func New() *Provider {
 	}
 }
 
+// detectGHERawURL Detect if we have a raw URL in GHE
+func detectGHERawURL(event *info.Event, taskHost string) bool {
+	gheURL, err := url.Parse(event.GHEURL)
+	if err != nil {
+		// should not happen but may as well make sure
+		return false
+	}
+	return taskHost == fmt.Sprintf("raw.%s", gheURL.Host)
+}
+
 // splitGithubURL Take a Github url and split it with org/repo path ref, supports rawURL
-func splitGithubURL(uri string) (string, string, string, string, error) {
+func splitGithubURL(event *info.Event, uri string) (string, string, string, string, error) {
 	pURL, err := url.Parse(uri)
 	splitted := strings.Split(pURL.Path, "/")
 	if len(splitted) <= 3 {
@@ -61,7 +73,7 @@ func splitGithubURL(uri string) (string, string, string, string, error) {
 	}
 	var spOrg, spRepo, spRef, spPath string
 	switch {
-	case pURL.Host == publicRawURLHost && len(splitted) >= 5:
+	case (pURL.Host == publicRawURLHost || detectGHERawURL(event, pURL.Host)) && len(splitted) >= 5:
 		spOrg = splitted[1]
 		spRepo = splitted[2]
 		spRef = splitted[3]
@@ -82,7 +94,7 @@ func (v *Provider) GetTaskURI(ctx context.Context, _ *params.Run, event *info.Ev
 		return false, "", nil
 	}
 
-	spOrg, spRepo, spPath, spRef, err := splitGithubURL(uri)
+	spOrg, spRepo, spPath, spRef, err := splitGithubURL(event, uri)
 	if err != nil {
 		return false, "", err
 	}
@@ -98,10 +110,11 @@ func (v *Provider) GetTaskURI(ctx context.Context, _ *params.Run, event *info.Ev
 
 func (v *Provider) InitAppClient(ctx context.Context, kube kubernetes.Interface, event *info.Event) error {
 	var err error
-	event.Provider.Token, err = v.getAppToken(ctx, kube, event.GHEURL, event.InstallationID)
+	event.Provider.Token, err = v.GetAppToken(ctx, kube, event.GHEURL, event.InstallationID)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -203,6 +216,7 @@ func (v *Provider) SetClient(ctx context.Context, run *params.Run, event *info.E
 			return fmt.Errorf("the webhook secret is not valid: %w", err)
 		}
 	}
+
 	return nil
 }
 
@@ -338,6 +352,10 @@ func (v *Provider) getPullRequest(ctx context.Context, runevent *info.Event) (*i
 	runevent.HeadBranch = pr.GetHead().GetRef()
 	runevent.BaseBranch = pr.GetBase().GetRef()
 	runevent.EventType = "pull_request"
+
+	v.repositoryIDs = []int64{
+		pr.GetBase().GetRepo().GetID(),
+	}
 	return runevent, nil
 }
 

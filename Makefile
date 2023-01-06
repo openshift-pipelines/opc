@@ -1,7 +1,7 @@
 ## Update Versions here. If you bump to a new version you need to do make
 ## generate and commit the new files
-PAC_VERSION := 0.14.3
-TKN_VERSION := 0.28.0
+PAC_VERSION := 0.15.1
+TKN_VERSION := 0.29.0
 
 GO := go
 GOVERSION := 1.18

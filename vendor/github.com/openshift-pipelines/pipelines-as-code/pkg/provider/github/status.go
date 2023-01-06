@@ -2,7 +2,6 @@ package github
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v48/github"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/action"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction"
 	kstatus "github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction/status"
@@ -17,8 +17,6 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
 	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const taskStatusTemplate = `
@@ -102,7 +100,7 @@ func (v *Provider) createCheckRunStatus(ctx context.Context, runevent *info.Even
 		Name:       getCheckName(status, pacopts),
 		HeadSHA:    runevent.SHA,
 		Status:     github.String("in_progress"),
-		DetailsURL: github.String(pacopts.LogURL),
+		DetailsURL: github.String(status.DetailsURL),
 		ExternalID: github.String(status.PipelineRunName),
 		StartedAt:  &now,
 	}
@@ -205,8 +203,10 @@ func (v *Provider) getOrUpdateCheckRunStatus(ctx context.Context, tekton version
 				return err
 			}
 		}
-		if err := v.patchPipelinerunWithMetadata(ctx, tekton, statusOpts.PipelineRun, checkRunID, pacopts.LogURL); err != nil {
-			return err
+		if statusOpts.PipelineRun != nil {
+			if _, err := action.PatchPipelineRun(ctx, v.Logger, "checkRunID and logURL", tekton, statusOpts.PipelineRun, metadataPatch(checkRunID, statusOpts.DetailsURL)); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -232,10 +232,6 @@ func (v *Provider) getOrUpdateCheckRunStatus(ctx context.Context, tekton version
 	if statusOpts.PipelineRunName != "" {
 		opts.ExternalID = github.String(statusOpts.PipelineRunName)
 	}
-	if pacopts.LogURL != "" {
-		opts.DetailsURL = github.String(pacopts.LogURL)
-	}
-
 	if statusOpts.DetailsURL != "" {
 		opts.DetailsURL = &statusOpts.DetailsURL
 	}
@@ -245,42 +241,35 @@ func (v *Provider) getOrUpdateCheckRunStatus(ctx context.Context, tekton version
 		opts.CompletedAt = &github.Timestamp{Time: time.Now()}
 		opts.Conclusion = &statusOpts.Conclusion
 	}
+	if isPipelineRunCancelledOrStopped(statusOpts.PipelineRun) {
+		opts.Conclusion = github.String("cancelled")
+	}
 
 	_, _, err = v.Client.Checks.UpdateCheckRun(ctx, runevent.Organization, runevent.Repository, *checkRunID, opts)
 	return err
 }
 
-func (v *Provider) patchPipelinerunWithMetadata(ctx context.Context, tekton versioned.Interface, pr *tektonv1beta1.PipelineRun, checkRunID *int64, logURL string) error {
-	if pr == nil {
-		return nil
+func isPipelineRunCancelledOrStopped(run *tektonv1beta1.PipelineRun) bool {
+	if run == nil {
+		return false
 	}
-	maxRun := 10
-	for i := 0; i < maxRun; i++ {
-		mergePatch := map[string]interface{}{
-			"metadata": map[string]interface{}{
-				"labels": map[string]string{
-					keys.CheckRunID: strconv.FormatInt(*checkRunID, 10),
-				},
-				"annotations": map[string]string{
-					keys.LogURL: logURL,
-				},
+	if run.IsCancelled() || run.IsGracefullyCancelled() || run.IsGracefullyStopped() {
+		return true
+	}
+	return false
+}
+
+func metadataPatch(checkRunID *int64, logURL string) map[string]interface{} {
+	return map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"labels": map[string]string{
+				keys.CheckRunID: strconv.FormatInt(*checkRunID, 10),
 			},
-		}
-		patch, err := json.Marshal(mergePatch)
-		if err != nil {
-			return err
-		}
-
-		_, err = tekton.TektonV1beta1().PipelineRuns(pr.Namespace).Patch(ctx, pr.GetName(), types.MergePatchType, patch, v1.PatchOptions{})
-		if err != nil {
-			v.Logger.Infof("Could not patch Pipelinerun, retrying %v/%v: %v", pr.GetNamespace(), pr.GetName(), err)
-			continue
-		}
-
-		v.Logger.Infof("PipelineRun %v/%v patched with checkRunID & logURL", pr.GetNamespace(), pr.GetName())
-		return nil
+			"annotations": map[string]string{
+				keys.LogURL: logURL,
+			},
+		},
 	}
-	return fmt.Errorf("cannot patch pipelineRun %v/%v with checkRunID & logURL", pr.GetNamespace(), pr.GetName())
 }
 
 // createStatusCommit use the classic/old statuses API which is available when we

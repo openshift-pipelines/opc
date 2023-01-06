@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
+	ogh "github.com/google/go-github/v45/github"
 	"github.com/google/go-github/v48/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
@@ -24,7 +25,7 @@ const (
 	secretName = "pipelines-as-code-secret"
 )
 
-func (v *Provider) getAppToken(ctx context.Context, kube kubernetes.Interface, gheURL string, installationID int64) (string, error) {
+func (v *Provider) GetAppToken(ctx context.Context, kube kubernetes.Interface, gheURL string, installationID int64) (string, error) {
 	// TODO: move this out of here
 	ns := os.Getenv("SYSTEM_NAMESPACE")
 	secret, err := kube.CoreV1().Secrets(ns).Get(ctx, secretName, v1.GetOptions{})
@@ -46,6 +47,9 @@ func (v *Provider) getAppToken(ctx context.Context, kube kubernetes.Interface, g
 	itr, err := ghinstallation.New(tr, applicationID, installationID, privateKey)
 	if err != nil {
 		return "", err
+	}
+	itr.InstallationTokenOptions = &ogh.InstallationTokenOptions{
+		RepositoryIDs: v.repositoryIDs,
 	}
 
 	if gheURL != "" {
@@ -105,6 +109,24 @@ func getInstallationIDFromPayload(payload string) int64 {
 	return -1
 }
 
+// ParsePayload will parse the payload and return the event
+// it generate the github app token targeting the installation id
+// this pieces of code is a bit messy because we need first getting a token to
+// before parsing the payload.
+//
+// We need to get the token at first because in some case when coming from pull request
+// comment (or recheck from the UI) we will use that token to get
+// information about the PR that is not part of the payload.
+//
+// We then regenerate a second time the token scoped to the repo where the
+// payload come from so we can avoid the scenario where an admin install the
+// app on a github org which has a mixed of private and public repos and some of
+// the public users should not have access to the private repos.
+//
+// Another thing: The payload is protected by the webhook signature so it cannot be tempered but even tho if it's
+// tempered with and somehow a malicious user found the token and set their own github endpoint to hijack and
+// exfiltrate the token, it would fail since the jwt token generation will fail, so we are safe here.
+// a bit too far fetched but i don't see any way we can exploit this.
 func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *http.Request, payload string) (*info.Event, error) {
 	event := info.NewEvent()
 
@@ -112,13 +134,10 @@ func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *h
 		return nil, err
 	}
 
-	id := getInstallationIDFromPayload(payload)
-
-	if id != -1 {
-		// get the app token if it exist first
+	installationIDFrompayload := getInstallationIDFromPayload(payload)
+	if installationIDFrompayload != -1 {
 		var err error
-		event.Provider.Token, err = v.getAppToken(ctx, run.Clients.Kube, event.Provider.URL, id)
-		if err != nil {
+		if event.Provider.Token, err = v.GetAppToken(ctx, run.Clients.Kube, event.Provider.URL, installationIDFrompayload); err != nil {
 			return nil, err
 		}
 	}
@@ -136,7 +155,34 @@ func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *h
 		return nil, err
 	}
 
-	processedEvent.InstallationID = id
+	// regenerate token scoped to the repo IDs
+	if run.Info.Pac.SecretGHAppRepoScoped && installationIDFrompayload != -1 && len(v.repositoryIDs) > 0 {
+		if run.Info.Pac.SecretGhAppTokenScopedExtraRepos != "" {
+			// this is going to show up a lot in the logs but i guess that
+			// would make people fix the value instead of being lost into
+			// the top of the logs at controller start.
+			for _, configValue := range strings.Split(run.Info.Pac.SecretGhAppTokenScopedExtraRepos, ",") {
+				configValueS := strings.TrimSpace(configValue)
+				if configValueS == "" {
+					continue
+				}
+				split := strings.Split(configValueS, "/")
+				info, _, err := v.Client.Repositories.Get(ctx, split[0], split[1])
+				if err != nil {
+					v.Logger.Warn("we have an invalid repository: `%s` in configmap key or no access to it: %v", configValueS, err)
+					continue
+				}
+				v.repositoryIDs = append(v.repositoryIDs, info.GetID())
+			}
+		}
+		var err error
+		if processedEvent.Provider.Token, err = v.GetAppToken(ctx, run.Clients.Kube, event.Provider.URL,
+			installationIDFrompayload); err != nil {
+			return nil, err
+		}
+	}
+
+	processedEvent.InstallationID = installationIDFrompayload
 	processedEvent.GHEURL = event.Provider.URL
 
 	return processedEvent, nil
@@ -174,6 +220,7 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		processedEvent.Repository = gitEvent.GetRepo().GetName()
 		processedEvent.DefaultBranch = gitEvent.GetRepo().GetDefaultBranch()
 		processedEvent.URL = gitEvent.GetRepo().GetHTMLURL()
+		v.repositoryIDs = []int64{gitEvent.GetRepo().GetID()}
 		processedEvent.SHA = gitEvent.GetHeadCommit().GetID()
 		// on push event we may not get a head commit but only
 		if processedEvent.SHA == "" {
@@ -197,6 +244,11 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		processedEvent.Sender = gitEvent.GetPullRequest().GetUser().GetLogin()
 		processedEvent.EventType = event.EventType
 		processedEvent.PullRequestNumber = gitEvent.GetPullRequest().GetNumber()
+		// getting the repository ids of the base and head of the pull request
+		// to scope the token to
+		v.repositoryIDs = []int64{
+			gitEvent.GetPullRequest().GetBase().GetRepo().GetID(),
+		}
 	default:
 		return nil, errors.New("this event is not supported")
 	}
@@ -239,6 +291,7 @@ func convertPullRequestURLtoNumber(pullRequest string) (int, error) {
 }
 
 func (v *Provider) handleIssueCommentEvent(ctx context.Context, event *github.IssueCommentEvent) (*info.Event, error) {
+	action := "recheck"
 	runevent := info.NewEvent()
 	runevent.Organization = event.GetRepo().GetOwner().GetLogin()
 	runevent.Repository = event.GetRepo().GetName()
@@ -251,9 +304,13 @@ func (v *Provider) handleIssueCommentEvent(ctx context.Context, event *github.Is
 
 	// if it is a /test or /retest comment with pipelinerun name figure out the pipelinerun name
 	if provider.IsTestRetestComment(event.GetComment().GetBody()) {
-		runevent.TargetTestPipelineRun = provider.GetPipelineRunFromComment(event.GetComment().GetBody())
+		runevent.TargetTestPipelineRun = provider.GetPipelineRunFromTestComment(event.GetComment().GetBody())
 	}
-
+	if provider.IsCancelComment(event.GetComment().GetBody()) {
+		action = "cancellation"
+		runevent.CancelPipelineRuns = true
+		runevent.TargetCancelPipelineRun = provider.GetPipelineRunFromCancelComment(event.GetComment().GetBody())
+	}
 	// We are getting the full URL so we have to get the last part to get the PR number,
 	// we don't have to care about URL query string/hash and other stuff because
 	// that comes up from the API.
@@ -263,6 +320,6 @@ func (v *Provider) handleIssueCommentEvent(ctx context.Context, event *github.Is
 		return info.NewEvent(), err
 	}
 
-	v.Logger.Infof("PR recheck from issue commment on %s/%s#%d has been requested", runevent.Organization, runevent.Repository, runevent.PullRequestNumber)
+	v.Logger.Infof("issue_comment: pipelinerun %s on %s/%s#%d has been requested", action, runevent.Organization, runevent.Repository, runevent.PullRequestNumber)
 	return v.getPullRequest(ctx, runevent)
 }

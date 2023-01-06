@@ -16,6 +16,7 @@ const (
 	StateStarted   = "started"
 	StateQueued    = "queued"
 	StateCompleted = "completed"
+	StateFailed    = "failed"
 )
 
 func AddLabelsAndAnnotations(event *info.Event, pipelineRun *tektonv1beta1.PipelineRun, repo *apipac.Repository, providerinfo *info.ProviderConfig) {
@@ -42,7 +43,7 @@ func AddLabelsAndAnnotations(event *info.Event, pipelineRun *tektonv1beta1.Pipel
 	}
 
 	if event.PullRequestNumber != 0 {
-		annotations[keys.PullRequest] = strconv.Itoa(event.PullRequestNumber)
+		labels[keys.PullRequest] = strconv.Itoa(event.PullRequestNumber)
 	}
 
 	// TODO: move to provider specific function
