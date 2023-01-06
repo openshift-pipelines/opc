@@ -2,10 +2,10 @@ package pipelineascode
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/action"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/events"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction"
@@ -18,8 +18,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -33,12 +31,14 @@ type PacRun struct {
 	k8int        kubeinteraction.Interface
 	logger       *zap.SugaredLogger
 	eventEmitter *events.EventEmitter
+	manager      *ConcurrencyManager
 }
 
 func NewPacs(event *info.Event, vcx provider.Interface, run *params.Run, k8int kubeinteraction.Interface, logger *zap.SugaredLogger) PacRun {
 	return PacRun{
 		event: event, run: run, vcx: vcx, k8int: k8int, logger: logger,
 		eventEmitter: events.NewEventEmitter(run.Clients.Kube, logger),
+		manager:      NewConcurrencyManager(),
 	}
 }
 
@@ -55,6 +55,12 @@ func (p *PacRun) Run(ctx context.Context) error {
 			p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "RepositoryCreateStatus", fmt.Sprintf("Cannot create status: %s: %s", err, createStatusErr))
 		}
 	}
+	if len(matchedPRs) == 0 {
+		return nil
+	}
+	if repo.Spec.ConcurrencyLimit != nil && *repo.Spec.ConcurrencyLimit != 0 {
+		p.manager.Enable()
+	}
 
 	var wg sync.WaitGroup
 	for _, match := range matchedPRs {
@@ -65,18 +71,37 @@ func (p *PacRun) Run(ctx context.Context) error {
 
 		go func(match matcher.Match) {
 			defer wg.Done()
-			if err := p.startPR(ctx, match); err != nil {
+			pr, err := p.startPR(ctx, match)
+			if err != nil {
 				errMsg := fmt.Sprintf("PipelineRun %s has failed: %s", match.PipelineRun.GetGenerateName(), err.Error())
 				p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "RepositoryPipelineRun", errMsg)
+				return
 			}
+			p.manager.AddPipelineRun(pr)
 		}(match)
 	}
 	wg.Wait()
 
+	order, prs := p.manager.GetExecutionOrder()
+	if order != "" {
+		for _, pr := range prs {
+			wg.Add(1)
+
+			go func(order string, pr v1beta1.PipelineRun) {
+				defer wg.Done()
+				if _, err := action.PatchPipelineRun(ctx, p.logger, "execution order", p.run.Clients.Tekton, &pr, getExecutionOrderPatch(order)); err != nil {
+					errMsg := fmt.Sprintf("Failed to patch pipelineruns %s execution order: %s", pr.GetGenerateName(), err.Error())
+					p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "RepositoryPipelineRun", errMsg)
+					return
+				}
+			}(order, *pr)
+		}
+	}
+	wg.Wait()
 	return nil
 }
 
-func (p *PacRun) startPR(ctx context.Context, match matcher.Match) error {
+func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*v1beta1.PipelineRun, error) {
 	var gitAuthSecretName string
 
 	// Automatically create a secret with the token to be reused by git-clone task
@@ -84,16 +109,16 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) error {
 		if annotation, ok := match.PipelineRun.GetAnnotations()[keys.GitAuthSecret]; ok {
 			gitAuthSecretName = annotation
 		} else {
-			return fmt.Errorf("cannot get annotation %s as set on PR", keys.GitAuthSecret)
+			return nil, fmt.Errorf("cannot get annotation %s as set on PR", keys.GitAuthSecret)
 		}
 
 		authSecret, err := secrets.MakeBasicAuthSecret(p.event, gitAuthSecretName)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if err = p.k8int.CreateSecret(ctx, match.Repo.GetNamespace(), authSecret); err != nil {
-			return fmt.Errorf("creating basic auth secret: %s has failed: %w ", gitAuthSecretName, err)
+			return nil, fmt.Errorf("creating basic auth secret: %s has failed: %w ", gitAuthSecretName, err)
 		}
 	}
 
@@ -113,7 +138,7 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) error {
 	pr, err := p.run.Clients.Tekton.TektonV1beta1().PipelineRuns(match.Repo.GetNamespace()).Create(ctx,
 		match.PipelineRun, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("creating pipelinerun %s in %s has failed: %w ", match.PipelineRun.GetGenerateName(),
+		return nil, fmt.Errorf("creating pipelinerun %s in %s has failed: %w ", match.PipelineRun.GetGenerateName(),
 			match.Repo.GetNamespace(), err)
 	}
 
@@ -122,7 +147,7 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) error {
 		pr.GetName(), match.Repo.GetNamespace(), p.event.SHA, p.event.BaseBranch)
 	consoleURL := p.run.Clients.ConsoleUI.DetailURL(match.Repo.GetNamespace(), pr.GetName())
 	// Create status with the log url
-	msg := fmt.Sprintf(params.StartingPipelineRunText, pr.GetName(), match.Repo.GetNamespace(), consoleURL,
+	msg := fmt.Sprintf(params.StartingPipelineRunText, pr.GetName(), match.Repo.GetNamespace(), p.run.Clients.ConsoleUI.GetName(), consoleURL,
 		match.Repo.GetNamespace(), match.Repo.GetName())
 	status := provider.StatusOpts{
 		Status:                  "in_progress",
@@ -141,46 +166,40 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) error {
 	}
 
 	if err := p.vcx.CreateStatus(ctx, p.run.Clients.Tekton, p.event, p.run.Info.Pac, status); err != nil {
-		return fmt.Errorf("cannot create a in_progress status on the provider platform: %w", err)
+		return nil, fmt.Errorf("cannot create a in_progress status on the provider platform: %w", err)
 	}
 
 	// Patch pipelineRun with logURL annotation, skips for GitHub App as we patch logURL while patching checkrunID
 	if _, ok := pr.Annotations[keys.InstallationID]; !ok {
-		if err := patchPipelineRunWithLogURL(ctx, p.logger, p.run.Clients, pr); err != nil {
-			return err
+		pr, err = action.PatchPipelineRun(ctx, p.logger, "logURL", p.run.Clients.Tekton, pr, getLogURLMergePatch(p.run.Clients, pr))
+		if err != nil {
+			return pr, err
 		}
 	}
 
 	// update ownerRef of secret with pipelineRun, so that it gets cleanedUp with pipelineRun
 	if p.run.Info.Pac.SecretAutoCreation {
-		return p.k8int.UpdateSecretWithOwnerRef(ctx, p.logger, pr.Namespace, gitAuthSecretName, pr)
+		return pr, p.k8int.UpdateSecretWithOwnerRef(ctx, p.logger, pr.Namespace, gitAuthSecretName, pr)
 	}
-	return nil
+	return pr, nil
 }
 
-func patchPipelineRunWithLogURL(ctx context.Context, logger *zap.SugaredLogger, clients clients.Clients, pr *v1beta1.PipelineRun) error {
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		mergePatch := map[string]interface{}{
-			"metadata": map[string]interface{}{
-				"annotations": map[string]string{
-					keys.LogURL: clients.ConsoleUI.DetailURL(pr.GetNamespace(), pr.GetName()),
-				},
+func getLogURLMergePatch(clients clients.Clients, pr *v1beta1.PipelineRun) map[string]interface{} {
+	return map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"annotations": map[string]string{
+				keys.LogURL: clients.ConsoleUI.DetailURL(pr.GetNamespace(), pr.GetName()),
 			},
-		}
-		patch, err := json.Marshal(mergePatch)
-		if err != nil {
-			return err
-		}
-		patchedPR, err := clients.Tekton.TektonV1beta1().PipelineRuns(pr.GetNamespace()).Patch(ctx, pr.GetName(), types.MergePatchType, patch, metav1.PatchOptions{})
-		if err != nil {
-			logger.Infof("could not patch Pipelinerun with log URL, retrying %v/%v: %v", pr.GetNamespace(), pr.GetName(), err)
-			return err
-		}
-		logger.Infof("patched log URL to pipelinerun: %v/%v", patchedPR.Namespace, patchedPR.Name)
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to patch log url to pipelinerun %v/%v: %w", pr.Namespace, pr.Name, err)
+		},
 	}
-	return nil
+}
+
+func getExecutionOrderPatch(order string) map[string]interface{} {
+	return map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"annotations": map[string]string{
+				keys.ExecutionOrder: order,
+			},
+		},
+	}
 }
