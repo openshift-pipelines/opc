@@ -25,8 +25,10 @@ version-file:
 	echo '{"pac": "$(PAC_VERSION)", "tkn": "$(TKN_VERSION)", "opc": "$(OPC_VERSION)"}' > pkg/version.json
 
 version-updates:
-	go get -u github.com/openshift-pipelines/pipelines-as-code@v$(PAC_VERSION)
-	go get -u github.com/tektoncd/cli@v$(TKN_VERSION)
+	$(GO) get -u github.com/openshift-pipelines/pipelines-as-code@v$(PAC_VERSION)
+	$(GO) mod vendor
+	$(GO) get -u github.com/tektoncd/cli@v$(TKN_VERSION)
+	$(GO) mod vendor
 
 tidy:
 	$(GO) mod tidy -compat=$(GOVERSION)
