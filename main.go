@@ -61,8 +61,8 @@ func main() {
 	if len(args) >= 1 && args[0] == "pac" && args[1] == "version" {
 		// Arthur: "I've Got Nothing Left To Lose. Nothing Can Hurt Me Anymore. My Life Is Nothing But A Comedy." 🃏
 		os.Args = []string{"version"}
-		cmd := opccli.VersionCommand(paciostreams)
-		cmd.Execute()
+		vcmd := opccli.VersionCommand(paciostreams)
+		_ = vcmd.Execute()
 		os.Exit(0)
 	}
 	cmd, _, _ = tkn.Find(args)
