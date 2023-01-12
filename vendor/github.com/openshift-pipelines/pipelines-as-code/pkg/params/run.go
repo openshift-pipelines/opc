@@ -17,7 +17,7 @@ import (
 const (
 	PACConfigmapName        = "pipelines-as-code"
 	StartingPipelineRunText = `Starting Pipelinerun <b>%s</b> in namespace
-  <b>%s</b><br><br>You can follow the execution on the [OpenShift console](%s) pipelinerun viewer or via
+  <b>%s</b><br><br>You can follow the execution on the [%s](%s) PipelineRun viewer or via
   the command line with :
 	<br><code>tkn pac logs -L -n %s %s</code>`
 	QueuingPipelineRunText = `PipelineRun <b>%s</b> has been queued Queuing in namespace
@@ -38,7 +38,8 @@ func StringToBool(s string) bool {
 }
 
 // WatchConfigMapChanges watches for provide configmap
-func (r *Run) WatchConfigMapChanges(ctx context.Context, run *Run) error {
+func (r *Run) WatchConfigMapChanges(ctx context.Context) error {
+	r.Clients.Log.Info("Inside WatchConfigMapChanges function")
 	ns := os.Getenv("SYSTEM_NAMESPACE")
 	if ns == "" {
 		return fmt.Errorf("failed to find pipelines-as-code installation namespace")
@@ -50,7 +51,7 @@ func (r *Run) WatchConfigMapChanges(ctx context.Context, run *Run) error {
 	if err != nil {
 		return fmt.Errorf("unable to create watcher : %w", err)
 	}
-	if err := run.getConfigFromConfigMapWatcher(ctx, watcher.ResultChan()); err != nil {
+	if err := r.getConfigFromConfigMapWatcher(ctx, watcher.ResultChan()); err != nil {
 		return fmt.Errorf("failed to get defaults : %w", err)
 	}
 	return nil
@@ -64,7 +65,9 @@ func (r *Run) getConfigFromConfigMapWatcher(ctx context.Context, eventChannel <-
 		if open {
 			switch event.Type {
 			case watch.Added, watch.Modified:
+				r.Clients.Log.Info("added or modifies events are coming")
 				if err := r.UpdatePACInfo(ctx); err != nil {
+					r.Clients.Log.Info("failed to update PAC info", err)
 					return err
 				}
 			case watch.Deleted, watch.Bookmark, watch.Error:
