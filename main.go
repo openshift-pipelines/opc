@@ -48,7 +48,7 @@ func main() {
 	}
 	cobra.AddTemplateFunc("pluginList", func() []string { return newPluginList })
 	paciostreams := paccli.NewIOStreams()
-	tkn.RemoveCommand(pacversion.Command(paciostreams))
+	tkn.RemoveCommand(pacversion.Command(paciostreams)) // does not work 🤷🏽‍♂️, we do the hard way later on
 	tkn.RemoveCommand(tknversion.Command(tp))
 	tkn.AddCommand(opccli.VersionCommand(paciostreams))
 
@@ -57,6 +57,13 @@ func main() {
 	if len(args) > 0 && args[0] == "version" {
 		cmd = opccli.VersionCommand(paciostreams)
 		goto CoreTkn
+	}
+	if len(args) >= 1 && args[0] == "pac" && args[1] == "version" {
+		// Arthur: "I've Got Nothing Left To Lose. Nothing Can Hurt Me Anymore. My Life Is Nothing But A Comedy." 🃏
+		os.Args = []string{"version"}
+		cmd := opccli.VersionCommand(paciostreams)
+		cmd.Execute()
+		os.Exit(0)
 	}
 	cmd, _, _ = tkn.Find(args)
 
