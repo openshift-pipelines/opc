@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -101,6 +102,7 @@ func (v *Provider) GetTaskURI(ctx context.Context, _ *params.Run, event *info.Ev
 	nEvent := info.NewEvent()
 	nEvent.Organization = spOrg
 	nEvent.Repository = spRepo
+	nEvent.BaseBranch = spRef
 	ret, err := v.GetFileInsideRepo(ctx, nEvent, spPath, spRef)
 	if err != nil {
 		return false, "", err
@@ -179,11 +181,16 @@ func makeClient(ctx context.Context, apiURL, token string) (*github.Client, stri
 func (v *Provider) checkWebhookSecretValidity(ctx context.Context, cw clockwork.Clock) error {
 	rl, resp, err := v.Client.RateLimits(ctx)
 	if resp.Header.Get("GitHub-Authentication-Token-Expiration") != "" && cw.Now().After(resp.TokenExpiration.Time) {
-		errm := fmt.Sprintf("token has expired at %s", resp.TokenExpiration.Time.Format(time.RFC1123))
+		errm := fmt.Sprintf("token has expired at %s", resp.TokenExpiration.Format(time.RFC1123))
 		if err != nil {
 			errm += fmt.Sprintf(" err: %s", err.Error())
 		}
 		return fmt.Errorf(errm)
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		v.Logger.Info("skipping checking if token has expired, rate_limit api is not enabled on token")
+		return nil
 	}
 
 	// some other error happened that is not rate limited related
@@ -192,7 +199,7 @@ func (v *Provider) checkWebhookSecretValidity(ctx context.Context, cw clockwork.
 	}
 
 	if rl.SCIM.Remaining == 0 {
-		return fmt.Errorf("token is ratelimited, it will be available again at %s", rl.SCIM.Reset.Time.Format(time.RFC1123))
+		return fmt.Errorf("token is ratelimited, it will be available again at %s", rl.SCIM.Reset.Format(time.RFC1123))
 	}
 	return nil
 }
