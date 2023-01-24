@@ -24,6 +24,9 @@ mkbin:
 build: mkbin
 	$(GO) build -v $(FLAGS) -mod=vendor -o bin/$(BINARYNAME) main.go
 
+windows: mkbin
+	env GOOS=windows GOARCH=amd64 $(GO) build -mod=vendor $(FLAGS)  -v -o bin/$(BINARYNAME).exe main.go
+
 generate: version-file version-updates
 version-file:
 	echo '{"pac": "$(PAC_VERSION)", "tkn": "$(TKN_VERSION)", "opc": "$(OPC_VERSION)"}' > pkg/version.json
