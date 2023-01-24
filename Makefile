@@ -45,6 +45,6 @@ lint-go: ## runs go linter on all go files
 	@$(GOLANGCI_LINT) run ./... --modules-download-mode=vendor \
 							--max-issues-per-linter=0 \
 							--max-same-issues=0 \
-							--deadline 5m
+							--deadline 10m
 
 .PHONY: generate version-file version-updates updates build all vendor tidy lint-go mkbin
