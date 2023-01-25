@@ -33,7 +33,7 @@ func VersionCommand(ioStreams *paccli.IOStreams) *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			var v versions
 			if err := json.Unmarshal([]byte(versionFile), &v); err != nil {
-				return fmt.Errorf("cannot unmarshall versions: %v", err)
+				return fmt.Errorf("cannot unmarshall versions: %w", err)
 			}
 			if len(args) > 1 {
 				switch args[1] {

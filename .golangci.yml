@@ -1,0 +1,64 @@
+run:
+  build-tags:
+    - e2e
+  skip-dirs:
+    - vendor
+linters-settings:
+  gocritic:
+    disabled-checks:
+      - unlambda
+  errcheck:
+    exclude: .errcheck.txt
+  gofumpt:
+    extra-rules: true
+linters:
+  enable:
+    - asciicheck
+    - bodyclose
+    - depguard
+    - dogsled
+    - durationcheck
+    - exhaustive
+    - exportloopref
+    - forbidigo
+    - forcetypeassert
+    - gochecknoinits
+    - dupl
+    - errcheck
+    - errorlint
+    - gofumpt
+    - goimports
+    - gosec
+    - gocritic
+    - misspell
+    - gosec
+    - gosimple
+    - govet
+    - importas
+    - makezero
+    - nakedret
+    - predeclared
+    - revive
+    - staticcheck
+    - stylecheck
+    - unused
+    - unparam
+    - gochecknoinits
+      # - goconst
+      # - gocyclo
+    # - goerr113
+    # - gofmt
+    - goheader
+    - gomodguard
+    - goprintffuncname
+    - nilerr
+    - noctx
+      # - nolintlint (gofumpt conflict with it, create space all the time so :shrug:)
+    - prealloc
+    - promlinter
+    # - rowserrcheck
+    # - sqlclosecheck
+    - tparallel
+    #- unconvert
+    # - wastedassign
+    - whitespace
