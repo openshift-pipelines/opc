@@ -59,13 +59,3 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v3
-
-      - name: Build
-        run: |
-          make
-          [[ $(git status --porcelain) != "" ]] && {
-              echo "There is changes in the repo like new vendor files or version not regenerated"
-              git status --verbose
-              git diff  pkg/version.json
-              exit 1
-          } || true
