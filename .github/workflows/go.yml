@@ -59,3 +59,8 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v3
+
+      - name: Build binary, making sure it does compile
+        run: |
+          make build
+
