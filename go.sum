@@ -2013,8 +2013,8 @@ github.com/tchap/go-patricia v2.2.6+incompatible/go.mod h1:bmLyhP68RS6kStMGxByiQ
 github.com/tedsuo/ifrit v0.0.0-20180802180643-bea94bb476cc/go.mod h1:eyZnKCc955uh98WQvzOm0dgAeLnf2O0Rz0LPoC5ze+0=
 github.com/tektoncd/chains v0.14.0 h1:tKp9nzfflcZ4GJIIEXTHM6qePRhN7YGrpOq/dzop/sA=
 github.com/tektoncd/chains v0.14.0/go.mod h1:Ak0so5jzpntoVtJkD7JedDePkvWG+LPhL6kBfnpgGsk=
-github.com/tektoncd/cli v0.29.0 h1:avjr3Q3J/D8Bwfrsq/TWdBIGGr7e92K5Ot5OGMW6DJ0=
-github.com/tektoncd/cli v0.29.0/go.mod h1:SIN97VCseMwxcU/8NVS9yUsBBEZmfhHsOUEDtNSdfzE=
+github.com/tektoncd/cli v0.29.1 h1:61+QyWxJSSwdH46wH7/ng14vvm/IdUJ4antlRHXOOEI=
+github.com/tektoncd/cli v0.29.1/go.mod h1:SIN97VCseMwxcU/8NVS9yUsBBEZmfhHsOUEDtNSdfzE=
 github.com/tektoncd/hub v1.11.1 h1:ec1Q0twM2VTwKnZT5n1U/x+2JKC8wrESbRPPWHyGLEc=
 github.com/tektoncd/hub v1.11.1/go.mod h1:6pCq7zMVlQhqVMEmKme9fc9CYnEDxqWr5xIFVTUvRUE=
 github.com/tektoncd/pipeline v0.42.0 h1:K85XkpWw0hJvuGQpbfVfsG8wL/ptYLNP5UuvYDhtH5M=
