@@ -13,6 +13,7 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/clients"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/secrets"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -51,6 +52,7 @@ func (p *PacRun) Run(ctx context.Context) error {
 			Text:       fmt.Sprintf("There was an issue validating the commit: %q", err),
 			DetailsURL: p.run.Clients.ConsoleUI.URL(),
 		})
+		p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "RepositoryCreateStatus", fmt.Sprintf("There was an error while processing the payload: %s", err))
 		if createStatusErr != nil {
 			p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "RepositoryCreateStatus", fmt.Sprintf("Cannot create status: %s: %s", err, createStatusErr))
 		}
@@ -147,8 +149,12 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*v1beta1.Pip
 		pr.GetName(), match.Repo.GetNamespace(), p.event.SHA, p.event.BaseBranch)
 	consoleURL := p.run.Clients.ConsoleUI.DetailURL(match.Repo.GetNamespace(), pr.GetName())
 	// Create status with the log url
-	msg := fmt.Sprintf(params.StartingPipelineRunText, pr.GetName(), match.Repo.GetNamespace(), p.run.Clients.ConsoleUI.GetName(), consoleURL,
-		match.Repo.GetNamespace(), match.Repo.GetName())
+	msg := fmt.Sprintf(params.StartingPipelineRunText,
+		pr.GetName(), match.Repo.GetNamespace(),
+		p.run.Clients.ConsoleUI.GetName(), consoleURL,
+		settings.TknBinaryName,
+		pr.GetNamespace(),
+		pr.GetName())
 	status := provider.StatusOpts{
 		Status:                  "in_progress",
 		Conclusion:              "pending",
