@@ -58,7 +58,7 @@ func main() {
 		cmd = opccli.VersionCommand(paciostreams)
 		goto CoreTkn
 	}
-	if len(args) >= 1 && args[0] == "pac" && args[1] == "version" {
+	if len(args) > 1 && args[0] == "pac" && args[1] == "version" {
 		// Arthur: "I've Got Nothing Left To Lose. Nothing Can Hurt Me Anymore. My Life Is Nothing But A Comedy." 🃏
 		os.Args = []string{"version"}
 		vcmd := opccli.VersionCommand(paciostreams)
