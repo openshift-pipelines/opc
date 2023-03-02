@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v48/github"
+	"github.com/google/go-github/v49/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/action"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction"
 	kstatus "github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction/status"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
-	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 )
 
@@ -25,8 +25,8 @@ const taskStatusTemplate = `
 
 {{- range $taskrun := .TaskRunList }}
 <tr>
-<td>{{ formatCondition $taskrun.Status.Conditions }}</td>
-<td>{{ formatDuration $taskrun.Status.StartTime $taskrun.Status.CompletionTime }}</td><td>
+<td>{{ formatCondition $taskrun.PipelineRunTaskRunStatus.Status.Conditions }}</td>
+<td>{{ formatDuration $taskrun.PipelineRunTaskRunStatus.Status.StartTime $taskrun.PipelineRunTaskRunStatus.Status.CompletionTime }}</td><td>
 
 {{ $taskrun.ConsoleLogURL }}
 
@@ -84,11 +84,11 @@ func isSkippedCheckrun(run *github.CheckRun) bool {
 }
 
 func (v *Provider) canIUseCheckrunID(checkrunid *int64) bool {
-	v.skippedRun.mutex.Lock()
-	defer v.skippedRun.mutex.Unlock()
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
 
-	if v.skippedRun.checkRunID == 0 {
-		v.skippedRun.checkRunID = *checkrunid
+	if v.checkRunID == 0 {
+		v.checkRunID = *checkrunid
 		return true
 	}
 	return false
@@ -112,7 +112,7 @@ func (v *Provider) createCheckRunStatus(ctx context.Context, runevent *info.Even
 	return checkRun.ID, nil
 }
 
-func (v *Provider) getFailuresMessageAsAnnotations(ctx context.Context, pr *tektonv1beta1.PipelineRun, pacopts *info.PacOpts) []*github.CheckRunAnnotation {
+func (v *Provider) getFailuresMessageAsAnnotations(ctx context.Context, pr *tektonv1.PipelineRun, pacopts *info.PacOpts) []*github.CheckRunAnnotation {
 	annotations := []*github.CheckRunAnnotation{}
 	r, err := regexp.Compile(pacopts.ErrorDetectionSimpleRegexp)
 	if err != nil {
@@ -249,7 +249,7 @@ func (v *Provider) getOrUpdateCheckRunStatus(ctx context.Context, tekton version
 	return err
 }
 
-func isPipelineRunCancelledOrStopped(run *tektonv1beta1.PipelineRun) bool {
+func isPipelineRunCancelledOrStopped(run *tektonv1.PipelineRun) bool {
 	if run == nil {
 		return false
 	}

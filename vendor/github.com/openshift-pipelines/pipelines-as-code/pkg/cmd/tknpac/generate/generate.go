@@ -13,6 +13,7 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/git"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -66,6 +67,8 @@ func Command(run *params.Run, ioStreams *cli.IOStreams) *cobra.Command {
 					// if we don't have access to the cluster we can't do much about it
 					gopt.generateWithClusterTask = false
 				} else {
+					// NOTE(chmou): This is for v1beta1, we need to figure out how to do this for v1.
+					// Trying to find resolver with that same name?
 					_, err := run.Clients.Tekton.TektonV1beta1().ClusterTasks().Get(ctx, gitCloneClusterTaskName,
 						metav1.GetOptions{})
 					if err == nil {
@@ -225,7 +228,8 @@ func (o *Opts) samplePipeline(recreateTemplate bool) error {
 				fmt.Fprintf(o.IOStreams.ErrOut, "%s Feel free to use the -f flag if you want to target another file name\n...", cs.InfoIcon())
 			}
 		} else {
-			fmt.Fprintf(o.IOStreams.Out, "%s There is already a file named: %s, skipping template generation, feel free to use \"tkn pac generate\" command to generate sample template.\n", cs.InfoIcon(), relpath)
+			fmt.Fprintf(o.IOStreams.Out, "%s There is already a file named: %s, skipping template generation, feel free to use \"%s pac generate\" command to generate sample template.\n", cs.InfoIcon(), relpath,
+				settings.TknBinaryName)
 		}
 		return nil
 	}
