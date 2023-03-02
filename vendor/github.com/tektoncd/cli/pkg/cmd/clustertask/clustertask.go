@@ -19,7 +19,11 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cli/prerun"
 	"github.com/tektoncd/cli/pkg/flags"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+var taskrunGroupResource = schema.GroupVersionResource{Group: "tekton.dev", Resource: "taskruns"}
+var clustertaskGroupResource = schema.GroupVersionResource{Group: "tekton.dev", Resource: "clustertasks"}
 
 func Command(p cli.Params) *cobra.Command {
 	cmd := &cobra.Command{

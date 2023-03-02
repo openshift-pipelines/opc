@@ -19,7 +19,7 @@ const (
 	StartingPipelineRunText = `Starting Pipelinerun <b>%s</b> in namespace
   <b>%s</b><br><br>You can follow the execution on the [%s](%s) PipelineRun viewer or via
   the command line with :
-	<br><code>tkn pac logs -L -n %s %s</code>`
+	<br><code>%s pr logs -n %s %s</code>`
 	QueuingPipelineRunText = `PipelineRun <b>%s</b> has been queued Queuing in namespace
   <b>%s</b><br><br>`
 )
@@ -39,7 +39,6 @@ func StringToBool(s string) bool {
 
 // WatchConfigMapChanges watches for provide configmap
 func (r *Run) WatchConfigMapChanges(ctx context.Context) error {
-	r.Clients.Log.Info("Inside WatchConfigMapChanges function")
 	ns := os.Getenv("SYSTEM_NAMESPACE")
 	if ns == "" {
 		return fmt.Errorf("failed to find pipelines-as-code installation namespace")

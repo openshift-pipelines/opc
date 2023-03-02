@@ -20,8 +20,10 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/consoleui"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/formatting"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/sort"
 	"github.com/spf13/cobra"
+	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -129,7 +131,7 @@ func Command(run *params.Run, ioStreams *cli.IOStreams) *cobra.Command {
 	}
 
 	cmd.Flags().StringP(
-		tknPathFlag, "", "", "Path to the tkn binary (default to search for it in you $PATH)")
+		tknPathFlag, "", "", fmt.Sprintf("Path to the %s binary (default to search for it in you $PATH)", settings.TknBinaryName))
 
 	cmd.Flags().StringP(
 		namespaceFlag, "n", "", "If present, the namespace scope for this CLI request")
@@ -152,7 +154,7 @@ func Command(run *params.Run, ioStreams *cli.IOStreams) *cobra.Command {
 }
 
 func getTknPath() (string, error) {
-	fname, err := exec.LookPath("tkn")
+	fname, err := exec.LookPath(settings.TknBinaryName)
 	if err != nil {
 		return "", err
 	}
@@ -160,13 +162,13 @@ func getTknPath() (string, error) {
 	return filepath.Abs(fname)
 }
 
-// getPipelineRunsToRepo returns all pipelinesruns running in a namespace
+// getPipelineRunsToRepo returns all PipelineRuns running in a namespace
 func getPipelineRunsToRepo(ctx context.Context, lopt *logOption, repoName string) ([]string, error) {
 	opts := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s",
 			keys.Repository, repoName),
 	}
-	runs, err := lopt.cs.Clients.Tekton.TektonV1beta1().PipelineRuns(lopt.opts.Namespace).List(ctx, opts)
+	runs, err := lopt.cs.Clients.Tekton.TektonV1().PipelineRuns(lopt.opts.Namespace).List(ctx, opts)
 	if err != nil {
 		return []string{}, err
 	}
@@ -247,13 +249,19 @@ func showLogsWithWebConsole(lo *logOption, pr string) error {
 		lo.cs.Clients.ConsoleUI = &consoleui.TektonDashboard{BaseURL: os.Getenv("PAC_TEKTON_DASHBOARD_URL")}
 	}
 
-	return browser.OpenWebBrowser(lo.cs.Clients.ConsoleUI.DetailURL(lo.cs.Info.Kube.Namespace, pr))
+	prObj := &tektonv1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pr,
+			Namespace: lo.cs.Info.Kube.Namespace,
+		},
+	}
+	return browser.OpenWebBrowser(lo.cs.Clients.ConsoleUI.DetailURL(prObj))
 }
 
 func showlogswithtkn(tknPath, pr, ns string) error {
 	//nolint: gosec
 	if err := syscall.Exec(tknPath, []string{tknPath, "pr", "logs", "-f", "-n", ns, pr}, os.Environ()); err != nil {
-		fmt.Fprintf(os.Stderr, "Command finished with error: %v", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Command finished with error: %v", err)
 		os.Exit(127)
 	}
 	return nil

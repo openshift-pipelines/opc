@@ -27,8 +27,8 @@ import (
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
 	"github.com/tektoncd/cli/pkg/task"
-	"github.com/tektoncd/cli/pkg/taskrun/list"
 	trsort "github.com/tektoncd/cli/pkg/taskrun/sort"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -158,26 +158,26 @@ or
 				return fmt.Errorf("output option not set properly: %v", err)
 			}
 
+			cs, err := p.Clients()
+			if err != nil {
+				return err
+			}
+
 			if len(args) == 0 {
-				taskNames, err := task.GetAllTaskNames(p)
+				taskNames, err := task.GetAllTaskNames(taskGroupResource, cs, p.Namespace())
 				if err != nil {
 					return err
 				}
 				if len(taskNames) == 1 {
 					opts.TaskName = taskNames[0]
 				} else {
-					err = askTaskName(opts, p)
+					err = askTaskName(opts, cs, p.Namespace())
 					if err != nil {
 						return err
 					}
 				}
 			} else {
 				opts.TaskName = args[0]
-			}
-
-			cs, err := p.Clients()
-			if err != nil {
-				return err
 			}
 
 			if output != "" {
@@ -212,8 +212,9 @@ func printTaskDescription(s *cli.Stream, p cli.Params, tname string) error {
 	opts := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("tekton.dev/task=%s", tname),
 	}
-	taskRuns, err := list.TaskRuns(cs, opts, p.Namespace())
-	if err != nil {
+
+	var taskRuns *v1.TaskRunList
+	if err := actions.ListV1(taskrunGroupResource, cs, opts, p.Namespace(), &taskRuns); err != nil {
 		return fmt.Errorf("failed to get TaskRuns for Task %s: %v", tname, err)
 	}
 
@@ -224,7 +225,7 @@ func printTaskDescription(s *cli.Stream, p cli.Params, tname string) error {
 
 	var data = struct {
 		Task     *v1beta1.Task
-		TaskRuns *v1beta1.TaskRunList
+		TaskRuns *v1.TaskRunList
 		Time     clockwork.Clock
 	}{
 		Task:     t,
@@ -270,8 +271,8 @@ func sortResourcesByTypeAndName(tres []v1beta1.TaskResource) []v1beta1.TaskResou
 	return tres
 }
 
-func askTaskName(opts *options.DescribeOptions, p cli.Params) error {
-	taskNames, err := task.GetAllTaskNames(p)
+func askTaskName(opts *options.DescribeOptions, c *cli.Clients, ns string) error {
+	taskNames, err := task.GetAllTaskNames(taskGroupResource, c, ns)
 	if err != nil {
 		return err
 	}

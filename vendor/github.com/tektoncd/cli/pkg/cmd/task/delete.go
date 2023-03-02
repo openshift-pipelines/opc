@@ -24,7 +24,7 @@ import (
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
 	"github.com/tektoncd/cli/pkg/task"
-	trlist "github.com/tektoncd/cli/pkg/taskrun/list"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -107,7 +107,6 @@ or
 }
 
 func deleteTask(opts *options.DeleteOptions, s *cli.Stream, p cli.Params, taskNames []string) error {
-	taskGroupResource := schema.GroupVersionResource{Group: "tekton.dev", Resource: "tasks"}
 	taskrunGroupResource := schema.GroupVersionResource{Group: "tekton.dev", Resource: "taskruns"}
 
 	cs, err := p.Clients()
@@ -119,7 +118,7 @@ func deleteTask(opts *options.DeleteOptions, s *cli.Stream, p cli.Params, taskNa
 	})
 	switch {
 	case opts.DeleteAllNs:
-		taskNames, err = allTaskNames(cs, p.Namespace())
+		taskNames, err = task.GetAllTaskNames(taskGroupResource, cs, p.Namespace())
 		if err != nil {
 			return err
 		}
@@ -148,10 +147,12 @@ func taskRunLister(cs *cli.Clients, ns string) func(string) ([]string, error) {
 		lOpts := metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("tekton.dev/task=%s", taskName),
 		}
-		taskRuns, err := trlist.TaskRuns(cs, lOpts, ns)
-		if err != nil {
+
+		var taskRuns *v1.TaskRunList
+		if err := actions.ListV1(taskrunGroupResource, cs, lOpts, ns, &taskRuns); err != nil {
 			return nil, err
 		}
+
 		// this is required as the same label is getting added for both Task and ClusterTask
 		taskRuns.Items = task.FilterByRef(taskRuns.Items, "Task")
 		var names []string
@@ -160,16 +161,4 @@ func taskRunLister(cs *cli.Clients, ns string) func(string) ([]string, error) {
 		}
 		return names, nil
 	}
-}
-
-func allTaskNames(cs *cli.Clients, ns string) ([]string, error) {
-	ts, err := task.List(cs, metav1.ListOptions{}, ns)
-	if err != nil {
-		return nil, err
-	}
-	var names []string
-	for _, t := range ts.Items {
-		names = append(names, t.Name)
-	}
-	return names, nil
 }
