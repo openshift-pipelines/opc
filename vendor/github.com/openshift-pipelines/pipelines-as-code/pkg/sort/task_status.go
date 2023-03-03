@@ -6,15 +6,15 @@ import (
 	"sort"
 	"text/template"
 
-	"github.com/openshift-pipelines/pipelines-as-code/pkg/consoleui"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/formatting"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
-	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 
 type tkr struct {
 	taskLogURL string
-	*tektonv1beta1.PipelineRunTaskRunStatus
+	*tektonv1.PipelineRunTaskRunStatus
 }
 
 func (t tkr) ConsoleLogURL() string {
@@ -37,22 +37,18 @@ func (trs taskrunList) Less(i, j int) bool {
 	return trs[j].Status.StartTime.Before(trs[i].Status.StartTime)
 }
 
-// TaskStatusTmpl generate a template of all status of a taskruns sorted to a statusTemplate as defined by the git provider
-func TaskStatusTmpl(pr *tektonv1beta1.PipelineRun, console consoleui.Interface, config *info.ProviderConfig) (string, error) {
+// TaskStatusTmpl generate a template of all status of a TaskRuns sorted to a statusTemplate as defined by the git provider
+func TaskStatusTmpl(pr *tektonv1.PipelineRun, trStatus map[string]*tektonv1.PipelineRunTaskRunStatus, runs *params.Run, config *info.ProviderConfig) (string, error) {
 	trl := taskrunList{}
 	outputBuffer := bytes.Buffer{}
 
-	if len(pr.Status.TaskRuns) == 0 {
+	if len(trStatus) == 0 {
 		return "PipelineRun has no taskruns", nil
 	}
 
-	for _, taskrunStatus := range pr.Status.TaskRuns {
+	for _, taskrunStatus := range trStatus {
 		trl = append(trl, tkr{
-			taskLogURL: console.TaskLogURL(
-				pr.GetNamespace(),
-				pr.GetName(),
-				taskrunStatus.PipelineTaskName,
-			),
+			taskLogURL:               runs.Clients.ConsoleUI.TaskLogURL(pr, taskrunStatus),
 			PipelineRunTaskRunStatus: taskrunStatus,
 		})
 	}
@@ -68,10 +64,9 @@ func TaskStatusTmpl(pr *tektonv1beta1.PipelineRun, console consoleui.Interface, 
 	}
 
 	data := struct{ TaskRunList taskrunList }{TaskRunList: trl}
-
 	t := template.Must(template.New("Task Status").Funcs(funcMap).Parse(config.TaskStatusTMPL))
 	if err := t.Execute(&outputBuffer, data); err != nil {
-		fmt.Fprintf(&outputBuffer, "failed to execute template: ")
+		_, _ = fmt.Fprintf(&outputBuffer, "failed to execute template: ")
 		return "", err
 	}
 

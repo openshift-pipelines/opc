@@ -13,9 +13,10 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/clients"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/secrets"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -51,6 +52,7 @@ func (p *PacRun) Run(ctx context.Context) error {
 			Text:       fmt.Sprintf("There was an issue validating the commit: %q", err),
 			DetailsURL: p.run.Clients.ConsoleUI.URL(),
 		})
+		p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "RepositoryCreateStatus", fmt.Sprintf("There was an error while processing the payload: %s", err))
 		if createStatusErr != nil {
 			p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "RepositoryCreateStatus", fmt.Sprintf("Cannot create status: %s: %s", err, createStatusErr))
 		}
@@ -87,7 +89,7 @@ func (p *PacRun) Run(ctx context.Context) error {
 		for _, pr := range prs {
 			wg.Add(1)
 
-			go func(order string, pr v1beta1.PipelineRun) {
+			go func(order string, pr tektonv1.PipelineRun) {
 				defer wg.Done()
 				if _, err := action.PatchPipelineRun(ctx, p.logger, "execution order", p.run.Clients.Tekton, &pr, getExecutionOrderPatch(order)); err != nil {
 					errMsg := fmt.Sprintf("Failed to patch pipelineruns %s execution order: %s", pr.GetGenerateName(), err.Error())
@@ -101,7 +103,7 @@ func (p *PacRun) Run(ctx context.Context) error {
 	return nil
 }
 
-func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*v1beta1.PipelineRun, error) {
+func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.PipelineRun, error) {
 	var gitAuthSecretName string
 
 	// Automatically create a secret with the token to be reused by git-clone task
@@ -129,13 +131,13 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*v1beta1.Pip
 	// state as queued
 	if match.Repo.Spec.ConcurrencyLimit != nil && *match.Repo.Spec.ConcurrencyLimit != 0 {
 		// pending status
-		match.PipelineRun.Spec.Status = v1beta1.PipelineRunSpecStatusPending
+		match.PipelineRun.Spec.Status = tektonv1.PipelineRunSpecStatusPending
 		// pac state as queued
 		match.PipelineRun.Labels[keys.State] = kubeinteraction.StateQueued
 	}
 
 	// Create the actual pipeline
-	pr, err := p.run.Clients.Tekton.TektonV1beta1().PipelineRuns(match.Repo.GetNamespace()).Create(ctx,
+	pr, err := p.run.Clients.Tekton.TektonV1().PipelineRuns(match.Repo.GetNamespace()).Create(ctx,
 		match.PipelineRun, metav1.CreateOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("creating pipelinerun %s in %s has failed: %w ", match.PipelineRun.GetGenerateName(),
@@ -145,10 +147,14 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*v1beta1.Pip
 	// Create status with the log url
 	p.logger.Infof("pipelinerun %s has been created in namespace %s for SHA: %s Target Branch: %s",
 		pr.GetName(), match.Repo.GetNamespace(), p.event.SHA, p.event.BaseBranch)
-	consoleURL := p.run.Clients.ConsoleUI.DetailURL(match.Repo.GetNamespace(), pr.GetName())
+	consoleURL := p.run.Clients.ConsoleUI.DetailURL(pr)
 	// Create status with the log url
-	msg := fmt.Sprintf(params.StartingPipelineRunText, pr.GetName(), match.Repo.GetNamespace(), p.run.Clients.ConsoleUI.GetName(), consoleURL,
-		match.Repo.GetNamespace(), match.Repo.GetName())
+	msg := fmt.Sprintf(params.StartingPipelineRunText,
+		pr.GetName(), match.Repo.GetNamespace(),
+		p.run.Clients.ConsoleUI.GetName(), consoleURL,
+		settings.TknBinaryName,
+		pr.GetNamespace(),
+		pr.GetName())
 	status := provider.StatusOpts{
 		Status:                  "in_progress",
 		Conclusion:              "pending",
@@ -160,7 +166,7 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*v1beta1.Pip
 	}
 
 	// if pipelineRun is in pending state then report status as queued
-	if pr.Spec.Status == v1beta1.PipelineRunSpecStatusPending {
+	if pr.Spec.Status == tektonv1.PipelineRunSpecStatusPending {
 		status.Status = "queued"
 		status.Text = fmt.Sprintf(params.QueuingPipelineRunText, pr.GetName(), match.Repo.GetNamespace())
 	}
@@ -169,7 +175,7 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*v1beta1.Pip
 		return nil, fmt.Errorf("cannot create a in_progress status on the provider platform: %w", err)
 	}
 
-	// Patch pipelineRun with logURL annotation, skips for GitHub App as we patch logURL while patching checkrunID
+	// Patch pipelineRun with logURL annotation, skips for GitHub App as we patch logURL while patching CheckrunID
 	if _, ok := pr.Annotations[keys.InstallationID]; !ok {
 		pr, err = action.PatchPipelineRun(ctx, p.logger, "logURL", p.run.Clients.Tekton, pr, getLogURLMergePatch(p.run.Clients, pr))
 		if err != nil {
@@ -184,11 +190,11 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*v1beta1.Pip
 	return pr, nil
 }
 
-func getLogURLMergePatch(clients clients.Clients, pr *v1beta1.PipelineRun) map[string]interface{} {
+func getLogURLMergePatch(clients clients.Clients, pr *tektonv1.PipelineRun) map[string]interface{} {
 	return map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"annotations": map[string]string{
-				keys.LogURL: clients.ConsoleUI.DetailURL(pr.GetNamespace(), pr.GetName()),
+				keys.LogURL: clients.ConsoleUI.DetailURL(pr),
 			},
 		},
 	}
