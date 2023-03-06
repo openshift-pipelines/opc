@@ -50,12 +50,7 @@ func exportCommand(p cli.Params) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts := &options.DescribeOptions{Params: p}
 			if len(args) == 0 {
-				cs, err := p.Clients()
-				if err != nil {
-					return err
-				}
-
-				pipelineNames, err := pipeline.GetAllPipelineNames(pipelineGroupResource, cs, p.Namespace())
+				pipelineNames, err := pipeline.GetAllPipelineNames(p)
 				if err != nil {
 					return err
 				}

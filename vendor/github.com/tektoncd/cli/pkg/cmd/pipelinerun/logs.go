@@ -24,7 +24,7 @@ import (
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/log"
 	"github.com/tektoncd/cli/pkg/options"
-	pipelinerunpkg "github.com/tektoncd/cli/pkg/pipelinerun"
+	prhelper "github.com/tektoncd/cli/pkg/pipelinerun"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -121,12 +121,7 @@ func askRunName(opts *options.LogOptions) error {
 		opts.Limit = 100
 	}
 
-	clients, err := opts.Params.Clients()
-	if err != nil {
-		return err
-	}
-
-	prs, err := pipelinerunpkg.GetAllPipelineRuns(pipelineRunGroupResource, lOpts, clients, opts.Params.Namespace(), opts.Limit, opts.Params.Time())
+	prs, err := prhelper.GetAllPipelineRuns(opts.Params, lOpts, opts.Limit)
 	if err != nil {
 		return err
 	}

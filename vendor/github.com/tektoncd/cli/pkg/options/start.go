@@ -37,8 +37,10 @@ type TaskRunOpts struct {
 type pipelineResources struct {
 	git         []string
 	image       []string
+	cluster     []string
 	storage     []string
 	pullRequest []string
+	cloudEvent  []string
 }
 
 func resourceByType(resources pipelineResources, restype string) []string {
@@ -51,8 +53,14 @@ func resourceByType(resources pipelineResources, restype string) []string {
 	if restype == "pullRequest" {
 		return resources.pullRequest
 	}
+	if restype == "cluster" {
+		return resources.cluster
+	}
 	if restype == "storage" {
 		return resources.storage
+	}
+	if restype == "cloudEvent" {
+		return resources.cloudEvent
 	}
 	return []string{}
 }
@@ -63,17 +71,10 @@ func (taskRunOpts *TaskRunOpts) UseTaskRunFrom(tr *v1beta1.TaskRun, cs *cli.Clie
 		err    error
 	)
 	if taskRunOpts.Last {
-		trtemp, err := task.LastRun(cs, tname, taskRunOpts.CliParams.Namespace(), taskKind)
+		trUsed, err = task.LastRun(cs, tname, taskRunOpts.CliParams.Namespace(), taskKind)
 		if err != nil {
 			return err
 		}
-
-		// TODO: remove as we move the start command to v1
-		err = trUsed.ConvertFrom(context.TODO(), trtemp)
-		if err != nil {
-			return err
-		}
-
 	} else if taskRunOpts.UseTaskRun != "" {
 		trUsed, err = tractions.Get(cs, taskRunOpts.UseTaskRun, metav1.GetOptions{}, taskRunOpts.CliParams.Namespace())
 		if err != nil {
@@ -146,6 +147,23 @@ func (intOpts *InteractiveOpts) pipelineResourcesByFormat(client versionedResour
 				}
 			}
 			ret.storage = append(ret.storage, fmt.Sprintf("%s (%s)", res.Name, output))
+		case "cluster":
+			for _, param := range res.Spec.Params {
+				if param.Name == "url" {
+					output = param.Value + output
+				}
+				if param.Name == "user" {
+					output = output + "#" + param.Value
+				}
+			}
+			ret.cluster = append(ret.cluster, fmt.Sprintf("%s (%s)", res.Name, output))
+		case "cloudEvent":
+			for _, param := range res.Spec.Params {
+				if param.Name == "targetURI" {
+					output = param.Value + output
+				}
+			}
+			ret.cloudEvent = append(ret.cloudEvent, fmt.Sprintf("%s (%s)", res.Name, output))
 		}
 	}
 	return ret, nil

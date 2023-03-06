@@ -24,7 +24,7 @@ import (
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
 	"github.com/tektoncd/cli/pkg/pipeline"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/cli/pkg/pipelinerun"
 	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -106,6 +106,7 @@ or
 }
 
 func deletePipelines(opts *options.DeleteOptions, s *cli.Stream, p cli.Params, pNames []string) error {
+	pipelineGroupResource := schema.GroupVersionResource{Group: "tekton.dev", Resource: "pipelines"}
 	pipelinerunGroupResource := schema.GroupVersionResource{Group: "tekton.dev", Resource: "pipelineruns"}
 
 	cs, err := p.Clients()
@@ -117,7 +118,7 @@ func deletePipelines(opts *options.DeleteOptions, s *cli.Stream, p cli.Params, p
 	})
 	switch {
 	case opts.DeleteAllNs:
-		pNames, err = pipeline.GetAllPipelineNames(pipelineGroupResource, cs, p.Namespace())
+		pNames, err = allPipelineNames(cs, p.Namespace())
 		if err != nil {
 			return err
 		}
@@ -146,15 +147,26 @@ func pipelineRunLister(cs *cli.Clients, ns string) func(string) ([]string, error
 		lOpts := metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("tekton.dev/pipeline=%s", pipelineName),
 		}
-		var pipelineRuns *v1.PipelineRunList
-		if err := actions.ListV1(pipelineRunGroupResource, cs, lOpts, ns, &pipelineRuns); err != nil {
+		pipelineRuns, err := pipelinerun.List(cs, lOpts, ns)
+		if err != nil {
 			return nil, err
 		}
-
 		var names []string
 		for _, pr := range pipelineRuns.Items {
 			names = append(names, pr.Name)
 		}
 		return names, nil
 	}
+}
+
+func allPipelineNames(cs *cli.Clients, ns string) ([]string, error) {
+	ps, err := pipeline.List(cs, metav1.ListOptions{}, ns)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, p := range ps.Items {
+		names = append(names, p.Name)
+	}
+	return names, nil
 }

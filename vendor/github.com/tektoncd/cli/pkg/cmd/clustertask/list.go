@@ -21,8 +21,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/clustertask"
 	"github.com/tektoncd/cli/pkg/formatted"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
@@ -83,8 +83,7 @@ func printClusterTaskDetails(s *cli.Stream, p cli.Params, noHeaders bool) error 
 		return err
 	}
 
-	var clustertasks *v1beta1.ClusterTaskList
-	err = actions.ListV1(clustertaskGroupResource, cs, metav1.ListOptions{}, "", &clustertasks)
+	clustertasks, err := clustertask.List(cs, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list ClusterTasks")
 	}

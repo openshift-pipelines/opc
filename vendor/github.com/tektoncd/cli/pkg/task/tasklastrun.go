@@ -17,17 +17,14 @@ package task
 import (
 	"fmt"
 
-	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	trlist "github.com/tektoncd/cli/pkg/taskrun/list"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var taskrunGroupResource = schema.GroupVersionResource{Group: "tekton.dev", Resource: "taskruns"}
-
 // LastRun returns the last taskrun for a given task/clustertask
-func LastRun(cs *cli.Clients, resourceName, ns, kind string) (*v1.TaskRun, error) {
+func LastRun(cs *cli.Clients, resourceName, ns, kind string) (*v1beta1.TaskRun, error) {
 	options := metav1.ListOptions{}
 
 	// change the label value to clusterTask if the resource is ClusterTask
@@ -42,23 +39,23 @@ func LastRun(cs *cli.Clients, resourceName, ns, kind string) (*v1.TaskRun, error
 		}
 	}
 
-	var trs *v1.TaskRunList
-	if err := actions.ListV1(taskrunGroupResource, cs, options, ns, &trs); err != nil {
+	runs, err := trlist.TaskRuns(cs, options, ns)
+	if err != nil {
 		return nil, err
 	}
 
-	if len(trs.Items) == 0 {
+	if len(runs.Items) == 0 {
 		return nil, fmt.Errorf("no TaskRuns related to %s %s found in namespace %s", kind, resourceName, ns)
 	}
 
 	if kind == "Task" {
-		trs.Items = FilterByRef(trs.Items, kind)
+		runs.Items = FilterByRef(runs.Items, kind)
 	}
 
-	latest := trs.Items[0]
-	for _, tr := range trs.Items {
-		if tr.CreationTimestamp.Time.After(latest.CreationTimestamp.Time) {
-			latest = tr
+	latest := runs.Items[0]
+	for _, run := range runs.Items {
+		if run.CreationTimestamp.Time.After(latest.CreationTimestamp.Time) {
+			latest = run
 		}
 	}
 
@@ -66,8 +63,8 @@ func LastRun(cs *cli.Clients, resourceName, ns, kind string) (*v1.TaskRun, error
 }
 
 // this will filter the taskrun which have reference to Task or ClusterTask
-func FilterByRef(taskruns []v1.TaskRun, kind string) []v1.TaskRun {
-	var filtered []v1.TaskRun
+func FilterByRef(taskruns []v1beta1.TaskRun, kind string) []v1beta1.TaskRun {
+	var filtered []v1beta1.TaskRun
 	for _, taskrun := range taskruns {
 		if string(taskrun.Spec.TaskRef.Kind) == kind {
 			filtered = append(filtered, taskrun)

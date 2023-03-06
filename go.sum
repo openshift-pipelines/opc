@@ -1222,8 +1222,8 @@ github.com/go-resty/resty/v2 v2.1.1-0.20191201195748-d7b97669fe48/go.mod h1:dZGr
 github.com/go-rod/rod v0.112.6 h1:zMirUmhsBeshMWyf285BD0UGtGq54HfThLDGSjcP3lU=
 github.com/go-sql-driver/mysql v1.4.0/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
 github.com/go-sql-driver/mysql v1.4.1/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
+github.com/go-sql-driver/mysql v1.6.0 h1:BCTh4TKNUYmOmMUcQ3IipzF5prigylS7XXjEkfCHuOE=
 github.com/go-sql-driver/mysql v1.6.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
-github.com/go-sql-driver/mysql v1.7.0 h1:ueSltNNllEqE3qcWBTD0iQd3IpL/6U+mJxLkazJ7YPc=
 github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
 github.com/go-stack/stack v1.8.1/go.mod h1:dcoOX6HbPZSZptuspn9bctJ+N/CnF5gGygcUP3XYfe4=
 github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0/go.mod h1:fyg7847qk6SyHyPtNmDHnmrv/HOrqktSC+C9fM+CJOE=
@@ -2335,8 +2335,8 @@ github.com/tchap/go-patricia v2.2.6+incompatible/go.mod h1:bmLyhP68RS6kStMGxByiQ
 github.com/tedsuo/ifrit v0.0.0-20180802180643-bea94bb476cc/go.mod h1:eyZnKCc955uh98WQvzOm0dgAeLnf2O0Rz0LPoC5ze+0=
 github.com/tektoncd/chains v0.15.0 h1:1x22WlNqiE7+HUBBkK6MbDi6rMqTirWWX3f/t8cDlbc=
 github.com/tektoncd/chains v0.15.0/go.mod h1:PA0su6Q+acJh2eG6d4VK1s6Jq0lGRaQml2FSQDWVTiQ=
-github.com/tektoncd/cli v0.3.1-0.20230228131500-30356f685e13 h1:IwJ1uiZYJmerjTMEnuSVWdrg4BdZ5GbwmzMdTl8IZlw=
-github.com/tektoncd/cli v0.3.1-0.20230228131500-30356f685e13/go.mod h1:V0FYgXlNP7FG2vX9RFwcDlxFMQg2axPlw0ANICGG8iw=
+github.com/tektoncd/cli v0.29.1 h1:61+QyWxJSSwdH46wH7/ng14vvm/IdUJ4antlRHXOOEI=
+github.com/tektoncd/cli v0.29.1/go.mod h1:SIN97VCseMwxcU/8NVS9yUsBBEZmfhHsOUEDtNSdfzE=
 github.com/tektoncd/hub v1.11.3 h1:5iueZe2uAhVL4LVAyWDxkglogYLX77PpR6KYa9CjrDo=
 github.com/tektoncd/hub v1.11.3/go.mod h1:6pCq7zMVlQhqVMEmKme9fc9CYnEDxqWr5xIFVTUvRUE=
 github.com/tektoncd/pipeline v0.44.0 h1:gTiLCjTDDog3R9sRtQugiIZYqadmq5K6HArrtM1sHkU=

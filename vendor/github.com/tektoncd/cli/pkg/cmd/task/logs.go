@@ -24,8 +24,8 @@ import (
 	"github.com/tektoncd/cli/pkg/flags"
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
-	task "github.com/tektoncd/cli/pkg/task"
-	taskrunpkg "github.com/tektoncd/cli/pkg/taskrun"
+	thelper "github.com/tektoncd/cli/pkg/task"
+	trlist "github.com/tektoncd/cli/pkg/taskrun/list"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -36,7 +36,7 @@ func nameArg(args []string, p cli.Params) error {
 			return err
 		}
 		name, ns := args[0], p.Namespace()
-		if _, err = task.Get(c, name, metav1.GetOptions{}, ns); err != nil {
+		if _, err = thelper.Get(c, name, metav1.GetOptions{}, ns); err != nil {
 			return err
 		}
 	}
@@ -138,11 +138,7 @@ func initOpts(opts *options.LogOptions, args []string) error {
 }
 
 func getAllInputs(opts *options.LogOptions) error {
-	cs, err := opts.Params.Clients()
-	if err != nil {
-		return err
-	}
-	ts, err := task.GetAllTaskNames(taskGroupResource, cs, opts.Params.Namespace())
+	ts, err := thelper.GetAllTaskNames(opts.Params)
 	if err != nil {
 		return err
 	}
@@ -161,25 +157,15 @@ func getAllInputs(opts *options.LogOptions) error {
 }
 
 func askRunName(opts *options.LogOptions) error {
-	cs, err := opts.Params.Clients()
-	if err != nil {
-		return err
-	}
-
 	if opts.Last {
-		name, err := initLastRunName(cs, opts.TaskName, opts.Params.Namespace())
-		if err != nil {
-			return err
-		}
-		opts.TaskrunName = name
-		return nil
+		return initLastRunName(opts)
 	}
 
 	lOpts := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("tekton.dev/task=%s", opts.TaskName),
 	}
 
-	trs, err := taskrunpkg.GetAllTaskRuns(taskrunGroupResource, lOpts, cs, opts.Params.Namespace(), opts.Limit, opts.Params.Time())
+	trs, err := trlist.GetAllTaskRuns(opts.Params, lOpts, opts.Limit)
 	if err != nil {
 		return err
 	}
@@ -196,10 +182,15 @@ func askRunName(opts *options.LogOptions) error {
 	return opts.Ask(options.ResourceNameTaskRun, trs)
 }
 
-func initLastRunName(cs *cli.Clients, name, namespace string) (string, error) {
-	lastrun, err := task.LastRun(cs, name, namespace, "Task")
+func initLastRunName(opts *options.LogOptions) error {
+	cs, err := opts.Params.Clients()
 	if err != nil {
-		return "", err
+		return err
 	}
-	return lastrun.Name, nil
+	lastrun, err := thelper.LastRun(cs, opts.TaskName, opts.Params.Namespace(), "Task")
+	if err != nil {
+		return err
+	}
+	opts.TaskrunName = lastrun.Name
+	return nil
 }

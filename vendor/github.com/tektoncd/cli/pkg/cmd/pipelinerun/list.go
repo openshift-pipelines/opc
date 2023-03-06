@@ -21,13 +21,13 @@ import (
 
 	"github.com/jonboulle/clockwork"
 	"github.com/spf13/cobra"
-	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
+	"github.com/tektoncd/cli/pkg/pipelinerun"
 	prsort "github.com/tektoncd/cli/pkg/pipelinerun/sort"
 	"github.com/tektoncd/cli/pkg/printer"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -139,9 +139,9 @@ List all PipelineRuns in a namespace 'foo':
 	return c
 }
 
-func list(p cli.Params, pipeline string, limit int, labelselector string, allnamespaces bool) (*v1.PipelineRunList, error) {
+func list(p cli.Params, pipeline string, limit int, labelselector string, allnamespaces bool) (*v1beta1.PipelineRunList, error) {
 	var selector string
-	var options metav1.ListOptions
+	var options v1.ListOptions
 
 	cs, err := p.Clients()
 	if err != nil {
@@ -159,7 +159,7 @@ func list(p cli.Params, pipeline string, limit int, labelselector string, allnam
 	}
 
 	if selector != "" {
-		options = metav1.ListOptions{
+		options = v1.ListOptions{
 			LabelSelector: selector,
 		}
 	}
@@ -168,18 +168,18 @@ func list(p cli.Params, pipeline string, limit int, labelselector string, allnam
 	if allnamespaces {
 		ns = ""
 	}
-	var pipelineRuns *v1.PipelineRunList
-	if err := actions.ListV1(pipelineRunGroupResource, cs, options, ns, &pipelineRuns); err != nil {
+	prs, err := pipelinerun.List(cs, options, ns)
+	if err != nil {
 		return nil, err
 	}
 
-	prslen := len(pipelineRuns.Items)
+	prslen := len(prs.Items)
 
 	if prslen != 0 {
 		if allnamespaces {
-			prsort.SortByNamespace(pipelineRuns.Items)
+			prsort.SortByNamespace(prs.Items)
 		} else {
-			prsort.SortByStartTime(pipelineRuns.Items)
+			prsort.SortByStartTime(prs.Items)
 		}
 	}
 
@@ -190,13 +190,13 @@ func list(p cli.Params, pipeline string, limit int, labelselector string, allnam
 
 	// Return all pipelineruns if limit is 0 or is same as prslen
 	if limit != 0 && prslen > limit {
-		pipelineRuns.Items = pipelineRuns.Items[0:limit]
+		prs.Items = prs.Items[0:limit]
 	}
 
-	return pipelineRuns, nil
+	return prs, nil
 }
 
-func reverse(prs *v1.PipelineRunList) {
+func reverse(prs *v1beta1.PipelineRunList) {
 	i := 0
 	j := len(prs.Items) - 1
 	prItems := prs.Items
@@ -208,9 +208,9 @@ func reverse(prs *v1.PipelineRunList) {
 	prs.Items = prItems
 }
 
-func printFormatted(s *cli.Stream, prs *v1.PipelineRunList, c clockwork.Clock, allnamespaces bool, noheaders bool) error {
+func printFormatted(s *cli.Stream, prs *v1beta1.PipelineRunList, c clockwork.Clock, allnamespaces bool, noheaders bool) error {
 	var data = struct {
-		PipelineRuns  *v1.PipelineRunList
+		PipelineRuns  *v1beta1.PipelineRunList
 		Time          clockwork.Clock
 		AllNamespaces bool
 		NoHeaders     bool

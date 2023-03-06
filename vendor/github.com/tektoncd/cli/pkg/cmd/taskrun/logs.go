@@ -24,7 +24,7 @@ import (
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/log"
 	"github.com/tektoncd/cli/pkg/options"
-	"github.com/tektoncd/cli/pkg/taskrun"
+	trlist "github.com/tektoncd/cli/pkg/taskrun/list"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -125,12 +125,7 @@ func askRunName(opts *options.LogOptions) error {
 		opts.Limit = 100
 	}
 
-	clients, err := opts.Params.Clients()
-	if err != nil {
-		return err
-	}
-
-	trs, err := taskrun.GetAllTaskRuns(taskrunGroupResource, lOpts, clients, opts.Params.Namespace(), opts.Limit, opts.Params.Time())
+	trs, err := trlist.GetAllTaskRuns(opts.Params, lOpts, opts.Limit)
 	if err != nil {
 		return err
 	}

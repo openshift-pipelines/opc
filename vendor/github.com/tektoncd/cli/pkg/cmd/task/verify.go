@@ -16,8 +16,8 @@ package task
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
-	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
@@ -52,7 +52,6 @@ or using kms
 		Long:  long,
 		Annotations: map[string]string{
 			"commandType":  "main",
-			"kubernetes":   "false",
 			"experimental": "",
 		},
 		Args:    cobra.ExactArgs(1),
@@ -62,7 +61,7 @@ or using kms
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
-			b, err := os.ReadFile(args[0])
+			b, err := ioutil.ReadFile(args[0])
 			if err != nil {
 				log.Fatalf("error reading file: %v", err)
 				return err

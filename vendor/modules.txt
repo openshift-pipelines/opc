@@ -1366,7 +1366,7 @@ github.com/tektoncd/chains/pkg/chains/storage/pubsub
 github.com/tektoncd/chains/pkg/chains/storage/tekton
 github.com/tektoncd/chains/pkg/config
 github.com/tektoncd/chains/pkg/patch
-# github.com/tektoncd/cli v0.3.1-0.20230228131500-30356f685e13
+# github.com/tektoncd/cli v0.29.1
 ## explicit; go 1.17
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/bundle
@@ -1414,6 +1414,7 @@ github.com/tektoncd/cli/pkg/suggestion
 github.com/tektoncd/cli/pkg/task
 github.com/tektoncd/cli/pkg/taskrun
 github.com/tektoncd/cli/pkg/taskrun/description
+github.com/tektoncd/cli/pkg/taskrun/list
 github.com/tektoncd/cli/pkg/taskrun/sort
 github.com/tektoncd/cli/pkg/triggerbinding
 github.com/tektoncd/cli/pkg/triggertemplate

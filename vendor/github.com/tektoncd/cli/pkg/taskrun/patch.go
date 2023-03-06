@@ -15,7 +15,7 @@
 package taskrun
 
 import (
-	"fmt"
+	"encoding/json"
 
 	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
@@ -24,16 +24,29 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// Get will fetch the taskrun resource based on the taskrun name
-func Get(c *cli.Clients, trname string, opts metav1.GetOptions, ns string) (*v1beta1.TaskRun, error) {
-	unstructuredTR, err := actions.Get(trGroupResource, c.Dynamic, c.Tekton.Discovery(), trname, ns, opts)
+type patchStringValue struct {
+	Op    string `json:"op"`
+	Path  string `json:"path"`
+	Value string `json:"value"`
+}
+
+func Patch(c *cli.Clients, trname string, opts metav1.PatchOptions, ns string) (*v1beta1.TaskRun, error) {
+	payload := []patchStringValue{{
+		Op:    "replace",
+		Path:  "/spec/status",
+		Value: v1beta1.TaskRunSpecStatusCancelled,
+	}}
+
+	data, _ := json.Marshal(payload)
+	unstructuredTR, err := actions.Patch(trGroupResource, c, trname, data, opts, ns)
 	if err != nil {
 		return nil, err
 	}
 
 	var taskrun *v1beta1.TaskRun
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredTR.UnstructuredContent(), &taskrun); err != nil {
-		return nil, fmt.Errorf("failed to get TaskRun from namespace %s", ns)
+		return nil, err
 	}
+
 	return taskrun, nil
 }

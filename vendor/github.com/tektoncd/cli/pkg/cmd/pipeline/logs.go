@@ -25,7 +25,7 @@ import (
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
 	"github.com/tektoncd/cli/pkg/pipeline"
-	pipelinerunpkg "github.com/tektoncd/cli/pkg/pipelinerun"
+	prhelper "github.com/tektoncd/cli/pkg/pipelinerun"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -139,12 +139,7 @@ func getAllInputs(opts *options.LogOptions) error {
 		return err
 	}
 
-	cs, err := opts.Params.Clients()
-	if err != nil {
-		return err
-	}
-
-	ps, err := pipeline.GetAllPipelineNames(pipelineGroupResource, cs, opts.Params.Namespace())
+	ps, err := pipeline.GetAllPipelineNames(opts.Params)
 	if err != nil {
 		return err
 	}
@@ -168,25 +163,15 @@ func askRunName(opts *options.LogOptions) error {
 		return err
 	}
 
-	cs, err := opts.Params.Clients()
-	if err != nil {
-		return err
-	}
-
 	if opts.Last {
-		name, err := initLastRunName(cs, opts.PipelineName, opts.Params.Namespace())
-		if err != nil {
-			return err
-		}
-		opts.PipelineRunName = name
-		return nil
+		return initLastRunName(opts)
 	}
 
 	lOpts := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("tekton.dev/pipeline=%s", opts.PipelineName),
 	}
 
-	prs, err := pipelinerunpkg.GetAllPipelineRuns(pipelineRunGroupResource, lOpts, cs, opts.Params.Namespace(), opts.Limit, opts.Params.Time())
+	prs, err := prhelper.GetAllPipelineRuns(opts.Params, lOpts, opts.Limit)
 	if err != nil {
 		return err
 	}
@@ -204,10 +189,15 @@ func askRunName(opts *options.LogOptions) error {
 	return opts.Ask(options.ResourceNamePipelineRun, prs)
 }
 
-func initLastRunName(cs *cli.Clients, name, namespace string) (string, error) {
-	lastrun, err := pipeline.LastRun(cs, name, namespace)
+func initLastRunName(opts *options.LogOptions) error {
+	cs, err := opts.Params.Clients()
 	if err != nil {
-		return "", err
+		return err
 	}
-	return lastrun.Name, nil
+	lastrun, err := pipeline.LastRun(cs, opts.PipelineName, opts.Params.Namespace())
+	if err != nil {
+		return err
+	}
+	opts.PipelineRunName = lastrun.Name
+	return nil
 }
