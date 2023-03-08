@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
@@ -18,6 +19,7 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/resolve"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/templates"
 	"github.com/spf13/cobra"
+	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
 	"sigs.k8s.io/yaml"
 )
@@ -211,12 +213,18 @@ func resolveFilenames(ctx context.Context, cs *params.Run, filenames []string, p
 		return "", err
 	}
 
+	// cleanedup regexp do as much as we can but really it's a lost game to try this
+	cleanRe := regexp.MustCompile(`\n(\t|\s)*(creationTimestamp|spec|taskRunTemplate|metadata|computeResources):\s*(null|{})\n`)
+
 	for _, run := range prun {
+		run.APIVersion = tektonv1.SchemeGroupVersion.String()
+		run.Kind = "PipelineRun"
 		d, err := yaml.Marshal(run)
 		if err != nil {
 			return "", err
 		}
-		ret += fmt.Sprintf("---\n%s\n", d)
+		cleaned := cleanRe.ReplaceAllString(string(d), "\n")
+		ret += fmt.Sprintf("---\n%s\n", cleaned)
 	}
 	return ret, nil
 }

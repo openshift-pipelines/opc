@@ -104,7 +104,7 @@ func (gl *gitLabConfig) askGLWebhookConfig(repoURL, controllerURL, apiURL, perso
 
 	if apiURL == "" {
 		if err := prompt.SurveyAskOne(&survey.Input{
-			Message: "Please enter your GitLab API URL:: ",
+			Message: "Please enter your GitLab API URL: ",
 		}, &gl.APIURL, survey.WithValidator(survey.Required)); err != nil {
 			return err
 		}
@@ -135,13 +135,13 @@ func (gl *gitLabConfig) create() error {
 		return err
 	}
 
-	if resp.Response.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusCreated {
 		payload, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("failed to read response body: %w", err)
 		}
 		return fmt.Errorf("failed to create webhook, status code: %v, error : %v",
-			resp.Response.StatusCode, payload)
+			resp.StatusCode, payload)
 	}
 
 	fmt.Fprintln(gl.IOStream.Out, "✓ Webhook has been created on your repository")
