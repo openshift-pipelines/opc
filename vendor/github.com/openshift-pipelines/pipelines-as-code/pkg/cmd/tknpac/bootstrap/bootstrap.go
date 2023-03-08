@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
-	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
 	"github.com/spf13/cobra"
 	kapierror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -150,13 +150,8 @@ func Command(run *params.Run, ioStreams *cli.IOStreams) *cobra.Command {
 				}
 			}
 
-			pacInfo, err := info.GetPACInfo(ctx, run, opts.targetNamespace)
-			if err != nil {
-				return err
-			}
-
 			if !opts.forceGitHubApp {
-				if pacInfo.Provider == provider.ProviderGitHubApp {
+				if info.IsGithubAppInstalled(ctx, run, opts.targetNamespace) {
 					fmt.Fprintln(opts.ioStreams.Out, "👌 Skips bootstrapping GitHub App, as one is already configured. Please pass --force-configure to override existing")
 					return nil
 				}
@@ -213,20 +208,27 @@ func GithubApp(run *params.Run, ioStreams *cli.IOStreams) *cobra.Command {
 				return err
 			}
 
-			pacInfo, err := info.GetPACInfo(ctx, run, opts.targetNamespace)
-			if err != nil {
-				return err
-			}
-
 			if !opts.forceGitHubApp {
-				if pacInfo.Provider == provider.ProviderGitHubApp {
+				if info.IsGithubAppInstalled(ctx, run, opts.targetNamespace) {
 					fmt.Fprintln(opts.ioStreams.Out, "👌 Skips bootstrapping GitHub App, as one is already configured. Please pass --force-configure to override existing")
 					return nil
 				}
 			}
 
-			if b, _ := askYN(false, "", "Are you using GitHub Enterprise?", opts.ioStreams.Out); b {
-				opts.providerType = "github-enterprise-app"
+			// if the user has specified a github-api-url and it's not a pubcli github url or api url then set it as providerType github-enterprise-app
+			// otherwise if no --github-api-url has been provided we ask for it interactively if we want to configure on github-enterprise-app
+			if opts.GithubAPIURL != "" {
+				if opts.GithubAPIURL == defaultPublicGithub || opts.GithubAPIURL == keys.PublicGithubAPIURL {
+					fmt.Fprintf(opts.ioStreams.Out, "👕 Using Public Github on %s\n", keys.PublicGithubAPIURL)
+					opts.GithubAPIURL = keys.PublicGithubAPIURL
+				} else {
+					fmt.Fprintf(opts.ioStreams.Out, "👔 Using Github Enterprise URL: %s\n", opts.GithubAPIURL)
+					opts.providerType = "github-enterprise-app"
+				}
+			} else {
+				if b, _ := askYN(false, "", "Do you need to configure this on GitHub Enterprise?", opts.ioStreams.Out); b {
+					opts.providerType = "github-enterprise-app"
+				}
 			}
 
 			return createSecret(ctx, run, opts)
