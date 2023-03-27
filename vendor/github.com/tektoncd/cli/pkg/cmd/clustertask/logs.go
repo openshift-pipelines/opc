@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/clustertask"
 	"github.com/tektoncd/cli/pkg/cmd/taskrun"
@@ -27,6 +28,7 @@ import (
 	"github.com/tektoncd/cli/pkg/options"
 	"github.com/tektoncd/cli/pkg/task"
 	taskrunpkg "github.com/tektoncd/cli/pkg/taskrun"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -37,7 +39,8 @@ func nameArg(args []string, p cli.Params) error {
 			return err
 		}
 		name := args[0]
-		if _, err = clustertask.Get(c, name, metav1.GetOptions{}); err != nil {
+		var clustertask *v1beta1.ClusterTask
+		if err = actions.GetV1(clustertaskGroupResource, c, name, "", metav1.GetOptions{}, &clustertask); err != nil {
 			return err
 		}
 	}
@@ -94,7 +97,7 @@ Show logs for given ClusterTask and associated TaskRun:
 	c.Flags().BoolVarP(&opts.Follow, "follow", "f", false, "stream live logs")
 	c.Flags().BoolVarP(&opts.Timestamps, "timestamps", "t", false, "show logs with timestamp")
 	c.Flags().IntVarP(&opts.Limit, "limit", "", 5, "lists number of TaskRuns")
-
+	c.Deprecated = "ClusterTasks are deprecated, this command will be removed in future releases."
 	return c
 }
 
