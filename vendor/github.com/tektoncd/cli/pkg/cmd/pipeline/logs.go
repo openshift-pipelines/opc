@@ -19,13 +19,15 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
 	"github.com/tektoncd/cli/pkg/flags"
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
-	"github.com/tektoncd/cli/pkg/pipeline"
+	pipelinepkg "github.com/tektoncd/cli/pkg/pipeline"
 	pipelinerunpkg "github.com/tektoncd/cli/pkg/pipelinerun"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -36,7 +38,8 @@ func nameArg(args []string, p cli.Params) error {
 			return err
 		}
 		name, ns := args[0], p.Namespace()
-		if _, err = pipeline.Get(c, name, metav1.GetOptions{}, ns); err != nil {
+		var pipeline *v1.Pipeline
+		if err = actions.GetV1(pipelineGroupResource, c, name, ns, metav1.GetOptions{}, &pipeline); err != nil {
 			return err
 		}
 	}
@@ -144,7 +147,7 @@ func getAllInputs(opts *options.LogOptions) error {
 		return err
 	}
 
-	ps, err := pipeline.GetAllPipelineNames(pipelineGroupResource, cs, opts.Params.Namespace())
+	ps, err := pipelinepkg.GetAllPipelineNames(pipelineGroupResource, cs, opts.Params.Namespace())
 	if err != nil {
 		return err
 	}
@@ -174,7 +177,7 @@ func askRunName(opts *options.LogOptions) error {
 	}
 
 	if opts.Last {
-		name, err := initLastRunName(cs, opts.PipelineName, opts.Params.Namespace())
+		name, err := pipelinepkg.LastRunName(cs, opts.PipelineName, opts.Params.Namespace())
 		if err != nil {
 			return err
 		}
@@ -202,12 +205,4 @@ func askRunName(opts *options.LogOptions) error {
 	}
 
 	return opts.Ask(options.ResourceNamePipelineRun, prs)
-}
-
-func initLastRunName(cs *cli.Clients, name, namespace string) (string, error) {
-	lastrun, err := pipeline.LastRun(cs, name, namespace)
-	if err != nil {
-		return "", err
-	}
-	return lastrun.Name, nil
 }
