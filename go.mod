@@ -37,6 +37,7 @@ require (
 	github.com/openshift-pipelines/pipelines-as-code v0.17.2
 	github.com/spf13/cobra v1.7.0
 	github.com/tektoncd/cli v0.30.1
+	github.com/tektoncd/results/tools/tkn-results v0.0.0-20230428132451-2a0ff77a5cd7
 )
 
 require (
@@ -291,6 +292,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tektoncd/chains v0.15.0 // indirect
 	github.com/tektoncd/hub v1.12.1 // indirect
+	github.com/tektoncd/results v0.5.0 // indirect
 	github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 // indirect
 	github.com/thales-e-security/pool v0.0.2 // indirect
 	github.com/theupdateframework/go-tuf v0.5.2 // indirect
