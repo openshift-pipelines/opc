@@ -1476,6 +1476,18 @@ github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag
 github.com/tektoncd/pipeline/pkg/remote
 github.com/tektoncd/pipeline/pkg/remote/oci
 github.com/tektoncd/pipeline/pkg/substitution
+# github.com/tektoncd/results v0.5.0
+## explicit; go 1.18
+github.com/tektoncd/results/proto/pipeline/v1beta1/pipeline_go_proto
+github.com/tektoncd/results/proto/v1alpha2/results_go_proto
+# github.com/tektoncd/results/tools/tkn-results v0.0.0-20230428132451-2a0ff77a5cd7
+## explicit; go 1.17
+github.com/tektoncd/results/tools/tkn-results/cmd
+github.com/tektoncd/results/tools/tkn-results/cmd/records
+github.com/tektoncd/results/tools/tkn-results/internal/client
+github.com/tektoncd/results/tools/tkn-results/internal/config
+github.com/tektoncd/results/tools/tkn-results/internal/flags
+github.com/tektoncd/results/tools/tkn-results/internal/format
 # github.com/tektoncd/triggers v0.23.0
 ## explicit; go 1.17
 github.com/tektoncd/triggers/pkg/apis/config

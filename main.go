@@ -9,12 +9,12 @@ import (
 	paccli "github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac"
 	pacversion "github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac/version"
-
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/spf13/cobra"
 	tkncli "github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd"
 	tknversion "github.com/tektoncd/cli/pkg/cmd/version"
+	resultscmd "github.com/tektoncd/results/tools/tkn-results/cmd"
 
 	"github.com/tektoncd/cli/pkg/plugins"
 )
@@ -22,9 +22,10 @@ import (
 const (
 	pacLongDesc = `Manage your Pipelines as Code installation and resources
 See https://pipelinesascode.com for more details`
-	pacShortdesc = "Manage Pipelines as Code resources"
-	tknShortDesc = `CLI to manage Openshift Pipelines resources`
-	binaryName   = `opc`
+	pacShortdesc     = "CLI to interact with Pipelines as Code resources"
+	tknShortDesc     = "CLI to interact with Openshift Pipelines resources"
+	resultsShortDesc = "CLI to interact with Tekton Results API."
+	binaryName       = `opc`
 )
 
 func main() {
@@ -38,6 +39,11 @@ func main() {
 	pac.Short = pacShortdesc
 	pac.Long = pacLongDesc
 	tkn.AddCommand(pac)
+	// adding results
+	results := resultscmd.Root()
+	results.Use = "results"
+	results.Short = resultsShortDesc
+	tkn.AddCommand(results)
 	pluginList := plugins.GetAllTknPluginFromPaths()
 	newPluginList := []string{}
 	// remove pac from the plugin list
