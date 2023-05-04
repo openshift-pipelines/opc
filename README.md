@@ -18,6 +18,8 @@ The following commands help you understand and effectively use the OpenShift Pip
 
 `opc pac`: add and manage git repositories (pipelines as code)
 
+`opc results` : interact with results api
+
 `opc pipeline`: manage Pipelines
 `opc pipelinerun`: manage PipelineRuns
 `opc task`: manage Tasks
