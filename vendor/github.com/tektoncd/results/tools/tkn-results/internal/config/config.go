@@ -17,9 +17,6 @@ const (
 )
 
 var (
-	addr      = pflag.StringP("addr", "a", "", "Result API server address")
-	authToken = pflag.StringP("authtoken", "t", "", "authorization bearer token to use for authenticated requests")
-
 	env = map[string]string{
 		EnvSSLRootFilePath:       "Path to local SSL cert to use.",
 		EnvSSLServerNameOverride: "SSL server name override (useful if using with a proxy such as kubectl port-forward).",
@@ -39,6 +36,8 @@ type Config struct {
 
 	// SSL contains SSL configuration information.
 	SSL SSLConfig
+	// Insecure GRPC tls communication
+	Insecure bool
 }
 
 type SSLConfig struct {
@@ -55,6 +54,10 @@ func init() {
 	viper.SetConfigName("results")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("$HOME/.config/tkn")
+	pflag.StringP("addr", "a", "", "Result API server address")
+	pflag.StringP("authtoken", "t", "", "authorization bearer token to use for authenticated requests")
+	pflag.BoolP("insecure", "", false, "insecure gprc tls communication")
+	pflag.Parse()
 }
 
 func GetConfig() (*Config, error) {
@@ -94,6 +97,11 @@ func GetConfig() (*Config, error) {
 	if s := viper.GetString("addr"); s != "" {
 		cfg.Address = s
 	}
+
+	if s := viper.GetBool("insecure"); s {
+		cfg.Insecure = true
+	}
+
 	if s := viper.GetString("authtoken"); s != "" {
 		cfg.Token = viper.GetString("authtoken")
 	}
