@@ -20,7 +20,7 @@ func ListCommand(params *flags.Params) *cobra.Command {
 		Short: "List Results",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			resp, err := params.Client.ListResults(cmd.Context(), &pb.ListResultsRequest{
+			resp, err := params.ResultsClient.ListResults(cmd.Context(), &pb.ListResultsRequest{
 				Parent:    args[0],
 				Filter:    opts.Filter,
 				PageSize:  opts.Limit,
@@ -33,6 +33,9 @@ func ListCommand(params *flags.Params) *cobra.Command {
 			return format.PrintProto(os.Stdout, resp, opts.Format)
 		},
 		Args: cobra.ExactArgs(1),
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 	}
 
 	flags.AddListFlags(opts, cmd)

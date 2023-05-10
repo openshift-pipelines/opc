@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -57,15 +58,23 @@ func (f *ClientFactory) Client(ctx context.Context) (pb.ResultsClient, error) {
 		return nil, err
 	}
 
-	certs, err := f.certs()
-	if err != nil {
-		return nil, err
+	var creds credentials.TransportCredentials
+	if f.cfg.Insecure {
+		creds = credentials.NewTLS(&tls.Config{
+			InsecureSkipVerify: true,
+		})
+	} else {
+		certs, err := f.certs()
+		if err != nil {
+			return nil, err
+		}
+		creds = credentials.NewClientTLSFromCert(certs, f.cfg.SSL.ServerNameOverride)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	conn, err := grpc.DialContext(ctx, f.cfg.Address, grpc.WithBlock(),
-		grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(certs, f.cfg.SSL.ServerNameOverride)),
+		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultCallOptions(grpc.PerRPCCredentials(oauth.TokenSource{
 			TokenSource: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}),
 		})),
@@ -85,6 +94,58 @@ func DefaultClient(ctx context.Context) (pb.ResultsClient, error) {
 	}
 
 	client, err := f.Client(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+// Client creates a new Results gRPC client for the given factory settings.
+// TODO: Refactor this with watcher client code?
+func (f *ClientFactory) LogClient(ctx context.Context) (pb.LogsClient, error) {
+	token, err := f.token(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var creds credentials.TransportCredentials
+	if f.cfg.Insecure {
+		creds = credentials.NewTLS(&tls.Config{
+			InsecureSkipVerify: true,
+		})
+	} else {
+		certs, err := f.certs()
+		if err != nil {
+			return nil, err
+		}
+		creds = credentials.NewClientTLSFromCert(certs, f.cfg.SSL.ServerNameOverride)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, f.cfg.Address, grpc.WithBlock(),
+		grpc.WithTransportCredentials(creds),
+		grpc.WithDefaultCallOptions(grpc.PerRPCCredentials(oauth.TokenSource{
+			TokenSource: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}),
+		})),
+	)
+	if err != nil {
+		fmt.Printf("Dial: %v\n", err)
+		return nil, err
+	}
+	return pb.NewLogsClient(conn), nil
+}
+
+func DefaultLogClient(ctx context.Context) (pb.LogsClient, error) {
+	f, err := NewDefaultFactory()
+
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := f.LogClient(ctx)
 
 	if err != nil {
 		return nil, err

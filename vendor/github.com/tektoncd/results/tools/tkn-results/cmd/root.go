@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/tektoncd/results/tools/tkn-results/cmd/logs"
 	"github.com/tektoncd/results/tools/tkn-results/cmd/records"
 	"github.com/tektoncd/results/tools/tkn-results/internal/client"
 	"github.com/tektoncd/results/tools/tkn-results/internal/flags"
@@ -34,18 +35,31 @@ func Root() *cobra.Command {
 				return err
 			}
 
-			params.Client = apiClient
+			params.ResultsClient = apiClient
+
+			logClient, err := client.DefaultLogClient(cmd.Context())
+
+			if err != nil {
+				return err
+			}
+
+			params.LogsClient = logClient
 
 			return nil
+		},
+		Annotations: map[string]string{
+			"commandType": "main",
 		},
 	}
 
 	cmd.PersistentFlags().StringP("addr", "a", "", "Result API server address")
 	cmd.PersistentFlags().StringP("authtoken", "t", "", "authorization bearer token to use for authenticated requests")
+	cmd.PersistentFlags().BoolP("insecure", "", false, "insecure GRPC tls request")
 
-	cmd.AddCommand(ListCommand(params), records.Command(params))
+	cmd.AddCommand(ListCommand(params), records.Command(params), logs.Command(params))
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+
 	viper.BindPFlags(cmd.PersistentFlags())
 
 	return cmd
