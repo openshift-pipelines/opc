@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/go-github/scrape"
-	"github.com/google/go-github/v49/github"
+	"github.com/google/go-github/v50/github"
 )
 
 // generateManifest generate manifest from the given options
@@ -19,6 +19,7 @@ func generateManifest(opts *bootstrapOpts) ([]byte, error) {
 		Public:         github.Bool(true),
 		DefaultEvents: []string{
 			"check_run",
+			"check_suite",
 			"issue_comment",
 			"pull_request",
 			"push",

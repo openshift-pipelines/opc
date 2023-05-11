@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v49/github"
+	"github.com/google/go-github/v50/github"
 	"github.com/jonboulle/clockwork"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
@@ -36,8 +37,9 @@ type Provider struct {
 	Token, APIURL *string
 	ApplicationID *int64
 	providerName  string
+	provenance    string
 	Run           *params.Run
-	repositoryIDs []int64
+	RepositoryIDs []int64
 
 	skippedRun
 }
@@ -112,7 +114,9 @@ func (v *Provider) GetTaskURI(ctx context.Context, _ *params.Run, event *info.Ev
 
 func (v *Provider) InitAppClient(ctx context.Context, kube kubernetes.Interface, event *info.Event) error {
 	var err error
-	event.Provider.Token, err = v.GetAppToken(ctx, kube, event.GHEURL, event.InstallationID)
+	// TODO: move this out of here when we move al config inside context
+	ns := os.Getenv("SYSTEM_NAMESPACE")
+	event.Provider.Token, err = v.GetAppToken(ctx, kube, event.GHEURL, event.InstallationID, ns)
 	if err != nil {
 		return err
 	}
@@ -250,10 +254,20 @@ func (v *Provider) SetClient(ctx context.Context, run *params.Run, event *info.E
 }
 
 // GetTektonDir Get all yaml files in tekton directory return as a single concated file
-func (v *Provider) GetTektonDir(ctx context.Context, runevent *info.Event, path string) (string, error) {
+func (v *Provider) GetTektonDir(ctx context.Context, runevent *info.Event, path, provenance string) (string, error) {
 	tektonDirSha := ""
 
-	rootobjects, _, err := v.Client.Git.GetTree(ctx, runevent.Organization, runevent.Repository, runevent.SHA, false)
+	v.provenance = provenance
+	// default set provenance from the SHA
+	revision := runevent.SHA
+	if provenance == "default_branch" {
+		revision = runevent.DefaultBranch
+		v.Logger.Infof("Using PipelineRun definition from default_branch: %s", runevent.DefaultBranch)
+	} else {
+		v.Logger.Infof("Using PipelineRun definition from source pull request SHA: %s", runevent.SHA)
+	}
+
+	rootobjects, _, err := v.Client.Git.GetTree(ctx, runevent.Organization, runevent.Repository, revision, false)
 	if err != nil {
 		return "", err
 	}
@@ -322,6 +336,8 @@ func (v *Provider) GetFileInsideRepo(ctx context.Context, runevent *info.Event, 
 	ref := runevent.SHA
 	if target != "" {
 		ref = runevent.BaseBranch
+	} else if v.provenance == "default_branch" {
+		ref = runevent.DefaultBranch
 	}
 
 	fp, objects, _, err := v.Client.Repositories.GetContents(ctx, runevent.Organization,
@@ -382,7 +398,7 @@ func (v *Provider) getPullRequest(ctx context.Context, runevent *info.Event) (*i
 	runevent.BaseBranch = pr.GetBase().GetRef()
 	runevent.EventType = "pull_request"
 
-	v.repositoryIDs = []int64{
+	v.RepositoryIDs = []int64{
 		pr.GetBase().GetRepo().GetID(),
 	}
 	return runevent, nil
@@ -446,4 +462,35 @@ func ListRepos(ctx context.Context, v *Provider) ([]string, error) {
 		repoURLs = append(repoURLs, *repoList.Repositories[i].HTMLURL)
 	}
 	return repoURLs, nil
+}
+
+func (v *Provider) CreateToken(ctx context.Context, repository []string, run *params.Run, event *info.Event) (string, error) {
+	for _, r := range repository {
+		split := strings.Split(r, "/")
+		infoData, _, err := v.Client.Repositories.Get(ctx, split[0], split[1])
+		if err != nil {
+			v.Logger.Warn("we have an invalid repository: `%s` or no access to it: %v", r, err)
+			continue
+		}
+		v.RepositoryIDs = uniqueRepositoryID(v.RepositoryIDs, infoData.GetID())
+	}
+	token, err := v.GetAppToken(ctx, run.Clients.Kube, event.Provider.URL, event.InstallationID, os.Getenv("SYSTEM_NAMESPACE"))
+	if err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func uniqueRepositoryID(repoIDs []int64, id int64) []int64 {
+	r := repoIDs
+	m := make(map[int64]bool)
+	for _, val := range repoIDs {
+		if _, ok := m[val]; !ok {
+			m[val] = true
+		}
+	}
+	if _, ok := m[id]; !ok {
+		r = append(r, id)
+	}
+	return r
 }

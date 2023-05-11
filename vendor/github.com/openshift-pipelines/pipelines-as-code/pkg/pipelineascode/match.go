@@ -11,6 +11,7 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/matcher"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/resolve"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/secrets"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/templates"
@@ -59,6 +60,9 @@ func (p *PacRun) verifyRepoAndUser(ctx context.Context) (*v1alpha1.Repository, e
 		return nil, nil
 	}
 
+	p.logger = p.logger.With("namespace", repo.Namespace)
+	p.vcx.SetLogger(p.logger)
+	p.eventEmitter.SetLogger(p.logger)
 	// If we have a git_provider field in repository spec, then get all the
 	// information from there, including the webhook secret.
 	// otherwise get the secret from the current ns (i.e: pipelines-as-code/openshift-pipelines.)
@@ -99,6 +103,17 @@ is that what you want? make sure you use -n when generating the secret, eg: echo
 		return repo, err
 	}
 
+	if p.event.InstallationID > 0 {
+		token, err := github.ScopeTokenToListOfRepos(ctx, p.vcx, repo, p.run, p.event, p.eventEmitter, p.logger)
+		if err != nil {
+			return nil, err
+		}
+		// If Global and Repo level configurations are not provided then lets not override the provider token.
+		if token != "" {
+			p.event.Provider.Token = token
+		}
+	}
+
 	// Get the SHA commit info, we want to get the URL and commit title
 	err = p.vcx.GetCommitInfo(ctx, p.event)
 	if err != nil {
@@ -135,7 +150,11 @@ is that what you want? make sure you use -n when generating the secret, eg: echo
 
 // getPipelineRunsFromRepo fetches pipelineruns from git repository and prepare them for creation
 func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Repository) ([]matcher.Match, error) {
-	rawTemplates, err := p.vcx.GetTektonDir(ctx, p.event, tektonDir)
+	provenance := "source"
+	if repo.Spec.Settings != nil && repo.Spec.Settings.PipelineRunProvenance != "" {
+		provenance = repo.Spec.Settings.PipelineRunProvenance
+	}
+	rawTemplates, err := p.vcx.GetTektonDir(ctx, p.event, tektonDir, provenance)
 	if err != nil || rawTemplates == "" {
 		msg := fmt.Sprintf("cannot locate templates in %s/ directory for this repository in %s", tektonDir, p.event.HeadBranch)
 		if err != nil {
@@ -152,8 +171,13 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 		return nil, fmt.Errorf(msg)
 	}
 
+	// This is for bitbucket
+	if p.event.CloneURL == "" {
+		p.event.AccountID = ""
+	}
+
 	// Replace those {{var}} placeholders user has in her template to the run.Info variable
-	allTemplates := templates.Process(p.event, repo, rawTemplates)
+	allTemplates := p.makeTemplate(ctx, repo, rawTemplates)
 	pipelineRuns, err := resolve.Resolve(ctx, p.run, p.logger, p.vcx, p.event, allTemplates, &resolve.Opts{
 		GenerateName: true,
 		RemoteTasks:  p.run.Info.Pac.RemoteTasks,
@@ -197,7 +221,7 @@ func filterRunningPipelineRunOnTargetTest(testPipeline string, prs []*tektonv1.P
 		return prs
 	}
 	for _, pr := range prs {
-		if prName, ok := pr.GetLabels()[apipac.OriginalPRName]; ok {
+		if prName, ok := pr.GetAnnotations()[apipac.OriginalPRName]; ok {
 			if prName == testPipeline {
 				return []*tektonv1.PipelineRun{pr}
 			}

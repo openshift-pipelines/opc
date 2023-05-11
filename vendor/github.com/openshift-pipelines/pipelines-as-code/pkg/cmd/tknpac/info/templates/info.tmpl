@@ -1,0 +1,27 @@
+{{.CS.Underline "Pipelines as Code"}}:
+ Install Version: {{ .Version }}
+ Install Namespace: {{ .InstallNamespace }}
+{{- if .Info.App }}
+
+{{.CS.Underline "Github Application"}}:
+ Name: {{ .Info.App.Name }}
+ URL: {{ .Info.App.HTMLURL }}
+ HomePage: {{ .Info.App.ExternalURL }}
+ Description: {{ .Info.App.Description }}
+ Created: {{ .Info.App.CreatedAt.Format "Mon, 02 Jan 2006" }}
+ Installations Count: {{ .Info.App.InstallationsCount }}
+{{- if .Info.HookConfig }}
+ Webhook URL: {{ .Info.HookConfig.URL }}
+{{- end }}
+{{- end }}
+{{- if (gt (len .Repos) 1) }}
+
+{{ $.CS.Underline "Repositories CR" }}: {{ len .Repos  }}
+   Namespace	URL
+{{- range $repo := .Repos }}
+ - {{ $repo.GetNamespace }}	{{ $repo.Spec.URL }}
+{{- end  }}
+{{- else  }}
+
+{{.CS.Bold "No repos CR installed on Cluster" }}
+{{- end  }}

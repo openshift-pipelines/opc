@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v49/github"
+	"github.com/google/go-github/v50/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/action"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction"
@@ -187,7 +187,7 @@ func (v *Provider) getOrUpdateCheckRunStatus(ctx context.Context, tekton version
 	// check if pipelineRun has the label with checkRun-id
 	if statusOpts.PipelineRun != nil {
 		var id string
-		id, found = statusOpts.PipelineRun.GetLabels()[keys.CheckRunID]
+		id, found = statusOpts.PipelineRun.GetAnnotations()[keys.CheckRunID]
 		if found {
 			checkID, err := strconv.Atoi(id)
 			if err != nil {
@@ -266,7 +266,8 @@ func metadataPatch(checkRunID *int64, logURL string) map[string]interface{} {
 				keys.CheckRunID: strconv.FormatInt(*checkRunID, 10),
 			},
 			"annotations": map[string]string{
-				keys.LogURL: logURL,
+				keys.LogURL:     logURL,
+				keys.CheckRunID: strconv.FormatInt(*checkRunID, 10),
 			},
 		},
 	}
@@ -290,7 +291,7 @@ func (v *Provider) createStatusCommit(ctx context.Context, runevent *info.Event,
 		TargetURL:   github.String(status.DetailsURL),
 		Description: github.String(status.Title),
 		Context:     github.String(getCheckName(status, pacopts)),
-		CreatedAt:   &now,
+		CreatedAt:   &github.Timestamp{Time: now},
 	}
 
 	if _, _, err := v.Client.Repositories.CreateStatus(ctx,
