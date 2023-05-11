@@ -16,7 +16,11 @@ limitations under the License.
 
 package keys
 
-import "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode"
+import (
+	"regexp"
+
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode"
+)
 
 const (
 	Task            = pipelinesascode.GroupName + "/task"
@@ -51,5 +55,9 @@ const (
 	// default is "https://api.github.com" but it can be overridden by X-GitHub-Enterprise-Host header
 	PublicGithubAPIURL = "https://api.github.com"
 	// installationURL give us the Installation ID
-	InstallationURL = "/app/installations"
+	InstallationURL     = "/app/installations"
+	GithubApplicationID = "github-application-id"
+	GithubPrivateKey    = "github-private-key"
 )
+
+var ParamsRe = regexp.MustCompile(`{{([^}]{2,})}}`)

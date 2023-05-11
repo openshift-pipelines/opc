@@ -74,6 +74,20 @@ type RepositorySpec struct {
 	URL              string       `json:"url"`
 	GitProvider      *GitProvider `json:"git_provider,omitempty"`
 	Incomings        *[]Incoming  `json:"incoming,omitempty"`
+	Params           *[]Params    `json:"params,omitempty"`
+	Settings         *Settings    `json:"settings,omitempty"`
+}
+
+type Settings struct {
+	GithubAppTokenScopeRepos []string `json:"github_app_token_scope_repos,omitempty"`
+	PipelineRunProvenance    string   `json:"pipelinerun_provenance,omitempty"`
+}
+
+type Params struct {
+	Name      string  `json:"name"`
+	Value     string  `json:"value,omitempty"`
+	SecretRef *Secret `json:"secret_ref,omitempty"`
+	Filter    string  `json:"filter,omitempty"`
 }
 
 type Incoming struct {

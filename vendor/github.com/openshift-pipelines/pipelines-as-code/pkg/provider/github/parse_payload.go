@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	ogh "github.com/google/go-github/v48/github"
-	"github.com/google/go-github/v49/github"
+	"github.com/google/go-github/v50/github"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
@@ -25,26 +25,24 @@ const (
 	secretName = "pipelines-as-code-secret"
 )
 
-func GetAppIDAndPrivateKey(ctx context.Context, kube kubernetes.Interface) (int64, []byte, error) {
-	// TODO: move this out of here
-	ns := os.Getenv("SYSTEM_NAMESPACE")
+func GetAppIDAndPrivateKey(ctx context.Context, ns string, kube kubernetes.Interface) (int64, []byte, error) {
 	secret, err := kube.CoreV1().Secrets(ns).Get(ctx, secretName, v1.GetOptions{})
 	if err != nil {
 		return 0, []byte{}, err
 	}
 
-	appID := secret.Data["github-application-id"]
+	appID := secret.Data[keys.GithubApplicationID]
 	applicationID, err := strconv.ParseInt(strings.TrimSpace(string(appID)), 10, 64)
 	if err != nil {
 		return 0, []byte{}, fmt.Errorf("could not parse the github application_id number from secret: %w", err)
 	}
 
-	privateKey := secret.Data["github-private-key"]
+	privateKey := secret.Data[keys.GithubPrivateKey]
 	return applicationID, privateKey, nil
 }
 
-func (v *Provider) GetAppToken(ctx context.Context, kube kubernetes.Interface, gheURL string, installationID int64) (string, error) {
-	applicationID, privateKey, err := GetAppIDAndPrivateKey(ctx, kube)
+func (v *Provider) GetAppToken(ctx context.Context, kube kubernetes.Interface, gheURL string, installationID int64, ns string) (string, error) {
+	applicationID, privateKey, err := GetAppIDAndPrivateKey(ctx, ns, kube)
 	if err != nil {
 		return "", err
 	}
@@ -55,8 +53,8 @@ func (v *Provider) GetAppToken(ctx context.Context, kube kubernetes.Interface, g
 	if err != nil {
 		return "", err
 	}
-	itr.InstallationTokenOptions = &ogh.InstallationTokenOptions{
-		RepositoryIDs: v.repositoryIDs,
+	itr.InstallationTokenOptions = &github.InstallationTokenOptions{
+		RepositoryIDs: v.RepositoryIDs,
 	}
 
 	if gheURL != "" {
@@ -136,7 +134,8 @@ func getInstallationIDFromPayload(payload string) int64 {
 // a bit too far fetched but i don't see any way we can exploit this.
 func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *http.Request, payload string) (*info.Event, error) {
 	event := info.NewEvent()
-
+	// TODO: we should not have getenv in code only in main
+	systemNS := os.Getenv("SYSTEM_NAMESPACE")
 	if err := v.parseEventType(request, event); err != nil {
 		return nil, err
 	}
@@ -144,7 +143,8 @@ func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *h
 	installationIDFrompayload := getInstallationIDFromPayload(payload)
 	if installationIDFrompayload != -1 {
 		var err error
-		if event.Provider.Token, err = v.GetAppToken(ctx, run.Clients.Kube, event.Provider.URL, installationIDFrompayload); err != nil {
+		// TODO: move this out of here when we move al config inside context
+		if event.Provider.Token, err = v.GetAppToken(ctx, run.Clients.Kube, event.Provider.URL, installationIDFrompayload, systemNS); err != nil {
 			return nil, err
 		}
 	}
@@ -162,8 +162,13 @@ func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *h
 		return nil, err
 	}
 
+	processedEvent.InstallationID = installationIDFrompayload
+	processedEvent.GHEURL = event.Provider.URL
+	processedEvent.Provider.URL = event.Provider.URL
+
 	// regenerate token scoped to the repo IDs
-	if run.Info.Pac.SecretGHAppRepoScoped && installationIDFrompayload != -1 && len(v.repositoryIDs) > 0 {
+	if run.Info.Pac.SecretGHAppRepoScoped && installationIDFrompayload != -1 && len(v.RepositoryIDs) > 0 {
+		repoLists := []string{}
 		if run.Info.Pac.SecretGhAppTokenScopedExtraRepos != "" {
 			// this is going to show up a lot in the logs but i guess that
 			// would make people fix the value instead of being lost into
@@ -173,24 +178,16 @@ func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *h
 				if configValueS == "" {
 					continue
 				}
-				split := strings.Split(configValueS, "/")
-				info, _, err := v.Client.Repositories.Get(ctx, split[0], split[1])
-				if err != nil {
-					v.Logger.Warn("we have an invalid repository: `%s` in configmap key or no access to it: %v", configValueS, err)
-					continue
-				}
-				v.repositoryIDs = append(v.repositoryIDs, info.GetID())
+				repoLists = append(repoLists, configValueS)
 			}
+			v.Logger.Infof("Github token scope extended to %v keeping SecretGHAppRepoScoped to true", repoLists)
 		}
-		var err error
-		if processedEvent.Provider.Token, err = v.GetAppToken(ctx, run.Clients.Kube, event.Provider.URL,
-			installationIDFrompayload); err != nil {
+		token, err := v.CreateToken(ctx, repoLists, run, processedEvent)
+		if err != nil {
 			return nil, err
 		}
+		processedEvent.Provider.Token = token
 	}
-
-	processedEvent.InstallationID = installationIDFrompayload
-	processedEvent.GHEURL = event.Provider.URL
 
 	return processedEvent, nil
 }
@@ -198,6 +195,9 @@ func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *h
 func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt interface{}) (*info.Event, error) {
 	var processedEvent *info.Event
 	var err error
+
+	processedEvent = info.NewEvent()
+	processedEvent.Event = eventInt
 
 	switch gitEvent := eventInt.(type) {
 	case *github.CheckRunEvent:
@@ -208,10 +208,16 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		if *gitEvent.Action != "rerequested" {
 			return nil, fmt.Errorf("only issue recheck is supported in checkrunevent")
 		}
-		processedEvent, err = v.handleReRequestEvent(ctx, gitEvent)
-		if err != nil {
-			return nil, err
+		return v.handleReRequestEvent(ctx, gitEvent)
+	case *github.CheckSuiteEvent:
+		if v.Client == nil {
+			return nil, fmt.Errorf("check suite rerequest is only supported with github apps integration")
 		}
+
+		if *gitEvent.Action != "rerequested" {
+			return nil, fmt.Errorf("only issue recheck is supported in checkrunevent")
+		}
+		return v.handleCheckSuites(ctx, gitEvent)
 	case *github.IssueCommentEvent:
 		if v.Client == nil {
 			return nil, fmt.Errorf("gitops style comments operation is only supported with github apps integration")
@@ -220,14 +226,12 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		if err != nil {
 			return nil, err
 		}
-
 	case *github.PushEvent:
-		processedEvent = info.NewEvent()
 		processedEvent.Organization = gitEvent.GetRepo().GetOwner().GetLogin()
 		processedEvent.Repository = gitEvent.GetRepo().GetName()
 		processedEvent.DefaultBranch = gitEvent.GetRepo().GetDefaultBranch()
 		processedEvent.URL = gitEvent.GetRepo().GetHTMLURL()
-		v.repositoryIDs = []int64{gitEvent.GetRepo().GetID()}
+		v.RepositoryIDs = []int64{gitEvent.GetRepo().GetID()}
 		processedEvent.SHA = gitEvent.GetHeadCommit().GetID()
 		// on push event we may not get a head commit but only
 		if processedEvent.SHA == "" {
@@ -253,14 +257,13 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		processedEvent.PullRequestNumber = gitEvent.GetPullRequest().GetNumber()
 		// getting the repository ids of the base and head of the pull request
 		// to scope the token to
-		v.repositoryIDs = []int64{
+		v.RepositoryIDs = []int64{
 			gitEvent.GetPullRequest().GetBase().GetRepo().GetID(),
 		}
 	default:
 		return nil, errors.New("this event is not supported")
 	}
 
-	processedEvent.Event = eventInt
 	processedEvent.TriggerTarget = event.TriggerTarget
 	processedEvent.Provider.Token = event.Provider.Token
 
@@ -285,7 +288,34 @@ func (v *Provider) handleReRequestEvent(ctx context.Context, event *github.Check
 		return runevent, nil
 	}
 	runevent.PullRequestNumber = event.GetCheckRun().GetCheckSuite().PullRequests[0].GetNumber()
+	runevent.TriggerTarget = "pull_request"
 	v.Logger.Infof("Recheck of PR %s/%s#%d has been requested", runevent.Organization, runevent.Repository, runevent.PullRequestNumber)
+	return v.getPullRequest(ctx, runevent)
+}
+
+func (v *Provider) handleCheckSuites(ctx context.Context, event *github.CheckSuiteEvent) (*info.Event, error) {
+	runevent := info.NewEvent()
+	runevent.Organization = event.GetRepo().GetOwner().GetLogin()
+	runevent.Repository = event.GetRepo().GetName()
+	runevent.URL = event.GetRepo().GetHTMLURL()
+	runevent.DefaultBranch = event.GetRepo().GetDefaultBranch()
+	runevent.SHA = event.GetCheckSuite().GetHeadSHA()
+	runevent.HeadBranch = event.GetCheckSuite().GetHeadBranch()
+	// If we don't have a pull_request in this it probably mean a push
+	// we are not able to know which
+	if len(event.GetCheckSuite().PullRequests) == 0 {
+		runevent.BaseBranch = runevent.HeadBranch
+		runevent.EventType = "push"
+		runevent.TriggerTarget = "push"
+		// we allow the rerequest user here, not the push user, i guess it's
+		// fine because you can't do a rereq without being a github owner?
+		runevent.Sender = event.GetSender().GetLogin()
+		return runevent, nil
+		// return nil, fmt.Errorf("check suite event is not supported for push events")
+	}
+	runevent.PullRequestNumber = event.GetCheckSuite().PullRequests[0].GetNumber()
+	runevent.TriggerTarget = "pull_request"
+	v.Logger.Infof("Rerun of all check on PR %s/%s#%d has been requested", runevent.Organization, runevent.Repository, runevent.PullRequestNumber)
 	return v.getPullRequest(ctx, runevent)
 }
 
