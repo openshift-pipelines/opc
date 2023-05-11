@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	cosignsignature "github.com/sigstore/cosign/pkg/signature"
+	cosignsignature "github.com/sigstore/cosign/v2/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/kms"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -76,10 +76,5 @@ func VerifyInterface(
 
 	h := sha256.New()
 	h.Write(ts)
-
-	if err := verifier.VerifySignature(bytes.NewReader(signature), bytes.NewReader(h.Sum(nil))); err != nil {
-		return err
-	}
-
-	return nil
+	return verifier.VerifySignature(bytes.NewReader(signature), bytes.NewReader(h.Sum(nil)))
 }

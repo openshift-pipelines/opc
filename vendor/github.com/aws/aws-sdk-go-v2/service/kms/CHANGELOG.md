@@ -1,3 +1,31 @@
+# v1.20.11 (2023-04-20)
+
+* No change notes available for this release.
+
+# v1.20.10 (2023-04-10)
+
+* No change notes available for this release.
+
+# v1.20.9 (2023-04-07)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.20.8 (2023-03-21)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.20.7 (2023-03-10)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.20.6 (2023-02-28)
+
+* **Documentation**: AWS KMS is deprecating the RSAES_PKCS1_V1_5 wrapping algorithm option in the GetParametersForImport API that is used in the AWS KMS Import Key Material feature. AWS KMS will end support for this wrapping algorithm by October 1, 2023.
+
+# v1.20.5 (2023-02-22)
+
+* **Bug Fix**: Prevent nil pointer dereference when retrieving error codes.
+
 # v1.20.4 (2023-02-20)
 
 * **Dependency Update**: Updated to the latest SDK module versions
