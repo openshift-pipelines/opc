@@ -147,8 +147,8 @@ or
 	c.Flags().BoolVarP(&opts.DeleteAllNs, "all", "", false, "Delete all TaskRuns in a namespace (default: false)")
 	c.Flags().IntVarP(&opts.Keep, "keep", "", 0, "Keep n most recent number of TaskRuns")
 	c.Flags().IntVarP(&opts.KeepSince, "keep-since", "", 0, "When deleting all TaskRuns keep the ones that has been completed since n minutes")
-	c.Flags().BoolVarP(&opts.IgnoreRunning, "ignore-running", "i", true, "ignore running TaskRun (default: true)")
-	c.Flags().BoolVarP(&opts.IgnoreRunningPipelinerun, "ignore-running-pipelinerun", "", true, "ignore deleting taskruns of a running PipelineRun (default: true)")
+	c.Flags().BoolVarP(&opts.IgnoreRunning, "ignore-running", "i", true, "ignore running TaskRun")
+	c.Flags().BoolVarP(&opts.IgnoreRunningPipelinerun, "ignore-running-pipelinerun", "", true, "ignore deleting taskruns of a running PipelineRun")
 
 	return c
 }
@@ -171,7 +171,7 @@ func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options
 		}
 		numberOfDeletedTr = len(trToDelete)
 		numberOfKeptTr = len(trToKeep)
-		d.Delete(s, trToDelete)
+		d.Delete(trToDelete)
 	case opts.ParentResourceName == "":
 		d = deleter.New("TaskRun", func(taskRunName string) error {
 			return actions.Delete(taskrunGroupResource, cs.Dynamic, cs.Tekton.Discovery(), taskRunName, p.Namespace(), metav1.DeleteOptions{})
@@ -196,7 +196,7 @@ func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options
 			}
 			processedTrNames = append(processedTrNames, tr.Name)
 		}
-		d.Delete(s, processedTrNames)
+		d.Delete(processedTrNames)
 	default:
 		d = deleter.New(opts.ParentResource, func(_ string) error {
 			err := fmt.Sprintf("the %s should not be deleted", opts.ParentResource)
@@ -216,18 +216,23 @@ func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options
 		if err != nil {
 			return err
 		}
+
 		numberOfDeletedTr = len(trToDelete)
 		numberOfKeptTr = len(trToKeep)
-
 		// Delete the TaskRuns associated with a Task or ClusterTask
 		d.WithRelated("TaskRun", taskRunLister(p, opts.Keep, opts.KeepSince, opts.ParentResource, cs, opts.IgnoreRunning, opts.IgnoreRunningPipelinerun), func(taskRunName string) error {
 			return actions.Delete(taskrunGroupResource, cs.Dynamic, cs.Tekton.Discovery(), taskRunName, p.Namespace(), metav1.DeleteOptions{})
 		})
-		if len(trToDelete) == 0 && opts.Keep > len(trToKeep) {
+
+		if opts.Keep > 0 && opts.Keep == len(trToKeep) && len(trToDelete) == 0 {
+			fmt.Fprintf(s.Out, "Associated %s (%d) for Task:%s is/are equal to keep (%d) \n", opts.Resource, len(trToKeep), opts.ParentResourceName, opts.Keep)
+			return nil
+		}
+		if opts.Keep > len(trToKeep) {
 			fmt.Fprintf(s.Out, "There is/are only %d %s(s) associated for %s: %s \n", len(trToKeep), opts.Resource, opts.ParentResource, opts.ParentResourceName)
 			return nil
 		}
-		d.DeleteRelated(s, []string{opts.ParentResourceName})
+		d.DeleteRelated([]string{opts.ParentResourceName})
 	}
 
 	if !opts.DeleteAllNs {

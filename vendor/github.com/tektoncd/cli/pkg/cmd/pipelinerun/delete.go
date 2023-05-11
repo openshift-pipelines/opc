@@ -127,7 +127,7 @@ or
 	c.Flags().StringVarP(&opts.ParentResourceName, "pipeline", "p", "", "The name of a Pipeline whose PipelineRuns should be deleted (does not delete the Pipeline)")
 	c.Flags().IntVarP(&opts.Keep, "keep", "", 0, "Keep n most recent number of PipelineRuns")
 	c.Flags().IntVarP(&opts.KeepSince, "keep-since", "", 0, "When deleting all PipelineRuns keep the ones that has been completed since n minutes")
-	c.Flags().BoolVarP(&opts.IgnoreRunning, "ignore-running", "i", true, "ignore running PipelineRun (default: true)")
+	c.Flags().BoolVarP(&opts.IgnoreRunning, "ignore-running", "i", true, "ignore running PipelineRun")
 	c.Flags().BoolVarP(&opts.DeleteAllNs, "all", "", false, "Delete all PipelineRuns in a namespace (default: false)")
 	c.Flags().StringVarP(&opts.LabelSelector, "label", "", opts.LabelSelector, "A selector (label query) to filter on when running with --all, supports '=', '==', and '!='")
 	return c
@@ -153,12 +153,12 @@ func deletePipelineRuns(s *cli.Stream, p cli.Params, prNames []string, opts *opt
 		}
 		numberOfDeletedPr = len(prtodelete)
 		numberOfKeptPr = len(prtokeep)
-		d.Delete(s, prtodelete)
+		d.Delete(prtodelete)
 	case opts.ParentResourceName == "":
 		d = deleter.New("PipelineRun", func(pipelineRunName string) error {
 			return actions.Delete(prGroupResource, cs.Dynamic, cs.Tekton.Discovery(), pipelineRunName, p.Namespace(), metav1.DeleteOptions{})
 		})
-		d.Delete(s, prNames)
+		d.Delete(prNames)
 	default:
 		d = deleter.New("Pipeline", func(_ string) error {
 			return errors.New("the Pipeline should not be deleted")
@@ -180,11 +180,16 @@ func deletePipelineRuns(s *cli.Stream, p cli.Params, prNames []string, opts *opt
 		d.WithRelated("PipelineRun", pipelineRunLister(cs, opts.Keep, opts.KeepSince, p.Namespace(), opts.IgnoreRunning), func(pipelineRunName string) error {
 			return actions.Delete(prGroupResource, cs.Dynamic, cs.Tekton.Discovery(), pipelineRunName, p.Namespace(), metav1.DeleteOptions{})
 		})
-		if len(prtodelete) == 0 && opts.Keep > len(prtokeep) {
+
+		if len(prtodelete) == 0 && opts.Keep > 0 && opts.Keep == len(prtokeep) {
+			fmt.Fprintf(s.Out, "Associated %s (%d) for Pipeline:%s is/are equal to keep (%d) \n", opts.Resource, len(prtokeep), opts.ParentResourceName, opts.Keep)
+			return nil
+		}
+		if opts.Keep > len(prtokeep) {
 			fmt.Fprintf(s.Out, "There is/are only %d %s(s) associated for Pipeline: %s \n", len(prtokeep), opts.Resource, opts.ParentResourceName)
 			return nil
 		}
-		d.DeleteRelated(s, []string{opts.ParentResourceName})
+		d.DeleteRelated([]string{opts.ParentResourceName})
 	}
 
 	if !opts.DeleteAllNs {
