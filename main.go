@@ -50,18 +50,17 @@ func main() {
 	paciostreams := paccli.NewIOStreams()
 	tkn.RemoveCommand(pacversion.Command(paciostreams)) // does not work 🤷🏽‍♂️, we do the hard way later on
 	tkn.RemoveCommand(tknversion.Command(tp))
-	tkn.AddCommand(opccli.VersionCommand(paciostreams))
+	tkn.AddCommand(opccli.VersionCommand(tp))
 
 	args := os.Args[1:]
 	var cmd *cobra.Command
 	if len(args) > 0 && args[0] == "version" {
-		cmd = opccli.VersionCommand(paciostreams)
+		cmd = opccli.VersionCommand(tp)
 		goto CoreTkn
 	}
 	if len(args) > 1 && args[0] == "pac" && args[1] == "version" {
 		// Arthur: "I've Got Nothing Left To Lose. Nothing Can Hurt Me Anymore. My Life Is Nothing But A Comedy." 🃏
-		os.Args = []string{"version"}
-		vcmd := opccli.VersionCommand(paciostreams)
+		vcmd := opccli.VersionCommand(tp)
 		_ = vcmd.Execute()
 		os.Exit(0)
 	}
