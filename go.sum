@@ -2007,8 +2007,8 @@ github.com/opencontainers/selinux v1.6.0/go.mod h1:VVGKuOLlE7v4PJyT6h7mNWvq1rzqi
 github.com/opencontainers/selinux v1.8.0/go.mod h1:RScLhm78qiWa2gbVCcGkC7tCGdgk3ogry1nUQF8Evvo=
 github.com/opencontainers/selinux v1.8.2/go.mod h1:MUIHuUEvKB1wtJjQdOyYRgOnLD2xAPP8dBsCoU0KuF8=
 github.com/opencontainers/selinux v1.10.0/go.mod h1:2i0OySw99QjzBBQByd1Gr9gSjvuho1lHsJxIJ3gGbJI=
-github.com/openshift-pipelines/pipelines-as-code v0.19.0 h1:MY7AJE4Un+fmxNNyCX8RZNZKHXkz/EOuPYuZx8CYe2w=
-github.com/openshift-pipelines/pipelines-as-code v0.19.0/go.mod h1:0095sGItkJDvIIOM+4o4lMWT5CHrdByWEM6vaX+qDfU=
+github.com/openshift-pipelines/pipelines-as-code v0.19.1 h1:o1UfKbBadak6YOWfz+PfDFTSw3q9T3yWHb2RkhCyzEw=
+github.com/openshift-pipelines/pipelines-as-code v0.19.1/go.mod h1:0095sGItkJDvIIOM+4o4lMWT5CHrdByWEM6vaX+qDfU=
 github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492/go.mod h1:Ngi6UdF0k5OKD5t5wlmGhe/EDKPoUM3BXZSSfIuJbis=
 github.com/opentracing/basictracer-go v1.0.0/go.mod h1:QfBfYuafItcjQuMwinw9GhYKwFXS9KnPs5lxoYwgW74=
 github.com/opentracing/opentracing-go v1.0.2/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=

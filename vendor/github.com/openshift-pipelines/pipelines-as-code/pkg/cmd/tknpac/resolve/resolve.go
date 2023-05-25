@@ -20,6 +20,7 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/templates"
 	"github.com/spf13/cobra"
 	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"go.uber.org/zap"
 	"sigs.k8s.io/yaml"
 )
@@ -33,6 +34,7 @@ var (
 	noSecret       bool
 	providerToken  string
 	output         string
+	asv1beta1      bool
 )
 
 var longhelp = fmt.Sprintf(`
@@ -126,7 +128,7 @@ func Command(run *params.Run, streams *cli.IOStreams) *cobra.Command {
 				mapped["repo_name"] = strings.Split(repoOwner, "/")[1]
 			}
 
-			s, err := resolveFilenames(ctx, run, filenames, mapped)
+			s, err := resolveFilenames(ctx, run, filenames, mapped, asv1beta1)
 			if err != nil {
 				return err
 			}
@@ -147,7 +149,7 @@ func Command(run *params.Run, streams *cli.IOStreams) *cobra.Command {
 		"Params to resolve (ie: revision, repo_url)")
 
 	cmd.Flags().StringVarP(&output, "output", "o", "",
-		"Params to resolve (ie: revision, repo_url)")
+		"output to this file instead of stdout")
 
 	cmd.Flags().StringSliceVarP(&filenames, "filename", "f", filenames,
 		"Filename, directory, or URL to files to use to create the resource")
@@ -163,6 +165,8 @@ func Command(run *params.Run, streams *cli.IOStreams) *cobra.Command {
 
 	cmd.Flags().BoolVar(&remoteTask, "remoteTask", true,
 		"set this to false to avoid fetching and embed remote tasks")
+
+	cmd.Flags().BoolVarP(&asv1beta1, "v1beta1", "B", false, "output as tekton v1beta1")
 
 	cmd.Flags().StringVarP(&providerToken, "providerToken", "t", "", "use this token to generate the git-auth secret,\n you can set the environment PAC_PROVIDER_TOKEN to have this set automatically")
 	err := run.Info.Pac.AddFlags(cmd)
@@ -182,7 +186,7 @@ func splitArgsInMap(args []string) map[string]string {
 	return m
 }
 
-func resolveFilenames(ctx context.Context, cs *params.Run, filenames []string, params map[string]string) (string, error) {
+func resolveFilenames(ctx context.Context, cs *params.Run, filenames []string, params map[string]string, asv1beta1 bool) (string, error) {
 	var ret string
 
 	ropt := &resolve.Opts{
@@ -191,7 +195,7 @@ func resolveFilenames(ctx context.Context, cs *params.Run, filenames []string, p
 		SkipInlining:  skipInlining,
 		ProviderToken: providerToken,
 	}
-	allTemplates := enumerateFiles(filenames)
+	allTheYamls := expandYamlsAsSingleTemplate(filenames)
 	if !noSecret {
 		outSecret, secretName, err := makeGitAuthSecret(ctx, cs, filenames, ropt.ProviderToken, params)
 		if err != nil {
@@ -204,26 +208,40 @@ func resolveFilenames(ctx context.Context, cs *params.Run, filenames []string, p
 	}
 
 	// TODO: flags
-	allTemplates = templates.ReplacePlaceHoldersVariables(allTemplates, params)
+	allTheYamls = templates.ReplacePlaceHoldersVariables(allTheYamls, params)
 	// We use github here but since we don't do remotetask we would not care
 	providerintf := github.New()
 	event := info.NewEvent()
-	prun, err := resolve.Resolve(ctx, cs, cs.Clients.Log, providerintf, event, allTemplates, ropt)
+	prun, err := resolve.Resolve(ctx, cs, cs.Clients.Log, providerintf, event, allTheYamls, ropt)
 	if err != nil {
 		return "", err
 	}
 
 	// cleanedup regexp do as much as we can but really it's a lost game to try this
-	cleanRe := regexp.MustCompile(`\n(\t|\s)*(creationTimestamp|spec|taskRunTemplate|metadata|computeResources):\s*(null|{})\n`)
+	cleanRe := regexp.MustCompile(`\n(\t|\s)*(status|taskRunTemplate|creationTimestamp|spec|taskRunTemplate|metadata|computeResources):\s*(null|{})\n`)
 
 	for _, run := range prun {
-		run.APIVersion = tektonv1.SchemeGroupVersion.String()
-		run.Kind = "PipelineRun"
-		d, err := yaml.Marshal(run)
-		if err != nil {
-			return "", err
+		var doc []byte
+		if asv1beta1 {
+			nrun := &tektonv1beta1.PipelineRun{}
+			if err := nrun.ConvertFrom(ctx, run); err != nil {
+				return "", err
+			}
+			nrun.APIVersion = tektonv1beta1.SchemeGroupVersion.String()
+			nrun.Kind = "PipelineRun"
+			nrun.SetNamespace("")
+			if doc, err = yaml.Marshal(nrun); err != nil {
+				return "", err
+			}
+		} else {
+			run.APIVersion = tektonv1.SchemeGroupVersion.String()
+			run.Kind = "PipelineRun"
+			run.SetNamespace("")
+			if doc, err = yaml.Marshal(run); err != nil {
+				return "", err
+			}
 		}
-		cleaned := cleanRe.ReplaceAllString(string(d), "\n")
+		cleaned := cleanRe.ReplaceAllString(string(doc), "\n")
 		ret += fmt.Sprintf("---\n%s\n", cleaned)
 	}
 	return ret, nil
@@ -241,25 +259,33 @@ func appendYaml(filename string) string {
 	return fmt.Sprintf("---\n%s", s)
 }
 
-func enumerateFiles(filenames []string) string {
-	var yamlDoc string
-	for _, paths := range filenames {
-		if stat, err := os.Stat(paths); err == nil && !stat.IsDir() {
-			yamlDoc += appendYaml(paths)
+// listAllYamls takes a list of paths and returns a list of all the yaml files in those paths even if they are in subdirectories
+func listAllYamls(paths []string) []string {
+	ret := []string{}
+
+	for _, path := range paths {
+		if stat, err := os.Stat(path); err == nil && !stat.IsDir() {
+			ret = append(ret, path)
 			continue
 		}
-
-		// walk dir getting all yamls
-		err := filepath.Walk(paths, func(path string, fi os.FileInfo, err error) error {
-			if filepath.Ext(path) == ".yaml" {
-				yamlDoc += appendYaml(path)
+		err := filepath.Walk(path, func(fname string, fi os.FileInfo, err error) error {
+			if filepath.Ext(fname) == ".yaml" {
+				ret = append(ret, fname)
 			}
 			return nil
 		})
 		if err != nil {
-			log.Fatalf("Error enumerating files: %v", err)
+			log.Fatalf("Error enumerating files in %s: %v", path, err)
 		}
 	}
+	return ret
+}
 
+// expandYamlsAsSingleTemplate takes a list of filenames and returns a single yaml
+func expandYamlsAsSingleTemplate(filenames []string) string {
+	var yamlDoc string
+	for _, paths := range listAllYamls(filenames) {
+		yamlDoc += appendYaml(paths)
+	}
 	return yamlDoc
 }
