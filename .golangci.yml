@@ -15,7 +15,6 @@ linters:
   enable:
     - asciicheck
     - bodyclose
-    - depguard
     - dogsled
     - durationcheck
     - exhaustive

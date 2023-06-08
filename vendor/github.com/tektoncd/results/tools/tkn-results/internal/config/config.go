@@ -57,7 +57,6 @@ func init() {
 	pflag.StringP("addr", "a", "", "Result API server address")
 	pflag.StringP("authtoken", "t", "", "authorization bearer token to use for authenticated requests")
 	pflag.BoolP("insecure", "", false, "insecure gprc tls communication")
-	pflag.Parse()
 }
 
 func GetConfig() (*Config, error) {
