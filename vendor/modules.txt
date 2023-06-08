@@ -1400,7 +1400,7 @@ github.com/tektoncd/pipeline/pkg/substitution
 ## explicit; go 1.18
 github.com/tektoncd/results/proto/pipeline/v1beta1/pipeline_go_proto
 github.com/tektoncd/results/proto/v1alpha2/results_go_proto
-# github.com/tektoncd/results/tools/tkn-results v0.0.0-20230508194947-57fa89e36c64
+# github.com/tektoncd/results/tools/tkn-results v0.0.0-20230607191238-bf9b68b17cdb
 ## explicit; go 1.17
 github.com/tektoncd/results/tools/tkn-results/cmd
 github.com/tektoncd/results/tools/tkn-results/cmd/logs

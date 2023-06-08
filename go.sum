@@ -2310,8 +2310,8 @@ github.com/tektoncd/pipeline v0.47.0 h1:zZxmp6im8/p9RaH32LgeCP6dwH/4hcsfvEQUrwGs
 github.com/tektoncd/pipeline v0.47.0/go.mod h1:7H1DeNuEJFGoExGwQTlRul2IziCPxkjXRdDdirWmoQs=
 github.com/tektoncd/results v0.5.0 h1:YvHBw4rwoYYNgoFkP5to2UcpsOOVTdILKcosRBCBJzs=
 github.com/tektoncd/results v0.5.0/go.mod h1:Zem/Q1puIqloLlx1691Zn5y1DbUQT5hCRYp5PcIWjxw=
-github.com/tektoncd/results/tools/tkn-results v0.0.0-20230508194947-57fa89e36c64 h1:gwNIsYlG4OA8lqKAJpfM+k82dfhyI0bBJdetGKXwxIo=
-github.com/tektoncd/results/tools/tkn-results v0.0.0-20230508194947-57fa89e36c64/go.mod h1:F8EuZgzjogYJStXWtxER+BRBsF1DnbeqWjOEjCKPqbA=
+github.com/tektoncd/results/tools/tkn-results v0.0.0-20230607191238-bf9b68b17cdb h1:ghh8d/QWunN5OFo+rWP4hWXpBce67S0v5Tl5C8BouLk=
+github.com/tektoncd/results/tools/tkn-results v0.0.0-20230607191238-bf9b68b17cdb/go.mod h1:F8EuZgzjogYJStXWtxER+BRBsF1DnbeqWjOEjCKPqbA=
 github.com/tektoncd/triggers v0.23.1-0.20230420080448-bf603123cc0f h1:VwUu2eWgu+c34hoocxCL2IE+1zjNeGigyNHdd9ODfL8=
 github.com/tektoncd/triggers v0.23.1-0.20230420080448-bf603123cc0f/go.mod h1:gMyEJZbLOs8+PnbjeaOa2Y2oex4IMPU9TD86WbytWIo=
 github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 h1:iGnD/q9160NWqKZZ5vY4p0dMiYMRknzctfSkqA4nBDw=
