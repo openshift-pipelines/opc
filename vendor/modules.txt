@@ -1285,7 +1285,7 @@ github.com/tektoncd/chains/pkg/chains/storage/pubsub
 github.com/tektoncd/chains/pkg/chains/storage/tekton
 github.com/tektoncd/chains/pkg/config
 github.com/tektoncd/chains/pkg/patch
-# github.com/tektoncd/cli v0.31.0
+# github.com/tektoncd/cli v0.31.1
 ## explicit; go 1.18
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/bundle
