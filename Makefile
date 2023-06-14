@@ -16,20 +16,20 @@ all: build
 vendor: tidy
 	$(GO) mod vendor
 
-mkbin:
+mkbin: # makes bin directory
 	mkdir -p ./bin
 
-build: mkbin generate
+build: mkbin generate ## builds binary and updates version in pkg/version
 	$(GO) build -v $(FLAGS) -mod=vendor -o bin/$(BINARYNAME) main.go
 
 windows: mkbin generate
 	env GOOS=windows GOARCH=amd64 $(GO) build -mod=vendor $(FLAGS)  -v -o bin/$(BINARYNAME).exe main.go
 
-generate: version-file
+generate: version-file ## updates version of pipeline-as-code and cli in pkg/version file
 version-file:
 	echo '{"pac": "$(PAC_VERSION)", "tkn": "$(TKN_VERSION)", "opc": "$(OPC_VERSION)"}' > pkg/version.json
 
-version-updates:
+version-updates: ## updates pipeline-as-code and cli version in go.mod
 	$(GO) get -u github.com/openshift-pipelines/pipelines-as-code
 	$(GO) mod vendor
 	$(GO) get -u github.com/tektoncd/cli
@@ -47,3 +47,7 @@ lint-go: ## runs go linter on all go files
 							--deadline 10m
 
 .PHONY: generate version-file version-updates updates build all vendor tidy lint-go mkbin
+
+.PHONY: help
+help: ## print this help
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {gsub("\\\\n",sprintf("\n%22c",""), $$2);printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
