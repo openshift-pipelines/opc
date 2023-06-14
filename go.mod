@@ -36,7 +36,7 @@ require (
 require (
 	github.com/openshift-pipelines/pipelines-as-code v0.19.0
 	github.com/spf13/cobra v1.7.0
-	github.com/tektoncd/cli v0.31.0
+	github.com/tektoncd/cli v0.31.1
 	github.com/tektoncd/results/tools/tkn-results v0.0.0-20230607191238-bf9b68b17cdb
 )
 
