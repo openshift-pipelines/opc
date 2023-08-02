@@ -2007,8 +2007,8 @@ github.com/opencontainers/selinux v1.6.0/go.mod h1:VVGKuOLlE7v4PJyT6h7mNWvq1rzqi
 github.com/opencontainers/selinux v1.8.0/go.mod h1:RScLhm78qiWa2gbVCcGkC7tCGdgk3ogry1nUQF8Evvo=
 github.com/opencontainers/selinux v1.8.2/go.mod h1:MUIHuUEvKB1wtJjQdOyYRgOnLD2xAPP8dBsCoU0KuF8=
 github.com/opencontainers/selinux v1.10.0/go.mod h1:2i0OySw99QjzBBQByd1Gr9gSjvuho1lHsJxIJ3gGbJI=
-github.com/openshift-pipelines/pipelines-as-code v0.19.2 h1:72u7tGgqWWmvl3/UmHjvYMtQ/daXNBMXa90VOkpUhiI=
-github.com/openshift-pipelines/pipelines-as-code v0.19.2/go.mod h1:0095sGItkJDvIIOM+4o4lMWT5CHrdByWEM6vaX+qDfU=
+github.com/openshift-pipelines/pipelines-as-code v0.19.3 h1:Lh+jGpKMudA49iURSsH39eIibgUb9TGZeVUTlXRPpQw=
+github.com/openshift-pipelines/pipelines-as-code v0.19.3/go.mod h1:0095sGItkJDvIIOM+4o4lMWT5CHrdByWEM6vaX+qDfU=
 github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492/go.mod h1:Ngi6UdF0k5OKD5t5wlmGhe/EDKPoUM3BXZSSfIuJbis=
 github.com/opentracing/basictracer-go v1.0.0/go.mod h1:QfBfYuafItcjQuMwinw9GhYKwFXS9KnPs5lxoYwgW74=
 github.com/opentracing/opentracing-go v1.0.2/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
@@ -2302,8 +2302,8 @@ github.com/tchap/go-patricia v2.2.6+incompatible/go.mod h1:bmLyhP68RS6kStMGxByiQ
 github.com/tedsuo/ifrit v0.0.0-20180802180643-bea94bb476cc/go.mod h1:eyZnKCc955uh98WQvzOm0dgAeLnf2O0Rz0LPoC5ze+0=
 github.com/tektoncd/chains v0.16.0 h1:JUFLA3p/I7kifi1BEX/3C0I54hHBIRvpdMIFxZUYGl0=
 github.com/tektoncd/chains v0.16.0/go.mod h1:tIA/Ar78NS728T7q955CEfm9ycekZtWFHLHCuXDxBZg=
-github.com/tektoncd/cli v0.31.1 h1:rhVfvwWRilHMXO8Y6bLDx9Ow3nRRWCLeEPuk52PJ/uQ=
-github.com/tektoncd/cli v0.31.1/go.mod h1:MB0HrmwcGnHjPv9d/oviOWAqNmvuhdNP84UJUZfqy7A=
+github.com/tektoncd/cli v0.31.2 h1:bteMiX7DdbwyAQelFkxszCCh6uMuoIWjsB7UvLj/YJk=
+github.com/tektoncd/cli v0.31.2/go.mod h1:MB0HrmwcGnHjPv9d/oviOWAqNmvuhdNP84UJUZfqy7A=
 github.com/tektoncd/hub v1.13.0 h1:WJF9JMQzdBxfiQILtDT2lgAXxBc+y9v5U4qwavUO5pE=
 github.com/tektoncd/hub v1.13.0/go.mod h1:9n47cu03gbNVB5n922jKjc602sRpe/ihgQ3SvHNijQ4=
 github.com/tektoncd/pipeline v0.47.0 h1:zZxmp6im8/p9RaH32LgeCP6dwH/4hcsfvEQUrwGsUPA=
