@@ -12,7 +12,7 @@ require (
 	github.com/jonboulle/clockwork v0.4.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tektoncd/pipeline v0.47.0 // indirect
+	github.com/tektoncd/pipeline v0.47.4 // indirect
 	github.com/tektoncd/triggers v0.23.1-0.20230420080448-bf603123cc0f // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
@@ -34,7 +34,7 @@ require (
 )
 
 require (
-	github.com/openshift-pipelines/pipelines-as-code v0.19.3
+	github.com/openshift-pipelines/pipelines-as-code v0.19.4
 	github.com/spf13/cobra v1.7.0
 	github.com/tektoncd/cli v0.31.2
 	github.com/tektoncd/results/tools/tkn-results v0.0.0-20230607191238-bf9b68b17cdb
