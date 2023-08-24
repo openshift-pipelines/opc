@@ -42,19 +42,19 @@ func readTypes(ctx context.Context, log *zap.SugaredLogger, data string) (Types,
 			continue
 		}
 		switch o := obj.(type) {
-		case *tektonv1beta1.Pipeline:
+		case *tektonv1beta1.Pipeline: //nolint: staticcheck // we need to support v1beta1
 			c := &tektonv1.Pipeline{}
 			if err := o.ConvertTo(ctx, c); err != nil {
 				return types, fmt.Errorf("pipeline v1beta1 %s cannot be converted as v1: err: %w", o.GetName(), err)
 			}
 			types.Pipelines = append(types.Pipelines, c)
-		case *tektonv1beta1.PipelineRun:
+		case *tektonv1beta1.PipelineRun: //nolint: staticcheck // we need to support v1beta1
 			c := &tektonv1.PipelineRun{}
 			if err := o.ConvertTo(ctx, c); err != nil {
 				return types, fmt.Errorf("pipelinerun v1beta1 %s cannot be converted as v1: err: %w", o.GetName(), err)
 			}
 			types.PipelineRuns = append(types.PipelineRuns, c)
-		case *tektonv1beta1.Task:
+		case *tektonv1beta1.Task: //nolint: staticcheck // we need to support v1beta1
 			c := &tektonv1.Task{}
 			if err := o.ConvertTo(ctx, c); err != nil {
 				return types, fmt.Errorf("task v1beta1 %s cannot be converted as v1: err: %w", o.GetName(), err)
@@ -74,6 +74,10 @@ func readTypes(ctx context.Context, log *zap.SugaredLogger, data string) (Types,
 	return types, nil
 }
 
+// getTaskRunByName returns the taskrun with the given name the first one found
+// will be matched. It does not handle conflicts so user has fetched multiple
+// taskruns with the same name it will just pick up the first one.
+// if the taskrun is not found it returns an error
 func getTaskByName(name string, tasks []*tektonv1.Task) (*tektonv1.Task, error) {
 	for _, value := range tasks {
 		if value.Name == name {

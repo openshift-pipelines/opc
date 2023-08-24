@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/consoleui"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/clients"
@@ -120,12 +121,18 @@ func (r *Run) UpdatePACInfo(ctx context.Context) error {
 }
 
 func New() *Run {
+	hubCatalog := &sync.Map{}
+	hubCatalog.Store("default", settings.HubCatalog{
+		ID:   "default",
+		Name: settings.HubCatalogNameDefaultValue,
+		URL:  settings.HubURLDefaultValue,
+	})
 	return &Run{
 		Info: info.Info{
 			Pac: &info.PacOpts{
 				Settings: &settings.Settings{
 					ApplicationName: settings.PACApplicationNameDefaultValue,
-					HubURL:          settings.HubURLDefaultValue,
+					HubCatalogs:     hubCatalog,
 				},
 			},
 		},

@@ -49,14 +49,8 @@ func (p *PacRun) verifyRepoAndUser(ctx context.Context) (*v1alpha1.Repository, e
 	}
 
 	if repo == nil {
-		if p.event.Provider.Token == "" {
-			msg := fmt.Sprintf("cannot set status since no repository has been matched on %s", p.event.URL)
-			p.eventEmitter.EmitMessage(nil, zap.WarnLevel, "RepositorySetStatus", msg)
-			return nil, nil
-		}
-		msg := fmt.Sprintf("cannot find a namespace match for %s", p.event.URL)
+		msg := fmt.Sprintf("cannot find a repository match for %s", p.event.URL)
 		p.eventEmitter.EmitMessage(nil, zap.WarnLevel, "RepositoryNamespaceMatch", msg)
-
 		return nil, nil
 	}
 
@@ -98,7 +92,7 @@ is that what you want? make sure you use -n when generating the secret, eg: echo
 
 	// Set the client, we should error out if there is a problem with
 	// token or secret or we won't be able to do much.
-	err = p.vcx.SetClient(ctx, p.run, p.event)
+	err = p.vcx.SetClient(ctx, p.run, p.event, repo.Spec.Settings)
 	if err != nil {
 		return repo, err
 	}

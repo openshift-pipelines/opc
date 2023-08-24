@@ -9,6 +9,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 )
@@ -29,11 +30,15 @@ type Repository struct {
 	Has_wiki    bool
 	Mainbranch  RepositoryBranch
 	Type        string
-	CreatedOn   string `mapstructure:"created_on"`
-	UpdatedOn   string `mapstructure:"updated_on"`
-	Owner       map[string]interface{}
-	Links       map[string]interface{}
-	Parent      *Repository
+	// Deprecated: CreatedOn is deprecated use CreatedOnTime
+	CreatedOn string `mapstructure:"created_on"`
+	// Deprecated: UpdatedOn is deprecated use UpdatedOnTime
+	UpdatedOn     string `mapstructure:"updated_on"`
+	Owner         map[string]interface{}
+	Links         map[string]interface{}
+	Parent        *Repository
+	CreatedOnTime *time.Time `mapstructure:"created_on"`
+	UpdatedOnTime *time.Time `mapstructure:"updated_on"`
 }
 
 type RepositoryFile struct {
@@ -195,6 +200,7 @@ type DefaultReviewer struct {
 	Links       map[string]map[string]string
 }
 
+
 type DefaultReviewers struct {
 	Page             int
 	Pagelen          int
@@ -202,6 +208,20 @@ type DefaultReviewers struct {
 	Size             int
 	Next             string
 	DefaultReviewers []DefaultReviewer
+}
+type EffectiveDefaultReviewer struct {
+	User         DefaultReviewer
+	Type         string
+	ReviewerType string `mapstructure:"reviewer_type"`
+}
+
+type EffectiveDefaultReviewers struct {
+	Page             int
+	Pagelen          int
+	MaxDepth         int
+	Size             int
+	Next             string
+	EffectiveDefaultReviewers []EffectiveDefaultReviewer
 }
 
 type Group struct {
@@ -248,6 +268,8 @@ type UserPermissions struct {
 	Next            string
 	UserPermissions []UserPermission
 }
+
+var stringToTimeHookFunc = mapstructure.StringToTimeHookFunc("2006-01-02T15:04:05.000000+00:00")
 
 func (r *Repository) Create(ro *RepositoryOptions) (*Repository, error) {
 	data, err := r.buildRepositoryBody(ro)
@@ -324,7 +346,7 @@ func (r *Repository) ListFiles(ro *RepositoryFilesOptions) ([]RepositoryFile, er
 		return nil, err
 	}
 
-	response, err := r.c.executePaginated("GET", urlStr, "")
+	response, err := r.c.executePaginated("GET", urlStr, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -522,7 +544,7 @@ func (r *Repository) ListTags(rbo *RepositoryTagOptions) (*RepositoryTags, error
 	}
 
 	urlStr := r.c.requestUrl("/repositories/%s/%s/refs/tags?%s", rbo.Owner, rbo.RepoSlug, params.Encode())
-	response, err := r.c.executePaginated("GET", urlStr, "")
+	response, err := r.c.executePaginated("GET", urlStr, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -578,18 +600,18 @@ func (r *Repository) Delete(ro *RepositoryOptions) (interface{}, error) {
 
 func (r *Repository) ListWatchers(ro *RepositoryOptions) (interface{}, error) {
 	urlStr := r.c.requestUrl("/repositories/%s/%s/watchers", ro.Owner, ro.RepoSlug)
-	return r.c.executePaginated("GET", urlStr, "")
+	return r.c.executePaginated("GET", urlStr, "", nil)
 }
 
 func (r *Repository) ListForks(ro *RepositoryOptions) (interface{}, error) {
 	urlStr := r.c.requestUrl("/repositories/%s/%s/forks", ro.Owner, ro.RepoSlug)
-	return r.c.executePaginated("GET", urlStr, "")
+	return r.c.executePaginated("GET", urlStr, "", nil)
 }
 
 func (r *Repository) ListDefaultReviewers(ro *RepositoryOptions) (*DefaultReviewers, error) {
 	urlStr := r.c.requestUrl("/repositories/%s/%s/default-reviewers?pagelen=1", ro.Owner, ro.RepoSlug)
 
-	res, err := r.c.executePaginated("GET", urlStr, "")
+	res, err := r.c.executePaginated("GET", urlStr, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -617,6 +639,16 @@ func (r *Repository) AddDefaultReviewer(rdro *RepositoryDefaultReviewerOptions) 
 func (r *Repository) DeleteDefaultReviewer(rdro *RepositoryDefaultReviewerOptions) (interface{}, error) {
 	urlStr := r.c.requestUrl("/repositories/%s/%s/default-reviewers/%s", rdro.Owner, rdro.RepoSlug, rdro.Username)
 	return r.c.execute("DELETE", urlStr, "")
+}
+
+func (r *Repository) ListEffectiveDefaultReviewers(ro *RepositoryOptions) (*EffectiveDefaultReviewers, error) {
+	urlStr := r.c.requestUrl("/repositories/%s/%s/effective-default-reviewers", ro.Owner, ro.RepoSlug)
+
+	res, err := r.c.executePaginated("GET", urlStr, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	return decodeEffectiveDefaultReviewers(res)
 }
 
 func (r *Repository) GetPipelineConfig(rpo *RepositoryPipelineOptions) (*Pipeline, error) {
@@ -893,7 +925,7 @@ func (r *Repository) UpdateDeploymentVariable(opt *RepositoryDeploymentVariableO
 func (r *Repository) ListGroupPermissions(ro *RepositoryOptions) (*GroupPermissions, error) {
 	urlStr := r.c.requestUrl("/repositories/%s/%s/permissions-config/groups?pagelen=1", ro.Owner, ro.RepoSlug)
 
-	res, err := r.c.executePaginated("GET", urlStr, "")
+	res, err := r.c.executePaginated("GET", urlStr, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -924,7 +956,7 @@ func (r *Repository) DeleteGroupPermissions(rgo *RepositoryGroupPermissionsOptio
 func (r *Repository) GetGroupPermissions(rgo *RepositoryGroupPermissionsOptions) (*GroupPermission, error) {
 	urlStr := r.c.requestUrl("/repositories/%s/%s/permissions-config/groups/%s", rgo.Owner, rgo.RepoSlug, rgo.Group)
 
-	res, err := r.c.executePaginated("GET", urlStr, "")
+	res, err := r.c.executePaginated("GET", urlStr, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -934,7 +966,7 @@ func (r *Repository) GetGroupPermissions(rgo *RepositoryGroupPermissionsOptions)
 func (r *Repository) ListUserPermissions(ro *RepositoryOptions) (*UserPermissions, error) {
 	urlStr := r.c.requestUrl("/repositories/%s/%s/permissions-config/users?pagelen=1", ro.Owner, ro.RepoSlug)
 
-	res, err := r.c.executePaginated("GET", urlStr, "")
+	res, err := r.c.executePaginated("GET", urlStr, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -965,7 +997,7 @@ func (r *Repository) DeleteUserPermissions(rgo *RepositoryUserPermissionsOptions
 func (r *Repository) GetUserPermissions(rgo *RepositoryUserPermissionsOptions) (*UserPermission, error) {
 	urlStr := r.c.requestUrl("/repositories/%s/%s/permissions-config/users/%s", rgo.Owner, rgo.RepoSlug, rgo.User)
 
-	res, err := r.c.executePaginated("GET", urlStr, "")
+	res, err := r.c.executePaginated("GET", urlStr, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1190,7 +1222,15 @@ func decodeRepository(repoResponse interface{}) (*Repository, error) {
 	}
 
 	var repository = new(Repository)
-	err := mapstructure.Decode(repoMap, repository)
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Metadata:   nil,
+		Result:     repository,
+		DecodeHook: stringToTimeHookFunc,
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = decoder.Decode(repoMap)
 	if err != nil {
 		return nil, err
 	}
@@ -1742,6 +1782,53 @@ func decodeDefaultReviewers(response interface{}) (*DefaultReviewers, error) {
 		Size:             int(size),
 		Next:             next,
 		DefaultReviewers: variables,
+	}
+	return &defaultReviewerVariables, nil
+}
+
+
+func decodeEffectiveDefaultReviewers(response interface{}) (*EffectiveDefaultReviewers, error) {
+	responseMap := response.(map[string]interface{})
+	values := responseMap["values"].([]interface{})
+	var variables []EffectiveDefaultReviewer
+	for _, variable := range values {
+		var defaultReviewerVariable EffectiveDefaultReviewer
+		err := mapstructure.Decode(variable, &defaultReviewerVariable)
+		if err == nil {
+			variables = append(variables, defaultReviewerVariable)
+		}
+	}
+
+	page, ok := responseMap["page"].(float64)
+	if !ok {
+		page = 0
+	}
+
+	pagelen, ok := responseMap["pagelen"].(float64)
+	if !ok {
+		pagelen = 0
+	}
+	max_depth, ok := responseMap["max_depth"].(float64)
+	if !ok {
+		max_depth = 0
+	}
+	size, ok := responseMap["size"].(float64)
+	if !ok {
+		size = 0
+	}
+
+	next, ok := responseMap["next"].(string)
+	if !ok {
+		next = ""
+	}
+
+	defaultReviewerVariables := EffectiveDefaultReviewers{
+		Page:             int(page),
+		Pagelen:          int(pagelen),
+		MaxDepth:         int(max_depth),
+		Size:             int(size),
+		Next:             next,
+		EffectiveDefaultReviewers: variables,
 	}
 	return &defaultReviewerVariables, nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/hub"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
 	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -45,7 +46,7 @@ func (rt RemoteTasks) convertToPipeline(ctx context.Context, uri, data string) (
 	switch o := obj.(type) {
 	case *tektonv1.Pipeline:
 		pipeline = o
-	case *tektonv1beta1.Pipeline:
+	case *tektonv1beta1.Pipeline: //nolint: staticcheck
 		c := &tektonv1.Pipeline{}
 		// TODO: figure ou the issue we have with setdefault setting defaults SA
 		// and then don't let pipeline do its job to automatically set a
@@ -80,7 +81,7 @@ func (rt RemoteTasks) convertTotask(ctx context.Context, uri, data string) (*tek
 	switch o := obj.(type) {
 	case *tektonv1.Task:
 		task = o
-	case *tektonv1beta1.Task:
+	case *tektonv1beta1.Task: //nolint: staticcheck // we need to support v1beta1
 		c := &tektonv1.Task{}
 		// o.SetDefaults(ctx)
 		// if err := o.Validate(ctx); err != nil {
@@ -104,20 +105,39 @@ func (rt RemoteTasks) getRemote(ctx context.Context, uri string, fromHub bool) (
 	}
 
 	switch {
-	case strings.HasPrefix(uri, "https://"), strings.HasPrefix(uri, "http://"):
+	case strings.HasPrefix(uri, "https://"), strings.HasPrefix(uri, "http://"): // if it starts with http(s)://, it is a remote resource
 		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 		res, err := rt.Run.Clients.HTTP.Do(req)
 		if err != nil {
 			return "", err
 		}
 		if res.StatusCode != http.StatusOK {
-			return "", fmt.Errorf("cannot get remote resource: \"%s\": %s", uri, res.Status)
+			return "", fmt.Errorf("cannot get remote resource: %s: %s", uri, res.Status)
 		}
 		data, _ := io.ReadAll(res.Body)
 		defer res.Body.Close()
-		rt.Logger.Infof("successfully fetched \"%s\" from remote https url", uri)
+		rt.Logger.Infof("successfully fetched %s from remote https url", uri)
 		return string(data), nil
-	case strings.Contains(uri, "/"):
+	case fromHub && strings.Contains(uri, "://"): // if it contains ://, it is a remote custom catalog
+		split := strings.Split(uri, "://")
+		catalogID := split[0]
+		value, _ := rt.Run.Info.Pac.HubCatalogs.Load(catalogID)
+		if _, ok := rt.Run.Info.Pac.HubCatalogs.Load(catalogID); !ok {
+			rt.Logger.Infof("custom catalog %s is not found, skipping", catalogID)
+			return "", nil
+		}
+		uri = strings.TrimPrefix(uri, fmt.Sprintf("%s://", catalogID))
+		data, err := hub.GetTask(ctx, rt.Run, catalogID, uri)
+		if err != nil {
+			return "", err
+		}
+		catalogValue, ok := value.(settings.HubCatalog)
+		if !ok {
+			return "", fmt.Errorf("could not get details for catalog name: %s", catalogID)
+		}
+		rt.Logger.Infof("successfully fetched task %s from custom catalog HUB %s on URL %s", uri, catalogID, catalogValue.URL)
+		return data, nil
+	case strings.Contains(uri, "/"): // if it contains a slash, it is a file inside a repository
 		var data string
 		var err error
 		if rt.Event.SHA != "" {
@@ -135,14 +155,19 @@ func (rt RemoteTasks) getRemote(ctx context.Context, uri string, fromHub bool) (
 			}
 		}
 
-		rt.Logger.Infof("successfully fetched \"%s\" inside repository", uri)
+		rt.Logger.Infof("successfully fetched %s inside repository", uri)
 		return data, nil
-	case fromHub:
-		data, err := hub.GetTask(ctx, rt.Run, uri)
+	case fromHub: // finally a simple word will fetch from the default catalog (if enabled)
+		data, err := hub.GetTask(ctx, rt.Run, "default", uri)
 		if err != nil {
 			return "", err
 		}
-		rt.Logger.Infof("successfully fetched \"%s\" from hub URL: %s", uri, rt.Run.Info.Pac.HubURL)
+		value, _ := rt.Run.Info.Pac.HubCatalogs.Load("default")
+		catalogValue, ok := value.(settings.HubCatalog)
+		if !ok {
+			return "", fmt.Errorf("could not get details for catalog name: %s", "default")
+		}
+		rt.Logger.Infof("successfully fetched %s from default configured catalog HUB on URL: %s", uri, catalogValue.URL)
 		return data, nil
 	}
 	return "", fmt.Errorf(`cannot find "%s" anywhere`, uri)
