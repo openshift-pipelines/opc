@@ -123,11 +123,13 @@ type ReEncryptInput struct {
 	// required only when the destination KMS key is an asymmetric KMS key.
 	DestinationEncryptionAlgorithm types.EncryptionAlgorithmSpec
 
-	// Specifies that encryption context to use when the reencrypting the data. A
-	// destination encryption context is valid only when the destination KMS key is a
-	// symmetric encryption KMS key. The standard ciphertext format for asymmetric KMS
-	// keys does not include fields for metadata. An encryption context is a collection
-	// of non-secret key-value pairs that represent additional authenticated data. When
+	// Specifies that encryption context to use when the reencrypting the data. Do not
+	// include confidential or sensitive information in this field. This field may be
+	// displayed in plaintext in CloudTrail logs and other output. A destination
+	// encryption context is valid only when the destination KMS key is a symmetric
+	// encryption KMS key. The standard ciphertext format for asymmetric KMS keys does
+	// not include fields for metadata. An encryption context is a collection of
+	// non-secret key-value pairs that represent additional authenticated data. When
 	// you use an encryption context to encrypt data, you must specify the same (an
 	// exact case-sensitive match) encryption context to decrypt the data. An
 	// encryption context is supported only on operations with symmetric encryption KMS
@@ -136,6 +138,11 @@ type ReEncryptInput struct {
 	// context (https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context)
 	// in the Key Management Service Developer Guide.
 	DestinationEncryptionContext map[string]string
+
+	// Checks if your request will succeed. DryRun is an optional parameter. To learn
+	// more about how to use this parameter, see Testing your KMS API calls (https://docs.aws.amazon.com/kms/latest/developerguide/programming-dryrun.html)
+	// in the Key Management Service Developer Guide.
+	DryRun *bool
 
 	// A list of grant tokens. Use a grant token when your permission to call this
 	// operation comes from a new grant that has not yet achieved eventual consistency.
@@ -249,7 +256,7 @@ func (c *Client) addOperationReEncryptMiddlewares(stack *middleware.Stack, optio
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -262,6 +269,9 @@ func (c *Client) addOperationReEncryptMiddlewares(stack *middleware.Stack, optio
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opReEncrypt(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

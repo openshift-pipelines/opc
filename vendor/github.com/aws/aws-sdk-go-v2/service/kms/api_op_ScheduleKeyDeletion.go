@@ -22,16 +22,17 @@ import (
 // associated with it, including all aliases that refer to it. Deleting a KMS key
 // is a destructive and potentially dangerous operation. When a KMS key is deleted,
 // all data that was encrypted under the KMS key is unrecoverable. (The only
-// exception is a multi-Region replica key.) To prevent the use of a KMS key
-// without deleting it, use DisableKey . You can schedule the deletion of a
-// multi-Region primary key and its replica keys at any time. However, KMS will not
-// delete a multi-Region primary key with existing replica keys. If you schedule
-// the deletion of a primary key with replicas, its key state changes to
-// PendingReplicaDeletion and it cannot be replicated or used in cryptographic
-// operations. This status can continue indefinitely. When the last of its replicas
-// keys is deleted (not just scheduled), the key state of the primary key changes
-// to PendingDeletion and its waiting period ( PendingWindowInDays ) begins. For
-// details, see Deleting multi-Region keys (https://docs.aws.amazon.com/kms/latest/developerguide/multi-region-keys-delete.html)
+// exception is a multi-Region replica key , or an asymmetric or HMAC KMS key with
+// imported key material .) To prevent the use of a KMS key without deleting it,
+// use DisableKey . You can schedule the deletion of a multi-Region primary key and
+// its replica keys at any time. However, KMS will not delete a multi-Region
+// primary key with existing replica keys. If you schedule the deletion of a
+// primary key with replicas, its key state changes to PendingReplicaDeletion and
+// it cannot be replicated or used in cryptographic operations. This status can
+// continue indefinitely. When the last of its replicas keys is deleted (not just
+// scheduled), the key state of the primary key changes to PendingDeletion and its
+// waiting period ( PendingWindowInDays ) begins. For details, see Deleting
+// multi-Region keys (https://docs.aws.amazon.com/kms/latest/developerguide/multi-region-keys-delete.html)
 // in the Key Management Service Developer Guide. When KMS deletes a KMS key from
 // an CloudHSM key store (https://docs.aws.amazon.com/kms/latest/developerguide/delete-cmk-keystore.html)
 // , it makes a best effort to delete the associated key material from the
@@ -84,7 +85,10 @@ type ScheduleKeyDeletionInput struct {
 	// replica keys, the waiting period begins when the last of its replica keys is
 	// deleted. Otherwise, the waiting period begins immediately. This value is
 	// optional. If you include a value, it must be between 7 and 30, inclusive. If you
-	// do not include a value, it defaults to 30.
+	// do not include a value, it defaults to 30. You can use the
+	// kms:ScheduleKeyDeletionPendingWindowInDays (https://docs.aws.amazon.com/kms/latest/developerguide/conditions-kms.html#conditions-kms-schedule-key-deletion-pending-window-in-days)
+	// condition key to further constrain the values that principals can specify in the
+	// PendingWindowInDays parameter.
 	PendingWindowInDays *int32
 
 	noSmithyDocumentSerde
@@ -155,7 +159,7 @@ func (c *Client) addOperationScheduleKeyDeletionMiddlewares(stack *middleware.St
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -168,6 +172,9 @@ func (c *Client) addOperationScheduleKeyDeletionMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opScheduleKeyDeletion(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

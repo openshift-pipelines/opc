@@ -102,6 +102,11 @@ type SignInput struct {
 	// This member is required.
 	SigningAlgorithm types.SigningAlgorithmSpec
 
+	// Checks if your request will succeed. DryRun is an optional parameter. To learn
+	// more about how to use this parameter, see Testing your KMS API calls (https://docs.aws.amazon.com/kms/latest/developerguide/programming-dryrun.html)
+	// in the Key Management Service Developer Guide.
+	DryRun *bool
+
 	// A list of grant tokens. Use a grant token when your permission to call this
 	// operation comes from a new grant that has not yet achieved eventual consistency.
 	// For more information, see Grant token (https://docs.aws.amazon.com/kms/latest/developerguide/grants.html#grant_token)
@@ -145,7 +150,7 @@ type SignOutput struct {
 	//   value is defined by PKCS #1 in RFC 8017 (https://tools.ietf.org/html/rfc8017)
 	//   .
 	//   - When used with the ECDSA_SHA_256 , ECDSA_SHA_384 , or ECDSA_SHA_512 signing
-	//   algorithms, this value is a DER-encoded object as defined by ANS X9.62–2005 and
+	//   algorithms, this value is a DER-encoded object as defined by ANSI X9.62–2005 and
 	//   RFC 3279 Section 2.2.3 (https://tools.ietf.org/html/rfc3279#section-2.2.3) .
 	//   This is the most commonly used signature format and is appropriate for most
 	//   uses.
@@ -198,7 +203,7 @@ func (c *Client) addOperationSignMiddlewares(stack *middleware.Stack, options Op
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -211,6 +216,9 @@ func (c *Client) addOperationSignMiddlewares(stack *middleware.Stack, options Op
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opSign(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {

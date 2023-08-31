@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/google/go-github/v50/github"
+	"github.com/google/go-github/v53/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
@@ -162,6 +162,7 @@ func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *h
 		return nil, err
 	}
 
+	processedEvent.Event = eventInt
 	processedEvent.InstallationID = installationIDFrompayload
 	processedEvent.GHEURL = event.Provider.URL
 	processedEvent.Provider.URL = event.Provider.URL
@@ -197,7 +198,6 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 	var err error
 
 	processedEvent = info.NewEvent()
-	processedEvent.Event = eventInt
 
 	switch gitEvent := eventInt.(type) {
 	case *github.CheckRunEvent:

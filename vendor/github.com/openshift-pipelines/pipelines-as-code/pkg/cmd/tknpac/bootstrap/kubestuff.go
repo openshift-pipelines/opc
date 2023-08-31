@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-github/v50/github"
+	"github.com/google/go-github/v53/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-const configMapPacLabel = "app.kubernetes.io/part-of=pipelines-as-code"
 
 // deleteSecret delete secret first if it exists
 func deleteSecret(ctx context.Context, run *params.Run, opts *bootstrapOpts) error {
