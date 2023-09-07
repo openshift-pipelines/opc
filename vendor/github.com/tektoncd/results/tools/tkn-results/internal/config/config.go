@@ -1,9 +1,8 @@
 package config
 
 import (
-	"fmt"
+	"log"
 
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -11,7 +10,7 @@ const (
 	// EnvSSLRootFilePath is the environment variable name for the path to
 	// local SSL cert to use for requests.
 	EnvSSLRootFilePath = "TKN_RESULTS_SSL_ROOTS_FILE_PATH"
-	// EnvSSLRootFilePath is the environment variable name for the SSL server
+	// EnvSSLServerNameOverride is the environment variable name for the SSL server
 	// name override.
 	EnvSSLServerNameOverride = "TKN_RESULTS_SSL_SERVER_NAME_OVERRIDE"
 )
@@ -21,6 +20,7 @@ var (
 		EnvSSLRootFilePath:       "Path to local SSL cert to use.",
 		EnvSSLServerNameOverride: "SSL server name override (useful if using with a proxy such as kubectl port-forward).",
 	}
+	cfg *Config
 )
 
 type Config struct {
@@ -36,7 +36,10 @@ type Config struct {
 
 	// SSL contains SSL configuration information.
 	SSL SSLConfig
-	// Insecure GRPC tls communication
+	// Portforward enable auto portforwarding to tekton-results-api-service
+	// When Address is set and Portforward is true, tkn-results will portforward tekton-results-api-service automatically
+	Portforward bool
+	// Insecure determines whether to use insecure GRPC tls communication
 	Insecure bool
 }
 
@@ -50,23 +53,20 @@ type ServiceAccount struct {
 	Name      string
 }
 
-func init() {
+func Init() {
 	viper.SetConfigName("results")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("$HOME/.config/tkn")
-	pflag.StringP("addr", "a", "", "Result API server address")
-	pflag.StringP("authtoken", "t", "", "authorization bearer token to use for authenticated requests")
-	pflag.BoolP("insecure", "", false, "insecure gprc tls communication")
+	err := setConfig()
+	if err != nil {
+		log.Fatal("error setting up flags and config", err)
+	}
 }
 
-func GetConfig() (*Config, error) {
-	if err := viper.BindPFlags(pflag.CommandLine); err != nil {
-		return nil, err
-	}
-
+func setConfig() error {
 	for k := range env {
 		if err := viper.BindEnv(k); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -77,7 +77,7 @@ func GetConfig() (*Config, error) {
 
 	// Initial config is contains the env variables,
 	// so that the unmarshal can take priority if those values are set.
-	cfg := &Config{
+	cfg = &Config{
 		SSL: SSLConfig{
 			RootsFilePath:      viper.GetString(EnvSSLRootFilePath),
 			ServerNameOverride: viper.GetString(EnvSSLServerNameOverride),
@@ -86,24 +86,33 @@ func GetConfig() (*Config, error) {
 
 	if err := viper.ReadInConfig(); err == nil {
 		if err := viper.Unmarshal(cfg); err != nil {
-			return nil, err
+			return err
 		}
 	} else {
-		fmt.Println(err)
+		return err
 	}
 
 	// Flags should override other values.
 	if s := viper.GetString("addr"); s != "" {
 		cfg.Address = s
 	}
-
-	if s := viper.GetBool("insecure"); s {
-		cfg.Insecure = true
-	}
-
 	if s := viper.GetString("authtoken"); s != "" {
 		cfg.Token = viper.GetString("authtoken")
 	}
+	if s := viper.GetString("sa"); s != "" {
+		cfg.ServiceAccount = &ServiceAccount{}
+		cfg.ServiceAccount.Name = viper.GetString("sa")
+		if s := viper.GetString("sa-ns"); s != "" {
+			cfg.ServiceAccount.Namespace = viper.GetString("sa-ns")
+		}
 
-	return cfg, nil
+	}
+
+	cfg.Portforward = viper.GetBool("portforward")
+	cfg.Insecure = viper.GetBool("insecure")
+	return nil
+}
+
+func GetConfig() *Config {
+	return cfg
 }
