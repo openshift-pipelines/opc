@@ -30,7 +30,7 @@ func GetRecordCommand(params *flags.Params) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: `get [flags] <record_path>
 
-  <record path>: Record path to query. This is typically "<namespace>/results/<result name>/records/<record name>".`,
+  <record name>: Fully qualified name of the record. This is typically "<namespace>/results/<result name>/records/<record uid>".`,
 		Short: "Get Record",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			resp, err := params.ResultsClient.GetRecord(cmd.Context(), &pb.GetRecordRequest{

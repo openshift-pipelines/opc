@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"time"
 
@@ -28,16 +28,21 @@ type ClientFactory struct {
 }
 
 func NewDefaultFactory() (*ClientFactory, error) {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		return nil, err
-	}
+	cfg := config.GetConfig()
 
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 	kubeconfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules, nil)
 	clientconfig, err := kubeconfig.ClientConfig()
 	if err != nil {
 		return nil, err
+	}
+	if cfg.ServiceAccount != nil && cfg.ServiceAccount.Name != "" &&
+		cfg.ServiceAccount.Namespace == "" {
+		ns, _, err := kubeconfig.Namespace()
+		if err != nil {
+			return nil, err
+		}
+		cfg.ServiceAccount.Namespace = ns
 	}
 	client, err := kubernetes.NewForConfig(clientconfig)
 	if err != nil {
@@ -50,9 +55,9 @@ func NewDefaultFactory() (*ClientFactory, error) {
 	}, nil
 }
 
-// Client creates a new Results gRPC client for the given factory settings.
+// ResultsClient creates a new Results gRPC client for the given factory settings.
 // TODO: Refactor this with watcher client code?
-func (f *ClientFactory) Client(ctx context.Context) (pb.ResultsClient, error) {
+func (f *ClientFactory) ResultsClient(ctx context.Context, overrideApiAddr string) (pb.ResultsClient, error) {
 	token, err := f.token(ctx)
 	if err != nil {
 		return nil, err
@@ -73,7 +78,11 @@ func (f *ClientFactory) Client(ctx context.Context) (pb.ResultsClient, error) {
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, f.cfg.Address, grpc.WithBlock(),
+	addr := f.cfg.Address
+	if overrideApiAddr != "" {
+		addr = overrideApiAddr
+	}
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithBlock(),
 		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultCallOptions(grpc.PerRPCCredentials(oauth.TokenSource{
 			TokenSource: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}),
@@ -86,14 +95,16 @@ func (f *ClientFactory) Client(ctx context.Context) (pb.ResultsClient, error) {
 	return pb.NewResultsClient(conn), nil
 }
 
-func DefaultClient(ctx context.Context) (pb.ResultsClient, error) {
+// DefaultResultsClient creates a new results client.
+// Will dial overrideApiAddr if overrideApiAddr is not empty
+func DefaultResultsClient(ctx context.Context, overrideApiAddr string) (pb.ResultsClient, error) {
 	f, err := NewDefaultFactory()
 
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := f.Client(ctx)
+	client, err := f.ResultsClient(ctx, overrideApiAddr)
 
 	if err != nil {
 		return nil, err
@@ -102,9 +113,9 @@ func DefaultClient(ctx context.Context) (pb.ResultsClient, error) {
 	return client, nil
 }
 
-// Client creates a new Results gRPC client for the given factory settings.
+// LogClient creates a new Results gRPC client for the given factory settings.
 // TODO: Refactor this with watcher client code?
-func (f *ClientFactory) LogClient(ctx context.Context) (pb.LogsClient, error) {
+func (f *ClientFactory) LogClient(ctx context.Context, overrideApiAddr string) (pb.LogsClient, error) {
 	token, err := f.token(ctx)
 	if err != nil {
 		return nil, err
@@ -125,7 +136,11 @@ func (f *ClientFactory) LogClient(ctx context.Context) (pb.LogsClient, error) {
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, f.cfg.Address, grpc.WithBlock(),
+	addr := f.cfg.Address
+	if overrideApiAddr != "" {
+		addr = overrideApiAddr
+	}
+	conn, err := grpc.DialContext(ctx, addr, grpc.WithBlock(),
 		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultCallOptions(grpc.PerRPCCredentials(oauth.TokenSource{
 			TokenSource: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token}),
@@ -138,14 +153,14 @@ func (f *ClientFactory) LogClient(ctx context.Context) (pb.LogsClient, error) {
 	return pb.NewLogsClient(conn), nil
 }
 
-func DefaultLogClient(ctx context.Context) (pb.LogsClient, error) {
+func DefaultLogsClient(ctx context.Context, overrideApiAddr string) (pb.LogsClient, error) {
 	f, err := NewDefaultFactory()
 
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := f.LogClient(ctx)
+	client, err := f.LogClient(ctx, overrideApiAddr)
 
 	if err != nil {
 		return nil, err
@@ -165,7 +180,7 @@ func (f *ClientFactory) certs() (*x509.CertPool, error) {
 			return nil, err
 		}
 		defer f.Close()
-		b, err := ioutil.ReadAll(f)
+		b, err := io.ReadAll(f)
 		if err != nil {
 			return nil, fmt.Errorf("unable to read TLS cert file: %v", err)
 		}
