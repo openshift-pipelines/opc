@@ -18,28 +18,35 @@ import (
 func (v *Provider) CheckPolicyAllowing(ctx context.Context, event *info.Event, allowedTeams []string) (bool, string) {
 	for _, team := range allowedTeams {
 		// TODO: caching
-		members, resp, err := v.Client.Teams.ListTeamMembersBySlug(ctx, event.Organization, team, &github.TeamListTeamMembersOptions{})
-		if resp.StatusCode == http.StatusNotFound {
-			// we explicitly disallow the policy when the team is not found
-			// maybe we should ignore it instead? i'd rather keep this explicit
-			// and conservative since being security related.
-			return false, fmt.Sprintf("team: %s is not found on the organization: %s", team, event.Organization)
-		}
-		if err != nil {
-			// probably a 500 or another api error, no need to try again and again with other teams
-			return false, fmt.Sprintf("error while getting team membership for user: %s in team: %s, error: %s", event.Sender, team, err.Error())
-		}
-		for _, member := range members {
-			if member.GetLogin() == event.Sender {
-				return true, fmt.Sprintf("allowing user: %s as a member of the team: %s", event.Sender, team)
+		opt := github.ListOptions{PerPage: v.paginedNumber}
+		for {
+			members, resp, err := v.Client.Teams.ListTeamMembersBySlug(ctx, event.Organization, team, &github.TeamListTeamMembersOptions{ListOptions: opt})
+			if resp.StatusCode == http.StatusNotFound {
+				// we explicitly disallow the policy when the team is not found
+				// maybe we should ignore it instead? i'd rather keep this explicit
+				// and conservative since being security related.
+				return false, fmt.Sprintf("team: %s is not found on the organization: %s", team, event.Organization)
 			}
+			if err != nil {
+				// probably a 500 or another api error, no need to try again and again with other teams
+				return false, fmt.Sprintf("error while getting team membership for user: %s in team: %s, error: %s", event.Sender, team, err.Error())
+			}
+			for _, member := range members {
+				if member.GetLogin() == event.Sender {
+					return true, fmt.Sprintf("allowing user: %s as a member of the team: %s", event.Sender, team)
+				}
+			}
+			if resp.NextPage == 0 {
+				break
+			}
+			opt.Page = resp.NextPage
 		}
 	}
 
 	return false, fmt.Sprintf("user: %s is not a member of any of the allowed teams: %v", event.Sender, allowedTeams)
 }
 
-func (v *Provider) IsAllowed(ctx context.Context, event *info.Event) (bool, error) {
+func (v *Provider) IsAllowed(ctx context.Context, event *info.Event, pac *info.PacOpts) (bool, error) {
 	aclPolicy := policy.Policy{
 		Settings: v.repoSettings,
 		Event:    event,
@@ -69,15 +76,15 @@ func (v *Provider) IsAllowed(ctx context.Context, event *info.Event) (bool, erro
 		return true, nil
 	}
 
-	// Finally try to parse all comments
-	return v.aclAllowedOkToTestFromAnOwner(ctx, event)
+	// Finally try to parse comments
+	return v.aclAllowedOkToTestFromAnOwner(ctx, event, pac)
 }
 
-// allowedOkToTestFromAnOwner Go over every comments in a pull request and check
+// allowedOkToTestFromAnOwner Go over comments in a pull request and check
 // if there is a /ok-to-test in there running an aclCheck again on the comment
 // Sender if she is an OWNER and then allow it to run CI.
 // TODO: pull out the github logic from there in an agnostic way.
-func (v *Provider) aclAllowedOkToTestFromAnOwner(ctx context.Context, event *info.Event) (bool, error) {
+func (v *Provider) aclAllowedOkToTestFromAnOwner(ctx context.Context, event *info.Event, pac *info.PacOpts) (bool, error) {
 	revent := info.NewEvent()
 	event.DeepCopyInto(revent)
 	revent.EventType = ""
@@ -88,8 +95,18 @@ func (v *Provider) aclAllowedOkToTestFromAnOwner(ctx context.Context, event *inf
 
 	switch event := revent.Event.(type) {
 	case *github.IssueCommentEvent:
+		// if we don't need to check old comments, then on issue comment we
+		// need to check if comment have /ok-to-test and is from allowed user
+		if !pac.RememberOKToTest {
+			return v.aclAllowedOkToTestCurrentComment(ctx, revent, event.Comment.GetID())
+		}
 		revent.URL = event.Issue.GetPullRequestLinks().GetHTMLURL()
 	case *github.PullRequestEvent:
+		// if we don't need to check old comments, then on push event we don't need
+		// to check anything for the non-allowed user
+		if !pac.RememberOKToTest {
+			return false, nil
+		}
 		revent.URL = event.GetPullRequest().GetHTMLURL()
 	default:
 		return false, nil
@@ -113,8 +130,29 @@ func (v *Provider) aclAllowedOkToTestFromAnOwner(ctx context.Context, event *inf
 	return false, nil
 }
 
+// aclAllowedOkToTestCurrentEvent only check if this is issue comment event
+// have /ok-to-test regex and sender is allowed.
+func (v *Provider) aclAllowedOkToTestCurrentComment(ctx context.Context, revent *info.Event, id int64) (bool, error) {
+	comment, _, err := v.Client.Issues.GetComment(ctx, revent.Organization, revent.Repository, id)
+	if err != nil {
+		return false, err
+	}
+	if acl.MatchRegexp(acl.OKToTestCommentRegexp, comment.GetBody()) {
+		revent.Sender = comment.User.GetLogin()
+		allowed, err := v.aclCheckAll(ctx, revent)
+		if err != nil {
+			return false, err
+		}
+		if allowed {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // aclCheck check if we are allowed to run the pipeline on that PR
 func (v *Provider) aclCheckAll(ctx context.Context, rev *info.Event) (bool, error) {
+	// if the sender own the repo, then allow it to run
 	if rev.Organization == rev.Sender {
 		return true, nil
 	}
@@ -188,22 +226,30 @@ func (v *Provider) checkPullRequestForSameURL(ctx context.Context, runevent *inf
 // checkSenderOrgMembership Get sender user's organization. We can
 // only get the one that the user sets as public 🤷
 func (v *Provider) checkSenderOrgMembership(ctx context.Context, runevent *info.Event) (bool, error) {
-	users, resp, err := v.Client.Organizations.ListMembers(ctx, runevent.Organization,
-		&github.ListMembersOptions{})
-	// If we are 404 it means we are checking a repo owner and not a org so let's bail out with grace
-	if resp != nil && resp.StatusCode == http.StatusNotFound {
-		return false, nil
+	opt := &github.ListMembersOptions{
+		ListOptions: github.ListOptions{PerPage: v.paginedNumber},
 	}
 
-	if err != nil {
-		return false, err
-	}
-	for _, v := range users {
-		if v.GetLogin() == runevent.Sender {
-			return true, nil
+	for {
+		users, resp, err := v.Client.Organizations.ListMembers(ctx, runevent.Organization, opt)
+		// If we are 404 it means we are checking a repo owner and not a org so let's bail out with grace
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return false, nil
 		}
-	}
 
+		if err != nil {
+			return false, err
+		}
+		for _, v := range users {
+			if v.GetLogin() == runevent.Sender {
+				return true, nil
+			}
+		}
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
 	return false, nil
 }
 
@@ -236,15 +282,24 @@ func (v *Provider) GetStringPullRequestComment(ctx context.Context, runevent *in
 		return nil, err
 	}
 
-	comments, _, err := v.Client.Issues.ListComments(ctx, runevent.Organization, runevent.Repository,
-		prNumber, &github.IssueListCommentsOptions{})
-	if err != nil {
-		return nil, err
+	opt := &github.IssueListCommentsOptions{
+		ListOptions: github.ListOptions{PerPage: v.paginedNumber},
 	}
-	for _, v := range comments {
-		if acl.MatchRegexp(reg, v.GetBody()) {
-			ret = append(ret, v)
+	for {
+		comments, resp, err := v.Client.Issues.ListComments(ctx, runevent.Organization, runevent.Repository,
+			prNumber, opt)
+		if err != nil {
+			return nil, err
 		}
+		for _, v := range comments {
+			if acl.MatchRegexp(reg, v.GetBody()) {
+				ret = append(ret, v)
+			}
+		}
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
 	}
 	return ret, nil
 }

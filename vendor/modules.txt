@@ -1069,10 +1069,11 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-pipelines/pipelines-as-code v0.20.0
+# github.com/openshift-pipelines/pipelines-as-code v0.21.0
 ## explicit; go 1.19
 github.com/openshift-pipelines/pipelines-as-code/pkg/acl
 github.com/openshift-pipelines/pipelines-as-code/pkg/action
+github.com/openshift-pipelines/pipelines-as-code/pkg/apis/incoming
 github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode
 github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys
 github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1
@@ -1498,7 +1499,7 @@ github.com/tektoncd/pipeline/pkg/substitution
 ## explicit; go 1.19
 github.com/tektoncd/results/proto/pipeline/v1beta1/pipeline_go_proto
 github.com/tektoncd/results/proto/v1alpha2/results_go_proto
-# github.com/tektoncd/results/tools/tkn-results v0.0.0-20230913032018-660f221c6156
+# github.com/tektoncd/results/tools/tkn-results v0.0.0-20230913052618-821234bc710b
 ## explicit; go 1.19
 github.com/tektoncd/results/tools/tkn-results/cmd
 github.com/tektoncd/results/tools/tkn-results/cmd/logs
