@@ -2228,8 +2228,8 @@ github.com/opencontainers/selinux v1.6.0/go.mod h1:VVGKuOLlE7v4PJyT6h7mNWvq1rzqi
 github.com/opencontainers/selinux v1.8.0/go.mod h1:RScLhm78qiWa2gbVCcGkC7tCGdgk3ogry1nUQF8Evvo=
 github.com/opencontainers/selinux v1.8.2/go.mod h1:MUIHuUEvKB1wtJjQdOyYRgOnLD2xAPP8dBsCoU0KuF8=
 github.com/opencontainers/selinux v1.10.0/go.mod h1:2i0OySw99QjzBBQByd1Gr9gSjvuho1lHsJxIJ3gGbJI=
-github.com/openshift-pipelines/pipelines-as-code v0.20.0 h1:RKedodJ7h+LdoDLL2mD7tVdEhE4ME/hqnPCYFp5hJOk=
-github.com/openshift-pipelines/pipelines-as-code v0.20.0/go.mod h1:tPoF6CjApxEk+bVRvUIUDopMz3b2gDAa26wpwpvc4jY=
+github.com/openshift-pipelines/pipelines-as-code v0.21.0 h1:jTRJEJQ4DisvRqYS67m0FpYuREjsopEPO/q62hjfy7s=
+github.com/openshift-pipelines/pipelines-as-code v0.21.0/go.mod h1:tPoF6CjApxEk+bVRvUIUDopMz3b2gDAa26wpwpvc4jY=
 github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
@@ -2530,8 +2530,8 @@ github.com/tektoncd/pipeline v0.50.1 h1:Asdfn1MxUSTlfzmr0PV4BPIEH7K4QLGym33nLgQl
 github.com/tektoncd/pipeline v0.50.1/go.mod h1:OjhCfhPQbVvK6GUmIseL2ipjaQ8ILcUerMk4P4sCcHA=
 github.com/tektoncd/results v0.8.0 h1:C+3NmjFP1TB0OyRThPxsBFwhaNhcnL0ztq3eLfhHxO0=
 github.com/tektoncd/results v0.8.0/go.mod h1:fFoYhM82IazRmdFkjuP88128Rplj9hJBwB7NwkKTmaQ=
-github.com/tektoncd/results/tools/tkn-results v0.0.0-20230913032018-660f221c6156 h1:na/QCW4SFnKQvYVL35zil8K0jDm5eF2C5Lr5S4qvgPg=
-github.com/tektoncd/results/tools/tkn-results v0.0.0-20230913032018-660f221c6156/go.mod h1:Rb3T7iud6ZtPv3doq6dke0RYWLrq8gjaURe2jKCVMxM=
+github.com/tektoncd/results/tools/tkn-results v0.0.0-20230913052618-821234bc710b h1:rv9zpUaK+PlUNQKyCrypKeCb8wbYiCMgKTG/WzU0KUw=
+github.com/tektoncd/results/tools/tkn-results v0.0.0-20230913052618-821234bc710b/go.mod h1:Rb3T7iud6ZtPv3doq6dke0RYWLrq8gjaURe2jKCVMxM=
 github.com/tektoncd/triggers v0.25.0 h1:HaHZ0w8RpeIvB/7DoIZz+KhIOAVzPiFIPZOrDtvEPbM=
 github.com/tektoncd/triggers v0.25.0/go.mod h1:yIxJZ4rLqZmLidFgyhR882BEy3gaW3gQkSsofP1KlRM=
 github.com/thales-e-security/pool v0.0.2 h1:RAPs4q2EbWsTit6tpzuvTFlgFRJ3S8Evf5gtvVDbmPg=
