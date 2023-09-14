@@ -5,12 +5,12 @@
 class Opc < Formula
   desc "A CLI for OpenShift Pipeline"
   homepage "https://github.com/openshift-pipelines/opc"
-  version "1.11.0-rc1"
+  version "1.12.0"
 
   on_macos do
-    if Hardware::CPU.intel?
-      url "https://github.com/openshift-pipelines/opc/releases/download/v1.11.0-rc1/opc_1.11.0-rc1_Darwin_x86_64.tar.gz"
-      sha256 "9e8bd9bd2229c300f1f7e64ac881581fd4d8136badb7c4c4b4a5395d58369f94"
+    if Hardware::CPU.arm?
+      url "https://github.com/openshift-pipelines/opc/releases/download/v1.12.0/opc_1.12.0_darwin_arm64.tar.gz"
+      sha256 "d64b217192f71e67ae9426b2b4eda2a97189d940f22b79552bf54f5a170102d9"
 
       def install
         bin.install "opc" => "opc"
@@ -21,9 +21,9 @@ class Opc < Formula
         prefix.install_metafiles
       end
     end
-    if Hardware::CPU.arm?
-      url "https://github.com/openshift-pipelines/opc/releases/download/v1.11.0-rc1/opc_1.11.0-rc1_Darwin_arm64.tar.gz"
-      sha256 "a4901c0e0449a3c1c53445c5e6f672bbbff0f2d3b404d6c7204d98a8e4219991"
+    if Hardware::CPU.intel?
+      url "https://github.com/openshift-pipelines/opc/releases/download/v1.12.0/opc_1.12.0_darwin_x86_64.tar.gz"
+      sha256 "39a8be5fa47d1d370c86ae8d9006b9c0bbe119f737071c637f137d27fe413445"
 
       def install
         bin.install "opc" => "opc"
@@ -38,8 +38,8 @@ class Opc < Formula
 
   on_linux do
     if Hardware::CPU.intel?
-      url "https://github.com/openshift-pipelines/opc/releases/download/v1.11.0-rc1/opc_1.11.0-rc1_Linux_x86_64.tar.gz"
-      sha256 "21886e7e3c45f6a38e557363258c74816b2e100865bfb123d9f63cdcd4d281ae"
+      url "https://github.com/openshift-pipelines/opc/releases/download/v1.12.0/opc_1.12.0_linux_x86_64.tar.gz"
+      sha256 "a426085a7ff4976118c9f5587bd7bdddab07a8b6451d259d77388bc581906a7e"
 
       def install
         bin.install "opc" => "opc"
@@ -51,8 +51,8 @@ class Opc < Formula
       end
     end
     if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
-      url "https://github.com/openshift-pipelines/opc/releases/download/v1.11.0-rc1/opc_1.11.0-rc1_Linux_arm64.tar.gz"
-      sha256 "593ffa2f10dc893d72378bfd84138917ac83a8480fc5a17397de8d8d587b2941"
+      url "https://github.com/openshift-pipelines/opc/releases/download/v1.12.0/opc_1.12.0_linux_arm64.tar.gz"
+      sha256 "21a97bf96d34bcad72f4e5d2c9fdb3c732fe3343ae0a4b60a06fa773c4b5986c"
 
       def install
         bin.install "opc" => "opc"
