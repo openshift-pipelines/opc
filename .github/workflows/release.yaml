@@ -28,7 +28,7 @@ jobs:
     - uses: goreleaser/goreleaser-action@v4.6.0
       with:
         version: latest
-        args: release --timeout=60m --rm-dist
+        args: release --timeout=60m --clean
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         AUR_PRIVATE_KEY: ${{ secrets.AUR_PRIVATE_KEY }}
