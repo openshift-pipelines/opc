@@ -62,12 +62,6 @@ brew tap openshift-pipelines/opc https://github.com/openshift-pipelines/opc
 brew install opc
 ```
 
-## [Arch](https://aur.archlinux.org/packages/opc-bin)
-
-```shell
-yay -S opc-bin
-```
-
 ## GO
 
 ```shell
