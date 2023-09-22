@@ -14,18 +14,57 @@
 
 package compiler
 
-import (
-	"github.com/google/gnostic-models/compiler"
-)
+import "fmt"
 
 // Error represents compiler errors and their location in the document.
-type Error = compiler.Error
+type Error struct {
+	Context *Context
+	Message string
+}
 
 // NewError creates an Error.
-var NewError = compiler.NewError
+func NewError(context *Context, message string) *Error {
+	return &Error{Context: context, Message: message}
+}
+
+func (err *Error) locationDescription() string {
+	if err.Context.Node != nil {
+		return fmt.Sprintf("[%d,%d] %s", err.Context.Node.Line, err.Context.Node.Column, err.Context.Description())
+	}
+	return err.Context.Description()
+}
+
+// Error returns the string value of an Error.
+func (err *Error) Error() string {
+	if err.Context == nil {
+		return err.Message
+	}
+	return err.locationDescription() + " " + err.Message
+}
 
 // ErrorGroup is a container for groups of Error values.
-type ErrorGroup = compiler.ErrorGroup
+type ErrorGroup struct {
+	Errors []error
+}
 
 // NewErrorGroupOrNil returns a new ErrorGroup for a slice of errors or nil if the slice is empty.
-var NewErrorGroupOrNil = compiler.NewErrorGroupOrNil
+func NewErrorGroupOrNil(errors []error) error {
+	if len(errors) == 0 {
+		return nil
+	} else if len(errors) == 1 {
+		return errors[0]
+	} else {
+		return &ErrorGroup{Errors: errors}
+	}
+}
+
+func (group *ErrorGroup) Error() string {
+	result := ""
+	for i, err := range group.Errors {
+		if i > 0 {
+			result += "\n"
+		}
+		result += err.Error()
+	}
+	return result
+}
