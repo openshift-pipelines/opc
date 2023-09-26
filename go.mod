@@ -34,10 +34,10 @@ require (
 )
 
 require (
-	github.com/openshift-pipelines/pipelines-as-code v0.21.0
+	github.com/openshift-pipelines/pipelines-as-code v0.21.1
 	github.com/spf13/cobra v1.7.0
 	github.com/tektoncd/cli v0.32.0
-	github.com/tektoncd/results/tools/tkn-results v0.0.0-20230913032018-660f221c6156
+	github.com/tektoncd/results/tools/tkn-results v0.0.0-20230922135423-d93166e0e127
 )
 
 require (
@@ -280,7 +280,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tektoncd/chains v0.17.0 // indirect
 	github.com/tektoncd/hub v1.14.0 // indirect
-	github.com/tektoncd/results v0.8.0 // indirect
+	github.com/tektoncd/results v0.7.0 // indirect
 	github.com/thales-e-security/pool v0.0.2 // indirect
 	github.com/theupdateframework/go-tuf v0.6.1 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
