@@ -15,6 +15,7 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/events"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
@@ -46,7 +47,8 @@ type Provider struct {
 	provenance    string
 	Run           *params.Run
 	RepositoryIDs []int64
-	repoSettings  *v1alpha1.Settings
+	repo          *v1alpha1.Repository
+	eventEmitter  *events.EventEmitter
 	paginedNumber int
 	skippedRun
 }
@@ -86,22 +88,22 @@ func splitGithubURL(event *info.Event, uri string) (string, string, string, stri
 	if pURL.RawPath != "" {
 		path = pURL.RawPath
 	}
-	splitted := strings.Split(path, "/")
-	if len(splitted) <= 3 {
+	split := strings.Split(path, "/")
+	if len(split) <= 3 {
 		return "", "", "", "", fmt.Errorf("URL %s does not seem to be a proper provider url: %w", uri, err)
 	}
 	var spOrg, spRepo, spRef, spPath string
 	switch {
-	case (pURL.Host == publicRawURLHost || detectGHERawURL(event, pURL.Host)) && len(splitted) >= 5:
-		spOrg = splitted[1]
-		spRepo = splitted[2]
-		spRef = splitted[3]
-		spPath = strings.Join(splitted[4:], "/")
-	case splitted[3] == "blob" && len(splitted) >= 5:
-		spOrg = splitted[1]
-		spRepo = splitted[2]
-		spRef = splitted[4]
-		spPath = strings.Join(splitted[5:], "/")
+	case (pURL.Host == publicRawURLHost || detectGHERawURL(event, pURL.Host)) && len(split) >= 5:
+		spOrg = split[1]
+		spRepo = split[2]
+		spRef = split[3]
+		spPath = strings.Join(split[4:], "/")
+	case split[3] == "blob" && len(split) >= 5:
+		spOrg = split[1]
+		spRepo = split[2]
+		spRef = split[4]
+		spPath = strings.Join(split[5:], "/")
 	default:
 		return "", "", "", "", fmt.Errorf("cannot recognize task as a Github URL to fetch: %s", uri)
 	}
@@ -259,11 +261,12 @@ func (v *Provider) checkWebhookSecretValidity(ctx context.Context, cw clockwork.
 	return nil
 }
 
-func (v *Provider) SetClient(ctx context.Context, run *params.Run, event *info.Event, repoSettings *v1alpha1.Settings) error {
+func (v *Provider) SetClient(ctx context.Context, run *params.Run, event *info.Event, repo *v1alpha1.Repository, eventsEmitter *events.EventEmitter) error {
 	client, providerName, apiURL := makeClient(ctx, event.Provider.URL, event.Provider.Token)
 	v.providerName = providerName
 	v.Run = run
-	v.repoSettings = repoSettings
+	v.repo = repo
+	v.eventEmitter = eventsEmitter
 
 	// check that the Client is not already set, so we don't override our fakeclient
 	// from unittesting.
@@ -331,7 +334,7 @@ func (v *Provider) GetTektonDir(ctx context.Context, runevent *info.Event, path,
 // be run after sewebhook while we already matched a token.
 func (v *Provider) GetCommitInfo(ctx context.Context, runevent *info.Event) error {
 	if v.Client == nil {
-		return fmt.Errorf("no github client has been initiliazed, " +
+		return fmt.Errorf("no github client has been initialized, " +
 			"exiting... (hint: did you forget setting a secret on your repo?)")
 	}
 
@@ -488,7 +491,7 @@ func (v *Provider) getObject(ctx context.Context, sha string, runevent *info.Eve
 // ListRepos lists all the repos for a particular token
 func ListRepos(ctx context.Context, v *Provider) ([]string, error) {
 	if v.Client == nil {
-		return []string{}, fmt.Errorf("no github client has been initiliazed, " +
+		return []string{}, fmt.Errorf("no github client has been initialized, " +
 			"exiting... (hint: did you forget setting a secret on your repo?)")
 	}
 
