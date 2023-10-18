@@ -12,15 +12,15 @@ require (
 	github.com/jonboulle/clockwork v0.4.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tektoncd/pipeline v0.50.1 // indirect
-	github.com/tektoncd/triggers v0.25.0 // indirect
+	github.com/tektoncd/pipeline v0.50.2 // indirect
+	github.com/tektoncd/triggers v0.25.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.25.0 // indirect
-	golang.org/x/net v0.15.0 // indirect
-	golang.org/x/sys v0.12.0 // indirect
-	golang.org/x/term v0.12.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/grpc v1.58.2 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
@@ -28,16 +28,16 @@ require (
 	k8s.io/api v0.28.2 // indirect
 	k8s.io/apimachinery v0.28.2 // indirect
 	k8s.io/client-go v1.5.2 // indirect
-	knative.dev/pkg v0.0.0-20230718152110-aef227e72ead // indirect
+	knative.dev/pkg v0.0.0-20231011201526-df28feae6d34 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 
 )
 
 require (
-	github.com/openshift-pipelines/pipelines-as-code v0.21.1
+	github.com/openshift-pipelines/pipelines-as-code v0.21.3
 	github.com/spf13/cobra v1.7.0
-	github.com/tektoncd/cli v0.32.0
-	github.com/tektoncd/results/tools/tkn-results v0.0.0-20230922150627-225b6870864d
+	github.com/tektoncd/cli v0.32.1
+	github.com/tektoncd/results/tools/tkn-results v0.0.0-20231019055929-46f209b0f8f5
 )
 
 require (
@@ -279,8 +279,8 @@ require (
 	github.com/stoewer/go-strcase v1.3.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
-	github.com/tektoncd/chains v0.17.0 // indirect
-	github.com/tektoncd/hub v1.14.0 // indirect
+	github.com/tektoncd/chains v0.17.1 // indirect
+	github.com/tektoncd/hub v1.14.1 // indirect
 	github.com/tektoncd/results v0.8.0 // indirect
 	github.com/thales-e-security/pool v0.0.2 // indirect
 	github.com/theupdateframework/go-tuf v0.6.1 // indirect
@@ -306,7 +306,7 @@ require (
 	gocloud.dev v0.32.0 // indirect
 	gocloud.dev/docstore/mongodocstore v0.30.0 // indirect
 	gocloud.dev/pubsub/kafkapubsub v0.32.0 // indirect
-	golang.org/x/crypto v0.13.0 // indirect
+	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/oauth2 v0.12.0 // indirect
