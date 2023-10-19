@@ -1361,7 +1361,7 @@ github.com/syndtr/goleveldb/leveldb/opt
 github.com/syndtr/goleveldb/leveldb/storage
 github.com/syndtr/goleveldb/leveldb/table
 github.com/syndtr/goleveldb/leveldb/util
-# github.com/tektoncd/chains v0.17.0
+# github.com/tektoncd/chains v0.17.1
 ## explicit; go 1.19
 github.com/tektoncd/chains/internal/backport
 github.com/tektoncd/chains/pkg/artifacts
@@ -1383,7 +1383,7 @@ github.com/tektoncd/chains/pkg/chains/storage/pubsub
 github.com/tektoncd/chains/pkg/chains/storage/tekton
 github.com/tektoncd/chains/pkg/config
 github.com/tektoncd/chains/pkg/patch
-# github.com/tektoncd/cli v0.32.0
+# github.com/tektoncd/cli v0.32.1
 ## explicit; go 1.20
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/bundle
@@ -1433,7 +1433,7 @@ github.com/tektoncd/cli/pkg/triggertemplate
 github.com/tektoncd/cli/pkg/trustedresources
 github.com/tektoncd/cli/pkg/version
 github.com/tektoncd/cli/pkg/workspaces
-# github.com/tektoncd/hub v1.14.0
+# github.com/tektoncd/hub v1.14.1
 ## explicit; go 1.20
 github.com/tektoncd/hub/api/pkg/cli/app
 github.com/tektoncd/hub/api/pkg/cli/cmd
@@ -1461,7 +1461,7 @@ github.com/tektoncd/hub/api/v1/gen/http/catalog/client
 github.com/tektoncd/hub/api/v1/gen/http/resource/client
 github.com/tektoncd/hub/api/v1/gen/resource
 github.com/tektoncd/hub/api/v1/gen/resource/views
-# github.com/tektoncd/pipeline v0.50.1
+# github.com/tektoncd/pipeline v0.50.2
 ## explicit; go 1.19
 github.com/tektoncd/pipeline/pkg/apis/config
 github.com/tektoncd/pipeline/pkg/apis/pipeline
@@ -1509,7 +1509,7 @@ github.com/tektoncd/results/tools/tkn-results/internal/config
 github.com/tektoncd/results/tools/tkn-results/internal/flags
 github.com/tektoncd/results/tools/tkn-results/internal/format
 github.com/tektoncd/results/tools/tkn-results/internal/portforward
-# github.com/tektoncd/triggers v0.25.0
+# github.com/tektoncd/triggers v0.25.1
 ## explicit; go 1.19
 github.com/tektoncd/triggers/pkg/apis/config
 github.com/tektoncd/triggers/pkg/apis/triggers
@@ -2405,7 +2405,7 @@ k8s.io/utils/pointer
 k8s.io/utils/ptr
 k8s.io/utils/strings/slices
 k8s.io/utils/trace
-# knative.dev/pkg v0.0.0-20230718152110-aef227e72ead => knative.dev/pkg v0.0.0-20230502134655-db8a35330281
+# knative.dev/pkg v0.0.0-20231011201526-df28feae6d34 => knative.dev/pkg v0.0.0-20230502134655-db8a35330281
 ## explicit; go 1.18
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
