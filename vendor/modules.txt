@@ -1069,7 +1069,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-pipelines/pipelines-as-code v0.21.3
+# github.com/openshift-pipelines/pipelines-as-code v0.21.4
 ## explicit; go 1.19
 github.com/openshift-pipelines/pipelines-as-code/pkg/acl
 github.com/openshift-pipelines/pipelines-as-code/pkg/action
@@ -1461,7 +1461,7 @@ github.com/tektoncd/hub/api/v1/gen/http/catalog/client
 github.com/tektoncd/hub/api/v1/gen/http/resource/client
 github.com/tektoncd/hub/api/v1/gen/resource
 github.com/tektoncd/hub/api/v1/gen/resource/views
-# github.com/tektoncd/pipeline v0.50.2
+# github.com/tektoncd/pipeline v0.50.3
 ## explicit; go 1.19
 github.com/tektoncd/pipeline/pkg/apis/config
 github.com/tektoncd/pipeline/pkg/apis/pipeline
