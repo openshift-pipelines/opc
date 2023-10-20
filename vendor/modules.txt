@@ -1383,7 +1383,7 @@ github.com/tektoncd/chains/pkg/chains/storage/pubsub
 github.com/tektoncd/chains/pkg/chains/storage/tekton
 github.com/tektoncd/chains/pkg/config
 github.com/tektoncd/chains/pkg/patch
-# github.com/tektoncd/cli v0.32.1
+# github.com/tektoncd/cli v0.32.2
 ## explicit; go 1.20
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/bundle
@@ -1433,7 +1433,7 @@ github.com/tektoncd/cli/pkg/triggertemplate
 github.com/tektoncd/cli/pkg/trustedresources
 github.com/tektoncd/cli/pkg/version
 github.com/tektoncd/cli/pkg/workspaces
-# github.com/tektoncd/hub v1.14.1
+# github.com/tektoncd/hub v1.14.2
 ## explicit; go 1.20
 github.com/tektoncd/hub/api/pkg/cli/app
 github.com/tektoncd/hub/api/pkg/cli/cmd
@@ -1509,7 +1509,7 @@ github.com/tektoncd/results/tools/tkn-results/internal/config
 github.com/tektoncd/results/tools/tkn-results/internal/flags
 github.com/tektoncd/results/tools/tkn-results/internal/format
 github.com/tektoncd/results/tools/tkn-results/internal/portforward
-# github.com/tektoncd/triggers v0.25.1
+# github.com/tektoncd/triggers v0.25.2
 ## explicit; go 1.19
 github.com/tektoncd/triggers/pkg/apis/config
 github.com/tektoncd/triggers/pkg/apis/triggers
