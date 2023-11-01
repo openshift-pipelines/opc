@@ -2228,8 +2228,8 @@ github.com/opencontainers/selinux v1.6.0/go.mod h1:VVGKuOLlE7v4PJyT6h7mNWvq1rzqi
 github.com/opencontainers/selinux v1.8.0/go.mod h1:RScLhm78qiWa2gbVCcGkC7tCGdgk3ogry1nUQF8Evvo=
 github.com/opencontainers/selinux v1.8.2/go.mod h1:MUIHuUEvKB1wtJjQdOyYRgOnLD2xAPP8dBsCoU0KuF8=
 github.com/opencontainers/selinux v1.10.0/go.mod h1:2i0OySw99QjzBBQByd1Gr9gSjvuho1lHsJxIJ3gGbJI=
-github.com/openshift-pipelines/pipelines-as-code v0.21.4 h1:7QOlLWMArhsPJu2oPhpRSvTC0E553CoZ6BhN10vkytQ=
-github.com/openshift-pipelines/pipelines-as-code v0.21.4/go.mod h1:Zg2pBr2y/XwLIpiFTlG71g3oORIMb8+7sCQaDJ7Jfss=
+github.com/openshift-pipelines/pipelines-as-code v0.21.5 h1:jbKUUuidD6n78EI/Ibdb44BnlKImkcNttPGjcgyK0uQ=
+github.com/openshift-pipelines/pipelines-as-code v0.21.5/go.mod h1:Zg2pBr2y/XwLIpiFTlG71g3oORIMb8+7sCQaDJ7Jfss=
 github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
