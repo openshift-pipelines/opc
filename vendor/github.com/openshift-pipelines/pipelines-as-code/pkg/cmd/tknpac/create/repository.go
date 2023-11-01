@@ -252,7 +252,7 @@ func createRepoCRD(ctx context.Context, opts *RepoOptions) (string, string, erro
 	if err != nil {
 		return "", "", fmt.Errorf("invalid git URL: %s, it should be of format: https://gitprovider/project/repository", opts.Event.URL)
 	}
-	repositoryName := strings.ReplaceAll(repoOwner, "/", "-")
+	repositoryName := formatting.CleanKubernetesName(repoOwner)
 	opts.Repository, err = opts.Run.Clients.PipelineAsCode.PipelinesascodeV1alpha1().Repositories(opts.Repository.Namespace).Create(
 		ctx,
 		&apipac.Repository{
