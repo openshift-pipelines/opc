@@ -2531,8 +2531,8 @@ github.com/tektoncd/pipeline v0.50.3 h1:4QQza8hewF+4wdBLbRw26CDQx0/y58WYfZwQ/xAs
 github.com/tektoncd/pipeline v0.50.3/go.mod h1:33ZU30CR8Pbr6Pb4l7+Tz1oPGsJBY5yxyG8Z+ejGO0w=
 github.com/tektoncd/results v0.7.0 h1:ODAxlkoBgg7ulR1k6BJScjMYAYJCIo+xJPABYHhZOj4=
 github.com/tektoncd/results v0.7.0/go.mod h1:vl9lSM1BiWqPJH8CsiB2d7qYJRUlFe+Q6W/z2h0wTJQ=
-github.com/tektoncd/results/tools/tkn-results v0.0.0-20230922135423-d93166e0e127 h1:TWtYXf2i7fuAfB23M82MyoJRKZ3gK7H7SKLsqo/6rPY=
-github.com/tektoncd/results/tools/tkn-results v0.0.0-20230922135423-d93166e0e127/go.mod h1:Rb3T7iud6ZtPv3doq6dke0RYWLrq8gjaURe2jKCVMxM=
+github.com/tektoncd/results/tools/tkn-results v0.0.0-20231019055929-46f209b0f8f5 h1:C/oITab9wlPngsagVJokDlaU4/KMtB8V8WFw82DElSE=
+github.com/tektoncd/results/tools/tkn-results v0.0.0-20231019055929-46f209b0f8f5/go.mod h1:XHadiFd8ltP6Rbb9YsqX3tS1USyQyhw0ihr3fnpd3+w=
 github.com/tektoncd/triggers v0.25.2 h1:ijvWhGD/Ke56mmSBh9OMCPnE5GDI0x6rkNp7DwL0pS0=
 github.com/tektoncd/triggers v0.25.2/go.mod h1:7j1MqZnJAXu3yO85hNzvSExYaUEVE4wMVIbF8GYEYVk=
 github.com/thales-e-security/pool v0.0.2 h1:RAPs4q2EbWsTit6tpzuvTFlgFRJ3S8Evf5gtvVDbmPg=
