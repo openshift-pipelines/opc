@@ -14,15 +14,23 @@
 package bundle
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/bundle"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/params"
+)
+
+const (
+	sourceDateEpochEnv = "SOURCE_DATE_EPOCH"
+	defaultTimestamp   = 0
 )
 
 type pushOptions struct {
@@ -34,6 +42,8 @@ type pushOptions struct {
 	remoteOptions      bundle.RemoteOptions
 	annotationParams   []string
 	annotations        map[string]string
+	ctimeParam         string
+	ctime              time.Time
 }
 
 func pushCommand(_ cli.Params) *cobra.Command {
@@ -53,6 +63,9 @@ Authentication:
 
 Input:
 	Valid input in any form is valid Tekton YAML or JSON with a fully-specified "apiVersion" and "kind". To pass multiple objects in a single input, use "---" separators in YAML or a top-level "[]" in JSON.
+
+Created time:
+	The default created time of the OCI Image Configuration layer is set to 1970-01-01T00:00:00Z. Changing it can be done by either providing it via --ctime parameter or setting the SOURCE_DATE_EPOCH environment variable.
 `
 
 	c := &cobra.Command{
@@ -69,8 +82,11 @@ Input:
 				return errInvalidRef
 			}
 
-			_, err := name.ParseReference(args[0], name.StrictValidation, name.Insecure)
-			return err
+			if _, err := name.ParseReference(args[0], name.StrictValidation, name.Insecure); err != nil {
+				return err
+			}
+
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.stream = &cli.Stream{
@@ -84,6 +100,7 @@ Input:
 	}
 	c.Flags().StringSliceVarP(&opts.bundleContentPaths, "filenames", "f", []string{}, "List of fully-qualified file paths containing YAML or JSON defined Tekton objects to include in this bundle")
 	c.Flags().StringSliceVarP(&opts.annotationParams, "annotate", "", []string{}, "OCI Manifest annotation in the form of key=value to be added to the OCI image. Can be provided multiple times to add multiple annotations.")
+	c.Flags().StringVar(&opts.ctimeParam, "ctime", "", "YYYY-MM-DD, YYYY-MM-DDTHH:MM:SS or RFC3339 formatted created time to set, defaults to current time. In non RFC3339 syntax dates are in UTC timezone.")
 	bundle.AddRemoteFlags(c.Flags(), &opts.remoteOptions)
 
 	return c
@@ -99,8 +116,11 @@ func (p *pushOptions) parseArgsAndFlags(args []string) (err error) {
 		if path == "-" {
 			// If this flag's value is '-', assume the user has piped input into stdin.
 			stdinContents, err := io.ReadAll(p.stream.In)
-			if err != nil || len(stdinContents) == 0 {
+			if err != nil {
 				return fmt.Errorf("failed to read bundle contents from stdin: %w", err)
+			}
+			if len(stdinContents) == 0 {
+				return errors.New("failed to read bundle contents from stdin: empty input")
 			}
 			p.bundleContents = append(p.bundleContents, string(stdinContents))
 			continue
@@ -113,9 +133,15 @@ func (p *pushOptions) parseArgsAndFlags(args []string) (err error) {
 		p.bundleContents = append(p.bundleContents, string(contents))
 	}
 
-	p.annotations, err = params.ParseParams(p.annotationParams)
+	if p.annotations, err = params.ParseParams(p.annotationParams); err != nil {
+		return err
+	}
 
-	return err
+	if p.ctime, err = determineCTime(p.ctimeParam); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Run performs the principal logic of reading and parsing the input, creating the bundle, and publishing it.
@@ -124,7 +150,7 @@ func (p *pushOptions) Run(args []string) error {
 		return err
 	}
 
-	img, err := bundle.BuildTektonBundle(p.bundleContents, p.annotations, p.stream.Out)
+	img, err := bundle.BuildTektonBundle(p.bundleContents, p.annotations, p.ctime, p.stream.Out)
 	if err != nil {
 		return err
 	}
@@ -135,4 +161,39 @@ func (p *pushOptions) Run(args []string) error {
 	}
 	fmt.Fprintf(p.stream.Out, "\nPushed Tekton Bundle to %s\n", outputDigest)
 	return err
+}
+
+func determineCTime(t string) (parsed time.Time, err error) {
+	// if given the parameter don't lookup the SOURCE_DATE_EPOCH env var
+	if t == "" {
+		if sourceDateEpoch, found := os.LookupEnv(sourceDateEpochEnv); found && sourceDateEpoch != "" {
+			timestamp, err := strconv.ParseInt(sourceDateEpoch, 10, 64)
+			if err != nil {
+				// rather than ignore, report that SOURCE_DATE_EPOCH cannot be
+				// parsed, given that it is set seems like the best option
+				return time.Time{}, err
+			}
+			return time.Unix(timestamp, 0), nil
+		}
+	}
+
+	if t == "" {
+		return time.Unix(defaultTimestamp, 0), nil
+	}
+
+	parsed, err = time.Parse(time.DateOnly, t)
+
+	if err != nil {
+		parsed, err = time.Parse("2006-01-02T15:04:05", t)
+	}
+
+	if err != nil {
+		parsed, err = time.Parse(time.RFC3339, t)
+	}
+
+	if err != nil {
+		return parsed, fmt.Errorf("unable to parse provided time %q: %w", t, err)
+	}
+
+	return parsed, nil
 }
