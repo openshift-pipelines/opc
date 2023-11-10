@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/google/go-github/v53/github"
+	"github.com/google/go-github/v55/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
@@ -70,7 +70,8 @@ func (v *Provider) GetAppToken(ctx context.Context, kube kubernetes.Interface, g
 		if !strings.HasPrefix(gheURL, "https://") && !strings.HasPrefix(gheURL, "http://") {
 			gheURL = "https://" + gheURL
 		}
-		v.Client, _ = github.NewEnterpriseClient(gheURL, "", &http.Client{Transport: itr})
+		uploadURL := gheURL + "/api/uploads"
+		v.Client, _ = github.NewClient(&http.Client{Transport: itr}).WithEnterpriseURLs(gheURL, uploadURL)
 		itr.BaseURL = strings.TrimSuffix(v.Client.BaseURL.String(), "/")
 	} else {
 		v.Client = github.NewClient(&http.Client{Transport: itr})
@@ -229,6 +230,11 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		if err != nil {
 			return nil, err
 		}
+	case *github.CommitCommentEvent:
+		if v.Client == nil {
+			return nil, fmt.Errorf("gitops style comments operation is only supported with github apps integration")
+		}
+		return v.handleCommitCommentEvent(ctx, gitEvent)
 	case *github.PushEvent:
 		processedEvent.Organization = gitEvent.GetRepo().GetOwner().GetLogin()
 		processedEvent.Repository = gitEvent.GetRepo().GetName()
@@ -369,4 +375,63 @@ func (v *Provider) handleIssueCommentEvent(ctx context.Context, event *github.Is
 
 	v.Logger.Infof("issue_comment: pipelinerun %s on %s/%s#%d has been requested", action, runevent.Organization, runevent.Repository, runevent.PullRequestNumber)
 	return v.getPullRequest(ctx, runevent)
+}
+
+func (v *Provider) handleCommitCommentEvent(ctx context.Context, event *github.CommitCommentEvent) (*info.Event, error) {
+	action := "push"
+	runevent := info.NewEvent()
+	runevent.Organization = event.GetRepo().GetOwner().GetLogin()
+	runevent.Repository = event.GetRepo().GetName()
+	runevent.Sender = event.GetSender().GetLogin()
+	runevent.URL = event.GetRepo().GetHTMLURL()
+	runevent.SHA = event.GetComment().GetCommitID()
+	runevent.HeadURL = runevent.URL
+	runevent.BaseURL = runevent.HeadURL
+	runevent.EventType = "push"
+	runevent.TriggerTarget = "push"
+
+	// by default head and base branch is main
+	runevent.HeadBranch = "main"
+	runevent.BaseBranch = "main"
+
+	var (
+		branchName string
+		prName     string
+		err        error
+	)
+
+	// if it is a /test or /retest comment with pipelinerun name figure out the pipelinerun name
+	if provider.IsTestRetestComment(event.GetComment().GetBody()) {
+		prName, branchName, err = provider.GetPipelineRunAndBranchNameFromTestComment(event.GetComment().GetBody())
+		if err != nil {
+			return runevent, err
+		}
+		runevent.TargetTestPipelineRun = prName
+	}
+	if provider.IsCancelComment(event.GetComment().GetBody()) {
+		action = "cancellation"
+		prName, branchName, err = provider.GetPipelineRunAndBranchNameFromCancelComment(event.GetComment().GetBody())
+		if err != nil {
+			return runevent, err
+		}
+		runevent.TargetCancelPipelineRun = prName
+	}
+
+	if branchName != "" {
+		if err = v.isBranchContainsCommit(ctx, runevent, branchName); err != nil {
+			return runevent, err
+		}
+		runevent.HeadBranch = branchName
+		runevent.BaseBranch = branchName
+	}
+
+	if provider.IsCancelComment(event.GetComment().GetBody()) {
+		if err = v.isBranchContainsCommit(ctx, runevent, runevent.HeadBranch); err != nil {
+			runevent.CancelPipelineRuns = false
+			return runevent, err
+		}
+		runevent.CancelPipelineRuns = true
+	}
+	v.Logger.Infof("commit_comment: pipelinerun %s on %s/%s#%s has been requested", action, runevent.Organization, runevent.Repository, runevent.SHA)
+	return runevent, nil
 }

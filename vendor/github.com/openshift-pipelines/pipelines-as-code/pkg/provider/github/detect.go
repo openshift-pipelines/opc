@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/google/go-github/v53/github"
+	"github.com/google/go-github/v55/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
 	"go.uber.org/zap"
@@ -88,6 +88,19 @@ func detectTriggerTypeFromPayload(ghEventType string, eventInt any) (info.Trigge
 			return info.TriggerTypeCheckRunRerequested, ""
 		}
 		return "", fmt.Sprintf("check_run: unsupported action \"%s\"", event.GetAction())
+	case *github.CommitCommentEvent:
+		if event.GetAction() == "created" {
+			if provider.IsTestRetestComment(event.GetComment().GetBody()) {
+				return info.TriggerTypeRetest, ""
+			}
+			if provider.IsOkToTestComment(event.GetComment().GetBody()) {
+				return info.TriggerTypeOkToTest, ""
+			}
+			if provider.IsCancelComment(event.GetComment().GetBody()) {
+				return info.TriggerTypeCancel, ""
+			}
+		}
+		return "", fmt.Sprintf("commit_comment: unsupported action \"%s\"", event.GetAction())
 	}
 	return "", fmt.Sprintf("github: event \"%v\" is not supported", ghEventType)
 }
