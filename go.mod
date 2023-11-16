@@ -27,13 +27,13 @@ require (
 	k8s.io/api v0.28.2 // indirect
 	k8s.io/apimachinery v0.28.2 // indirect
 	k8s.io/client-go v1.5.2 // indirect
-	knative.dev/pkg v0.0.0-20231016142534-0d0cd4e7dbef // indirect
+	knative.dev/pkg v0.0.0-20231023150739-56bfe0dd9626 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 
 )
 
 require (
-	github.com/openshift-pipelines/pipelines-as-code v0.22.1
+	github.com/openshift-pipelines/pipelines-as-code v0.22.2
 	github.com/spf13/cobra v1.8.0
 	github.com/tektoncd/cli v0.33.0
 	github.com/tektoncd/results/tools/tkn-results v0.0.0-20231019055929-46f209b0f8f5
@@ -306,6 +306,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.19.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	go.step.sm/crypto v0.36.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	goa.design/goa/v3 v3.14.0 // indirect
 	gocloud.dev v0.34.0 // indirect
 	gocloud.dev/docstore/mongodocstore v0.34.0 // indirect
