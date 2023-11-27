@@ -1472,8 +1472,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.0-rc5 h1:Ygwkfw9bpDvs+c9E34SdgGOj41dX/cbdlwvlWt0pnFI=
 github.com/opencontainers/image-spec v1.1.0-rc5/go.mod h1:X4pATf0uXsnn3g5aiGIsVnJBR4mxhKzfwmvK/B2NTm8=
-github.com/openshift-pipelines/pipelines-as-code v0.22.1 h1:av8YrJlpIF5NFbx1lzgdO9zNxO6lQkX2XYQdxlIO8/s=
-github.com/openshift-pipelines/pipelines-as-code v0.22.1/go.mod h1:UqNaLeMtYipWdVSHD0iJ/mBK9br99q4jhbuvCNwP4A8=
+github.com/openshift-pipelines/pipelines-as-code v0.22.4 h1:KOBptvitI9c4SfK5GIayPhqK0xYtxaAtoET2O5wku1I=
+github.com/openshift-pipelines/pipelines-as-code v0.22.4/go.mod h1:WTXNKi3H4Wf2qshbmhsfyZwp/vJlISqmXifnVQWpOnk=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openzipkin/zipkin-go v0.4.2 h1:zjqfqHjUpPmB3c1GlCvvgsM1G4LkvqQbBDueDOCg/jA=
@@ -1750,6 +1750,8 @@ go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5/go.mod h1:nmDLcffg48OtT/PSW0H
 go.step.sm/crypto v0.36.0 h1:njrVQqjWVyCzHxqQUDprR7HXypZX8IxtOqe4IIHSjgU=
 go.step.sm/crypto v0.36.0/go.mod h1:XMRbgkhoigPLaPMjZeY1VFIYXVw03Wul0+5lENF6l7c=
 go.uber.org/atomic v1.4.0/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
+go.uber.org/atomic v1.11.0 h1:ZvwS0R+56ePWxUNi+Atn9dWONBPp/AUETXlHW0DxSjE=
+go.uber.org/atomic v1.11.0/go.mod h1:LUxbIzbOniOlMKjJjyPfpl4v+PKK2cNJn91OQbhoJI0=
 go.uber.org/goleak v1.2.1 h1:NBol2c7O1ZokfZ0LEU9K6Whx/KnwvepVetCUhtKja4A=
 go.uber.org/multierr v1.1.0/go.mod h1:wR5kodmAFQ0UK8QlbwjlSNy0Z68gJhDJUG5sjR94q/0=
 go.uber.org/multierr v1.11.0 h1:blXXJkSxSSfBVBlC76pxqeO+LN3aDfLQo+309xJstO0=
@@ -2576,8 +2578,8 @@ k8s.io/utils v0.0.0-20230726121419-3b25d923346b h1:sgn3ZU783SCgtaSJjpcVVlRqd6GSn
 k8s.io/utils v0.0.0-20230726121419-3b25d923346b/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
 knative.dev/eventing v0.38.4 h1:eH059bfeLilj2xAN6V7XXOh3wqzz5ssoMS/CIJpJfmk=
 knative.dev/networking v0.0.0-20220404212543-dde40b019aff h1:pqzWi29qb44TY+5xtc9vty4mSyUYvojXZGCp0y/91eo=
-knative.dev/pkg v0.0.0-20231016142534-0d0cd4e7dbef h1:RTfs5rHxUy4wT1zLIsFeTkiZgJD3gKG3xdTezjOEato=
-knative.dev/pkg v0.0.0-20231016142534-0d0cd4e7dbef/go.mod h1:khuxKBM4WqjcCIeCIm+4VDNBmzMsl0ZspXGMm5i/fFA=
+knative.dev/pkg v0.0.0-20231023150739-56bfe0dd9626 h1:qFE+UDBRg6cpF5LbA0sv1XK4XZ36Z7aTRCa+HcuxnNQ=
+knative.dev/pkg v0.0.0-20231023150739-56bfe0dd9626/go.mod h1:g+UCgSKQ2f15kHYu/V3CPtoKo5F1x/2Y1ot0NSK7gA0=
 knative.dev/serving v0.30.1-0.20220402124840-21c05dc9d9a4 h1:iRFWsFKsA5ddhi+eKZVJdf8gPBomTfjIyRAKk9Uh7Ko=
 lukechampine.com/uint128 v1.1.1/go.mod h1:c4eWIwlEGaxC/+H1VguhU4PHXNWDCDMUlWdIWl2j1gk=
 lukechampine.com/uint128 v1.2.0/go.mod h1:c4eWIwlEGaxC/+H1VguhU4PHXNWDCDMUlWdIWl2j1gk=
