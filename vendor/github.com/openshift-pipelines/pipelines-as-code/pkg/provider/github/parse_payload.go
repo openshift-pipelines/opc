@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/google/go-github/v55/github"
+	"github.com/google/go-github/v56/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
@@ -104,18 +104,22 @@ func (v *Provider) parseEventType(request *http.Request, event *info.Event) erro
 	return nil
 }
 
-func getInstallationIDFromPayload(payload string) int64 {
-	var data map[string]interface{}
-	_ = json.Unmarshal([]byte(payload), &data)
+type Payload struct {
+	Installation struct {
+		ID *int64 `json:"id"`
+	} `json:"installation"`
+}
 
-	i := github.Installation{}
-	installData, ok := data["installation"]
-	if ok {
-		installation, _ := json.Marshal(installData)
-		_ = json.Unmarshal(installation, &i)
-		return *i.ID
+func getInstallationIDFromPayload(payload string) (int64, error) {
+	var data Payload
+	err := json.Unmarshal([]byte(payload), &data)
+	if err != nil {
+		return -1, err
 	}
-	return -1
+	if data.Installation.ID != nil {
+		return *data.Installation.ID, nil
+	}
+	return -1, nil
 }
 
 // ParsePayload will parse the payload and return the event
@@ -137,6 +141,9 @@ func getInstallationIDFromPayload(payload string) int64 {
 // exfiltrate the token, it would fail since the jwt token generation will fail, so we are safe here.
 // a bit too far fetched but i don't see any way we can exploit this.
 func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *http.Request, payload string) (*info.Event, error) {
+	// ParsePayload is really happening before SetClient so let's set this at first here.
+	// Only apply for GitHub provider since we do fancy token creation at payload parsing
+	v.Run = run
 	event := info.NewEvent()
 	// TODO: we should not have getenv in code only in main
 	systemNS := os.Getenv("SYSTEM_NAMESPACE")
@@ -144,7 +151,10 @@ func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *h
 		return nil, err
 	}
 
-	installationIDFrompayload := getInstallationIDFromPayload(payload)
+	installationIDFrompayload, err := getInstallationIDFromPayload(payload)
+	if err != nil {
+		return nil, err
+	}
 	if installationIDFrompayload != -1 {
 		var err error
 		// TODO: move this out of here when we move al config inside context
@@ -187,7 +197,7 @@ func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *h
 			}
 			v.Logger.Infof("Github token scope extended to %v keeping SecretGHAppRepoScoped to true", repoLists)
 		}
-		token, err := v.CreateToken(ctx, repoLists, run, processedEvent)
+		token, err := v.CreateToken(ctx, repoLists, processedEvent)
 		if err != nil {
 			return nil, err
 		}
@@ -267,6 +277,7 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		processedEvent.Sender = gitEvent.GetPullRequest().GetUser().GetLogin()
 		processedEvent.EventType = event.EventType
 		processedEvent.PullRequestNumber = gitEvent.GetPullRequest().GetNumber()
+		processedEvent.PullRequestTitle = gitEvent.GetPullRequest().GetTitle()
 		// getting the repository ids of the base and head of the pull request
 		// to scope the token to
 		v.RepositoryIDs = []int64{

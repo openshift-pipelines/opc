@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	gt "github.com/google/go-github/v55/github"
+	gt "github.com/google/go-github/v56/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
@@ -19,8 +19,8 @@ import (
 
 func GetAndUpdateInstallationID(ctx context.Context, req *http.Request, run *params.Run, repo *v1alpha1.Repository, gh *github.Provider, ns string) (string, string, int64, error) {
 	var (
-		enterpriseURL, token string
-		installationID       int64
+		enterpriseHost, token string
+		installationID        int64
 	)
 	jwtToken, err := GenerateJWT(ctx, ns, run)
 	if err != nil {
@@ -28,9 +28,10 @@ func GetAndUpdateInstallationID(ctx context.Context, req *http.Request, run *par
 	}
 
 	installationURL := *gh.APIURL + keys.InstallationURL
-	enterpriseURL = req.Header.Get("X-GitHub-Enterprise-Host")
-	if enterpriseURL != "" {
-		installationURL = enterpriseURL + keys.InstallationURL
+	enterpriseHost = req.Header.Get("X-GitHub-Enterprise-Host")
+	if enterpriseHost != "" {
+		// NOTE: Hopefully this works even when the ghe URL is on another host than the api URL
+		installationURL = "https://" + enterpriseHost + "/api/v3" + keys.InstallationURL
 	}
 
 	res, err := GetReponse(ctx, http.MethodGet, installationURL, jwtToken, run)
@@ -39,7 +40,7 @@ func GetAndUpdateInstallationID(ctx context.Context, req *http.Request, run *par
 	}
 
 	if res.StatusCode >= 300 {
-		return "", "", 0, fmt.Errorf("Non-OK HTTP status: %d", res.StatusCode)
+		return "", "", 0, fmt.Errorf("Non-OK HTTP status while getting installation URL: %s : %d", installationURL, res.StatusCode)
 	}
 
 	defer res.Body.Close()
@@ -61,7 +62,7 @@ func GetAndUpdateInstallationID(ctx context.Context, req *http.Request, run *par
 			return "", "", 0, fmt.Errorf("installation ID is nil")
 		}
 		if *installationData[i].ID != 0 {
-			token, err = gh.GetAppToken(ctx, run.Clients.Kube, enterpriseURL, *installationData[i].ID, ns)
+			token, err = gh.GetAppToken(ctx, run.Clients.Kube, enterpriseHost, *installationData[i].ID, ns)
 			if err != nil {
 				return "", "", 0, err
 			}
@@ -75,7 +76,7 @@ func GetAndUpdateInstallationID(ctx context.Context, req *http.Request, run *par
 			break
 		}
 	}
-	return enterpriseURL, token, installationID, nil
+	return enterpriseHost, token, installationID, nil
 }
 
 func listRepos(ctx context.Context, repo *v1alpha1.Repository, gh *github.Provider) (bool, error) {
