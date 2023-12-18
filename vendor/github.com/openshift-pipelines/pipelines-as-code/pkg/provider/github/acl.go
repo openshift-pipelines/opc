@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/go-github/v55/github"
+	"github.com/google/go-github/v56/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/acl"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/policy"
@@ -14,7 +14,7 @@ import (
 
 // CheckPolicyAllowing check that policy is allowing the event to be processed
 // we  check the membership of the team allowed
-// if the team is not found we explicitly disallow the policy, user have to correct the setting
+// if the team is not found we explicitly disallow the policy, user have to correct the setting.
 func (v *Provider) CheckPolicyAllowing(ctx context.Context, event *info.Event, allowedTeams []string) (bool, string) {
 	for _, team := range allowedTeams {
 		// TODO: caching
@@ -46,7 +46,7 @@ func (v *Provider) CheckPolicyAllowing(ctx context.Context, event *info.Event, a
 	return false, fmt.Sprintf("user: %s is not a member of any of the allowed teams: %v", event.Sender, allowedTeams)
 }
 
-// IsAllowedOwners get the owner file from main branch and check if we have
+// IsAllowedOwnersFile gets the owner file from main branch and check if we have
 // explicitly allowed the user in there.
 func (v *Provider) IsAllowedOwnersFile(ctx context.Context, event *info.Event) (bool, error) {
 	ownerContent, err := v.getFileFromDefaultBranch(ctx, "OWNERS", event)
@@ -179,7 +179,7 @@ func (v *Provider) aclAllowedOkToTestCurrentComment(ctx context.Context, revent 
 	return false, nil
 }
 
-// aclCheck check if we are allowed to run the pipeline on that PR
+// aclCheck check if we are allowed to run the pipeline on that PR.
 func (v *Provider) aclCheckAll(ctx context.Context, rev *info.Event) (bool, error) {
 	// if the sender own the repo, then allow it to run
 	if rev.Organization == rev.Sender {
@@ -244,7 +244,7 @@ func (v *Provider) checkPullRequestForSameURL(ctx context.Context, runevent *inf
 }
 
 // checkSenderOrgMembership Get sender user's organization. We can
-// only get the one that the user sets as public 🤷
+// only get the one that the user sets as public 🤷.
 func (v *Provider) checkSenderOrgMembership(ctx context.Context, runevent *info.Event) (bool, error) {
 	opt := &github.ListMembersOptions{
 		ListOptions: github.ListOptions{PerPage: v.paginedNumber},
@@ -273,7 +273,7 @@ func (v *Provider) checkSenderOrgMembership(ctx context.Context, runevent *info.
 	return false, nil
 }
 
-// checkSenderRepoMembership check if user is allowed to run CI
+// checkSenderRepoMembership check if user is allowed to run CI.
 func (v *Provider) checkSenderRepoMembership(ctx context.Context, runevent *info.Event) (bool, error) {
 	isCollab, _, err := v.Client.Repositories.IsCollaborator(ctx,
 		runevent.Organization,
@@ -284,7 +284,7 @@ func (v *Provider) checkSenderRepoMembership(ctx context.Context, runevent *info
 }
 
 // getFileFromDefaultBranch will get a file directly from the Default BaseBranch as
-// configured in runinfo which is directly set in webhook by Github
+// configured in runinfo which is directly set in webhook by Github.
 func (v *Provider) getFileFromDefaultBranch(ctx context.Context, path string, runevent *info.Event) (string, error) {
 	tektonyaml, err := v.GetFileInsideRepo(ctx, runevent, path, runevent.DefaultBranch)
 	if err != nil {
@@ -294,7 +294,7 @@ func (v *Provider) getFileFromDefaultBranch(ctx context.Context, path string, ru
 }
 
 // GetStringPullRequestComment return the comment if we find a regexp in one of
-// the comments text of a pull request
+// the comments text of a pull request.
 func (v *Provider) GetStringPullRequestComment(ctx context.Context, runevent *info.Event, reg string) ([]*github.IssueComment, error) {
 	var ret []*github.IssueComment
 	prNumber, err := convertPullRequestURLtoNumber(runevent.URL)

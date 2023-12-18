@@ -40,7 +40,7 @@ func (p *PacRun) matchRepoPR(ctx context.Context) ([]matcher.Match, *v1alpha1.Re
 }
 
 // verifyRepoAndUser verifies if the Repo CR exists for the Git Repository,
-// if the user has permission to run CI  and also initialise provider client
+// if the user has permission to run CI  and also initialise provider client.
 func (p *PacRun) verifyRepoAndUser(ctx context.Context) (*v1alpha1.Repository, error) {
 	// Match the Event URL to a Repository URL,
 	repo, err := matcher.MatchEventURLRepo(ctx, p.run, p.event, "")
@@ -134,7 +134,7 @@ is that what you want? make sure you use -n when generating the secret, eg: echo
 				Text:       msg,
 				DetailsURL: p.event.URL,
 			}
-			if err := p.vcx.CreateStatus(ctx, p.run.Clients.Tekton, p.event, p.run.Info.Pac, status); err != nil {
+			if err := p.vcx.CreateStatus(ctx, p.event, status); err != nil {
 				return repo, fmt.Errorf("failed to run create status, user is not allowed to run: %w", err)
 			}
 			return nil, nil
@@ -143,7 +143,7 @@ is that what you want? make sure you use -n when generating the secret, eg: echo
 	return repo, nil
 }
 
-// getPipelineRunsFromRepo fetches pipelineruns from git repository and prepare them for creation
+// getPipelineRunsFromRepo fetches pipelineruns from git repository and prepare them for creation.
 func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Repository) ([]matcher.Match, error) {
 	provenance := "source"
 	if repo.Spec.Settings != nil && repo.Spec.Settings.PipelineRunProvenance != "" {
@@ -266,8 +266,8 @@ func filterRunningPipelineRunOnTargetTest(testPipeline string, prs []*tektonv1.P
 }
 
 // changeSecret we need to go in each pipelinerun,
-// change the secret template variable with a random one as generated from GetBasicAuthSecretName and store in in the
-// annotations so we can create one delete after.
+// change the secret template variable with a random one as generated from GetBasicAuthSecretName
+// and store in the annotations so we can create one delete after.
 func changeSecret(prs []*tektonv1.PipelineRun) error {
 	for k, p := range prs {
 		b, err := json.Marshal(p)
