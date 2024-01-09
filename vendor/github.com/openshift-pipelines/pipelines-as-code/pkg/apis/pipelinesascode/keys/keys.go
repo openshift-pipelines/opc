@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	ControllerInfo  = pipelinesascode.GroupName + "/controller-info"
 	Task            = pipelinesascode.GroupName + "/task"
 	Pipeline        = pipelinesascode.GroupName + "/pipeline"
 	URLOrg          = pipelinesascode.GroupName + "/url-org"
@@ -55,9 +56,10 @@ const (
 	// PublicGithubAPIURL default is "https://api.github.com" but it can be overridden by X-GitHub-Enterprise-Host header.
 	PublicGithubAPIURL = "https://api.github.com"
 	// InstallationURL gives us the Installation ID for the GitHub Application.
-	InstallationURL     = "/app/installations"
-	GithubApplicationID = "github-application-id"
-	GithubPrivateKey    = "github-private-key"
+	InstallationURL      = "/app/installations"
+	GithubApplicationID  = "github-application-id"
+	GithubPrivateKey     = "github-private-key"
+	ResultsRecordSummary = "results.tekton.dev/recordSummaryAnnotations"
 )
 
 var ParamsRe = regexp.MustCompile(`{{([^}]{2,})}}`)

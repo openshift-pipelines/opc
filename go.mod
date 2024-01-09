@@ -18,8 +18,8 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/net v0.18.0 // indirect
-	golang.org/x/sys v0.14.0 // indirect
-	golang.org/x/term v0.14.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/time v0.4.0 // indirect
 	google.golang.org/grpc v1.59.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
@@ -33,7 +33,7 @@ require (
 )
 
 require (
-	github.com/openshift-pipelines/pipelines-as-code v0.22.6
+	github.com/openshift-pipelines/pipelines-as-code v0.23.0
 	github.com/spf13/cobra v1.8.0
 	github.com/tektoncd/cli v0.33.0
 	github.com/tektoncd/results/tools/tkn-results v0.0.0-20231019055929-46f209b0f8f5
@@ -309,7 +309,7 @@ require (
 	gocloud.dev v0.34.0 // indirect
 	gocloud.dev/docstore/mongodocstore v0.34.0 // indirect
 	gocloud.dev/pubsub/kafkapubsub v0.34.0 // indirect
-	golang.org/x/crypto v0.15.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/oauth2 v0.14.0 // indirect

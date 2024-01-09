@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -146,7 +145,7 @@ func (v *Provider) GetTaskURI(ctx context.Context, event *info.Event, uri string
 func (v *Provider) InitAppClient(ctx context.Context, kube kubernetes.Interface, event *info.Event) error {
 	var err error
 	// TODO: move this out of here when we move al config inside context
-	ns := os.Getenv("SYSTEM_NAMESPACE")
+	ns := info.GetNS(ctx)
 	event.Provider.Token, err = v.GetAppToken(ctx, kube, event.GHEURL, event.InstallationID, ns)
 	if err != nil {
 		return err
@@ -441,38 +440,62 @@ func (v *Provider) getPullRequest(ctx context.Context, runevent *info.Event) (*i
 }
 
 // GetFiles get a files from pull request.
-func (v *Provider) GetFiles(ctx context.Context, runevent *info.Event) ([]string, error) {
+func (v *Provider) GetFiles(ctx context.Context, runevent *info.Event) (provider.ChangedFiles, error) {
 	if runevent.TriggerTarget == "pull_request" {
 		opt := &github.ListOptions{PerPage: v.paginedNumber}
-		result := []string{}
+		changedFiles := provider.ChangedFiles{}
 		for {
 			repoCommit, resp, err := v.Client.PullRequests.ListFiles(ctx, runevent.Organization, runevent.Repository, runevent.PullRequestNumber, opt)
 			if err != nil {
-				return []string{}, err
+				return provider.ChangedFiles{}, err
 			}
 			for j := range repoCommit {
-				result = append(result, *repoCommit[j].Filename)
+				changedFiles.All = append(changedFiles.All, *repoCommit[j].Filename)
+				if *repoCommit[j].Status == "added" {
+					changedFiles.Added = append(changedFiles.Added, *repoCommit[j].Filename)
+				}
+				if *repoCommit[j].Status == "removed" {
+					changedFiles.Deleted = append(changedFiles.Deleted, *repoCommit[j].Filename)
+				}
+				if *repoCommit[j].Status == "modified" {
+					changedFiles.Modified = append(changedFiles.Modified, *repoCommit[j].Filename)
+				}
+				if *repoCommit[j].Status == "renamed" {
+					changedFiles.Renamed = append(changedFiles.Renamed, *repoCommit[j].Filename)
+				}
 			}
 			if resp.NextPage == 0 {
 				break
 			}
 			opt.Page = resp.NextPage
 		}
-		return result, nil
+		return changedFiles, nil
 	}
 
 	if runevent.TriggerTarget == "push" {
-		result := []string{}
+		changedFiles := provider.ChangedFiles{}
 		rC, _, err := v.Client.Repositories.GetCommit(ctx, runevent.Organization, runevent.Repository, runevent.SHA, &github.ListOptions{})
 		if err != nil {
-			return []string{}, err
+			return provider.ChangedFiles{}, err
 		}
 		for i := range rC.Files {
-			result = append(result, *rC.Files[i].Filename)
+			changedFiles.All = append(changedFiles.All, *rC.Files[i].Filename)
+			if *rC.Files[i].Status == "added" {
+				changedFiles.Added = append(changedFiles.Added, *rC.Files[i].Filename)
+			}
+			if *rC.Files[i].Status == "removed" {
+				changedFiles.Deleted = append(changedFiles.Deleted, *rC.Files[i].Filename)
+			}
+			if *rC.Files[i].Status == "modified" {
+				changedFiles.Modified = append(changedFiles.Modified, *rC.Files[i].Filename)
+			}
+			if *rC.Files[i].Status == "renamed" {
+				changedFiles.Renamed = append(changedFiles.Renamed, *rC.Files[i].Filename)
+			}
 		}
-		return result, nil
+		return changedFiles, nil
 	}
-	return []string{}, nil
+	return provider.ChangedFiles{}, nil
 }
 
 // getObject Get an object from a repository.
@@ -524,7 +547,8 @@ func (v *Provider) CreateToken(ctx context.Context, repository []string, event *
 		}
 		v.RepositoryIDs = uniqueRepositoryID(v.RepositoryIDs, infoData.GetID())
 	}
-	token, err := v.GetAppToken(ctx, v.Run.Clients.Kube, event.Provider.URL, event.InstallationID, os.Getenv("SYSTEM_NAMESPACE"))
+	ns := info.GetNS(ctx)
+	token, err := v.GetAppToken(ctx, v.Run.Clients.Kube, event.Provider.URL, event.InstallationID, ns)
 	if err != nil {
 		return "", err
 	}
