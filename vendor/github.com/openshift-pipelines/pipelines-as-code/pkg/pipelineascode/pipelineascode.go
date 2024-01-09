@@ -67,8 +67,8 @@ func (p *PacRun) Run(ctx context.Context) error {
 	}
 
 	// set params for the console driver, only used for the custom console ones
-	cp := customparams.NewCustomParams(p.event, repo, p.run, p.k8int, p.eventEmitter)
-	maptemplate, err := cp.GetParams(ctx)
+	cp := customparams.NewCustomParams(p.event, repo, p.run, p.k8int, p.eventEmitter, p.vcx)
+	maptemplate, _, err := cp.GetParams(ctx)
 	if err != nil {
 		p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "ParamsError",
 			fmt.Sprintf("error processing repository CR custom params: %s", err.Error()))
@@ -145,7 +145,10 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.Pi
 	}
 
 	// Add labels and annotations to pipelinerun
-	kubeinteraction.AddLabelsAndAnnotations(p.event, match.PipelineRun, match.Repo, p.vcx.GetConfig())
+	err := kubeinteraction.AddLabelsAndAnnotations(ctx, p.event, match.PipelineRun, match.Repo, p.vcx.GetConfig())
+	if err != nil {
+		p.logger.Errorf("Error adding labels/annotations to PipelineRun '%s' in namespace '%s': %v", match.PipelineRun.GetName(), match.Repo.GetNamespace(), err)
+	}
 
 	// if concurrency is defined then start the pipelineRun in pending state and
 	// state as queued
@@ -162,8 +165,8 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.Pi
 		match.PipelineRun, metav1.CreateOptions{})
 	if err != nil {
 		// we need to make difference between markdown error and normal error that goes to namespace/controller stream
-		return nil, fmt.Errorf("creating pipelinerun %s in namespace %s has failed.\n\nTekton Controller has reported this error: ```%s``` ", match.PipelineRun.GetGenerateName(),
-			match.Repo.GetNamespace(), err.Error())
+		return nil, fmt.Errorf("creating pipelinerun %s in namespace %s has failed.\n\nTekton Controller has reported this error: ```%w``` ", match.PipelineRun.GetGenerateName(),
+			match.Repo.GetNamespace(), err)
 	}
 
 	// Create status with the log url

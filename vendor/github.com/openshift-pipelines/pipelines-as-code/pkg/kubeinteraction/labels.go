@@ -1,6 +1,8 @@
 package kubeinteraction
 
 import (
+	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode"
@@ -19,9 +21,13 @@ const (
 	StateFailed    = "failed"
 )
 
-func AddLabelsAndAnnotations(event *info.Event, pipelineRun *tektonv1.PipelineRun, repo *apipac.Repository, providerinfo *info.ProviderConfig) {
+func AddLabelsAndAnnotations(ctx context.Context, event *info.Event, pipelineRun *tektonv1.PipelineRun, repo *apipac.Repository, providerinfo *info.ProviderConfig) error {
+	if event == nil {
+		return fmt.Errorf("event should not be nil")
+	}
 	// Add labels on the soon to be created pipelinerun so UI/CLI can easily
 	// query them.
+	paramsinfo := info.GetInfo(ctx, info.GetCurrentControllerName(ctx))
 	labels := map[string]string{
 		// These keys are used in LabelSelector query so we are keeping in Labels as it is.
 		// But adding same keys to Annotations so UI/CLI can fetch the actual value instead of modified value
@@ -42,18 +48,19 @@ func AddLabelsAndAnnotations(event *info.Event, pipelineRun *tektonv1.PipelineRu
 	}
 
 	annotations := map[string]string{
-		keys.ShaTitle:      event.SHATitle,
-		keys.ShaURL:        event.SHAURL,
-		keys.RepoURL:       event.URL,
-		keys.URLOrg:        event.Organization,
-		keys.URLRepository: event.Repository,
-		keys.SHA:           event.SHA,
-		keys.Sender:        event.Sender,
-		keys.EventType:     event.EventType,
-		keys.Branch:        event.BaseBranch,
-		keys.Repository:    repo.GetName(),
-		keys.GitProvider:   providerinfo.Name,
-		keys.State:         StateStarted,
+		keys.ShaTitle:       event.SHATitle,
+		keys.ShaURL:         event.SHAURL,
+		keys.RepoURL:        event.URL,
+		keys.URLOrg:         event.Organization,
+		keys.URLRepository:  event.Repository,
+		keys.SHA:            event.SHA,
+		keys.Sender:         event.Sender,
+		keys.EventType:      event.EventType,
+		keys.Branch:         event.BaseBranch,
+		keys.Repository:     repo.GetName(),
+		keys.GitProvider:    providerinfo.Name,
+		keys.State:          StateStarted,
+		keys.ControllerInfo: fmt.Sprintf(`{"name":"%s","configmap":"%s","secret":"%s"}`, paramsinfo.Controller.Name, paramsinfo.Controller.Configmap, paramsinfo.Controller.Secret),
 	}
 
 	if event.PullRequestNumber != 0 {
@@ -85,4 +92,12 @@ func AddLabelsAndAnnotations(event *info.Event, pipelineRun *tektonv1.PipelineRu
 	for k, v := range annotations {
 		pipelineRun.Annotations[k] = v
 	}
+
+	// Add annotations to PipelineRuns to integrate with Tekton Results
+	err := AddResultsAnnotation(event, pipelineRun)
+	if err != nil {
+		return fmt.Errorf("failed to add results annotations with error: %w", err)
+	}
+
+	return nil
 }
