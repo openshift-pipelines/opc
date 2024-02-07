@@ -1519,20 +1519,18 @@ github.com/tektoncd/pipeline/pkg/remote/oci
 github.com/tektoncd/pipeline/pkg/result
 github.com/tektoncd/pipeline/pkg/spire/config
 github.com/tektoncd/pipeline/pkg/substitution
-# github.com/tektoncd/results v0.7.0
+# github.com/tektoncd/results v0.9.1
 ## explicit; go 1.19
+github.com/tektoncd/results/pkg/cli/client
+github.com/tektoncd/results/pkg/cli/cmd
+github.com/tektoncd/results/pkg/cli/cmd/logs
+github.com/tektoncd/results/pkg/cli/cmd/records
+github.com/tektoncd/results/pkg/cli/config
+github.com/tektoncd/results/pkg/cli/flags
+github.com/tektoncd/results/pkg/cli/format
+github.com/tektoncd/results/pkg/cli/portforward
 github.com/tektoncd/results/proto/pipeline/v1beta1/pipeline_go_proto
 github.com/tektoncd/results/proto/v1alpha2/results_go_proto
-# github.com/tektoncd/results/tools/tkn-results v0.0.0-20231019055929-46f209b0f8f5
-## explicit; go 1.19
-github.com/tektoncd/results/tools/tkn-results/cmd
-github.com/tektoncd/results/tools/tkn-results/cmd/logs
-github.com/tektoncd/results/tools/tkn-results/cmd/records
-github.com/tektoncd/results/tools/tkn-results/internal/client
-github.com/tektoncd/results/tools/tkn-results/internal/config
-github.com/tektoncd/results/tools/tkn-results/internal/flags
-github.com/tektoncd/results/tools/tkn-results/internal/format
-github.com/tektoncd/results/tools/tkn-results/internal/portforward
 # github.com/tektoncd/triggers v0.26.0
 ## explicit; go 1.19
 github.com/tektoncd/triggers/pkg/apis/config
@@ -2455,12 +2453,14 @@ k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
-# k8s.io/kube-openapi v0.0.0-20231113174909-778a5567bc1e => k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1
-## explicit; go 1.18
+# k8s.io/kube-openapi v0.0.0-20231113174909-778a5567bc1e => k8s.io/kube-openapi v0.0.0-20230515203736-54b630e78af5
+## explicit; go 1.19
 k8s.io/kube-openapi/pkg/builder3/util
+k8s.io/kube-openapi/pkg/cached
 k8s.io/kube-openapi/pkg/common
 k8s.io/kube-openapi/pkg/handler3
-k8s.io/kube-openapi/pkg/internal/handler
+k8s.io/kube-openapi/pkg/internal
+k8s.io/kube-openapi/pkg/internal/third_party/go-json-experiment/json
 k8s.io/kube-openapi/pkg/openapiconv
 k8s.io/kube-openapi/pkg/schemaconv
 k8s.io/kube-openapi/pkg/schemamutation
@@ -2603,4 +2603,4 @@ sigs.k8s.io/yaml/goyaml.v2
 # k8s.io/api => k8s.io/api v0.26.8
 # k8s.io/apimachinery => k8s.io/apimachinery v0.26.8
 # k8s.io/client-go => k8s.io/client-go v0.26.8
-# k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1
+# k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230515203736-54b630e78af5

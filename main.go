@@ -14,9 +14,8 @@ import (
 	tkncli "github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd"
 	tknversion "github.com/tektoncd/cli/pkg/cmd/version"
-	resultscmd "github.com/tektoncd/results/tools/tkn-results/cmd"
-
 	"github.com/tektoncd/cli/pkg/plugins"
+	resultscmd "github.com/tektoncd/results/pkg/cli/cmd"
 )
 
 const (
