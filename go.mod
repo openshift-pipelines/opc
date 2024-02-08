@@ -36,7 +36,7 @@ require (
 	github.com/openshift-pipelines/pipelines-as-code v0.24.0
 	github.com/spf13/cobra v1.8.0
 	github.com/tektoncd/cli v0.35.0
-	github.com/tektoncd/results/tools/tkn-results v0.0.0-20231019055929-46f209b0f8f5
+	github.com/tektoncd/results v0.9.1
 )
 
 require (
@@ -281,7 +281,6 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tektoncd/chains v0.20.0 // indirect
 	github.com/tektoncd/hub v1.16.0 // indirect
-	github.com/tektoncd/results v0.7.0 // indirect
 	github.com/thales-e-security/pool v0.0.2 // indirect
 	github.com/theupdateframework/go-tuf v0.7.0 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
@@ -344,5 +343,5 @@ replace (
 	k8s.io/api => k8s.io/api v0.26.8
 	k8s.io/apimachinery => k8s.io/apimachinery v0.26.8
 	k8s.io/client-go => k8s.io/client-go v0.26.8
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230515203736-54b630e78af5
 )
