@@ -13,7 +13,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tektoncd/pipeline v0.56.0 // indirect
-	github.com/tektoncd/triggers v0.26.0 // indirect
+	github.com/tektoncd/triggers v0.26.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
@@ -35,7 +35,7 @@ require (
 require (
 	github.com/openshift-pipelines/pipelines-as-code v0.24.0
 	github.com/spf13/cobra v1.8.0
-	github.com/tektoncd/cli v0.35.0
+	github.com/tektoncd/cli v0.35.1
 	github.com/tektoncd/results v0.9.1
 )
 
