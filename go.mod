@@ -3,7 +3,7 @@ module github.com/openshift-pipelines/opc
 go 1.20
 
 require (
-	github.com/openshift-pipelines/pipelines-as-code v0.24.2
+	github.com/openshift-pipelines/pipelines-as-code v0.24.4
 	github.com/spf13/cobra v1.8.0
 	github.com/tektoncd/cli v0.35.1
 	github.com/tektoncd/results v0.9.1
