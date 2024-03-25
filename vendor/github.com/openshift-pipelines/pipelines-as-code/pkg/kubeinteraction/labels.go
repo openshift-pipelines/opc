@@ -29,7 +29,7 @@ func AddLabelsAndAnnotations(event *info.Event, pipelineRun *tektonv1.PipelineRu
 	// Add labels on the soon-to-be created pipelinerun so UI/CLI can easily
 	// query them.
 	labels := map[string]string{
-		// These keys are used in LabelSelector query so we are keeping in Labels as it is.
+		// These keys are used in LabelSelector query, so we are keeping in Labels as it is.
 		// But adding same keys to Annotations so UI/CLI can fetch the actual value instead of modified value
 		"app.kubernetes.io/managed-by": pipelinesascode.GroupName,
 		"app.kubernetes.io/version":    formatting.CleanValueKubernetes(version.Version),
@@ -39,12 +39,6 @@ func AddLabelsAndAnnotations(event *info.Event, pipelineRun *tektonv1.PipelineRu
 		keys.Repository:                formatting.CleanValueKubernetes(repo.GetName()),
 		keys.State:                     StateStarted,
 		keys.EventType:                 formatting.CleanValueKubernetes(event.EventType),
-
-		// We are deprecating these below keys from labels and adding it to Annotations
-		// In PAC v0.20.x releases we will remove these keys from Labels
-		keys.Sender:      formatting.CleanValueKubernetes(event.Sender),
-		keys.Branch:      formatting.CleanValueKubernetes(event.BaseBranch),
-		keys.GitProvider: providerConfig.Name,
 	}
 
 	annotations := map[string]string{

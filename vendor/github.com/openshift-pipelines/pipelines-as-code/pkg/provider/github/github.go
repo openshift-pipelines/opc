@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v56/github"
+	"github.com/google/go-github/v59/github"
 	"github.com/jonboulle/clockwork"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
@@ -18,9 +18,11 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/events"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -233,7 +235,7 @@ func parseTS(headerTS string) (time.Time, error) {
 // but this gives a nice hint to the user into their namespace event of where
 // the issue was.
 func (v *Provider) checkWebhookSecretValidity(ctx context.Context, cw clockwork.Clock) error {
-	rl, resp, err := v.Client.RateLimits(ctx)
+	rl, resp, err := v.Client.RateLimit.Get(ctx)
 	if resp.Header.Get("GitHub-Authentication-Token-Expiration") != "" {
 		ts, err := parseTS(resp.Header.Get("GitHub-Authentication-Token-Expiration"))
 		if err != nil {
@@ -298,7 +300,7 @@ func (v *Provider) GetTektonDir(ctx context.Context, runevent *info.Event, path,
 		revision = runevent.DefaultBranch
 		v.Logger.Infof("Using PipelineRun definition from default_branch: %s", runevent.DefaultBranch)
 	} else {
-		v.Logger.Infof("Using PipelineRun definition from source pull request SHA: %s", runevent.SHA)
+		v.Logger.Infof("Using PipelineRun definition from source pull request %s/%s#%d SHA on %s", runevent.Organization, runevent.Repository, runevent.PullRequestNumber, runevent.SHA)
 	}
 
 	rootobjects, _, err := v.Client.Git.GetTree(ctx, runevent.Organization, runevent.Repository, revision, false)
@@ -402,6 +404,11 @@ func (v *Provider) concatAllYamlFiles(ctx context.Context, objects []*github.Tre
 			if err != nil {
 				return "", err
 			}
+			// validate yaml
+			var i any
+			if err := yaml.Unmarshal(data, &i); err != nil {
+				return "", fmt.Errorf("error unmarshalling yaml file %s: %w", value.GetPath(), err)
+			}
 			if allTemplates != "" && !strings.HasPrefix(string(data), "---") {
 				allTemplates += "---"
 			}
@@ -432,7 +439,9 @@ func (v *Provider) getPullRequest(ctx context.Context, runevent *info.Event) (*i
 	runevent.BaseBranch = pr.GetBase().GetRef()
 	runevent.HeadURL = pr.GetHead().GetRepo().GetHTMLURL()
 	runevent.BaseURL = pr.GetBase().GetRepo().GetHTMLURL()
-	runevent.EventType = "pull_request"
+	if runevent.EventType == "" {
+		runevent.EventType = triggertype.PullRequest.String()
+	}
 
 	v.RepositoryIDs = []int64{
 		pr.GetBase().GetRepo().GetID(),
@@ -442,7 +451,7 @@ func (v *Provider) getPullRequest(ctx context.Context, runevent *info.Event) (*i
 
 // GetFiles get a files from pull request.
 func (v *Provider) GetFiles(ctx context.Context, runevent *info.Event) (changedfiles.ChangedFiles, error) {
-	if runevent.TriggerTarget == "pull_request" {
+	if runevent.TriggerTarget == triggertype.PullRequest {
 		opt := &github.ListOptions{PerPage: v.paginedNumber}
 		changedFiles := changedfiles.ChangedFiles{}
 		for {
