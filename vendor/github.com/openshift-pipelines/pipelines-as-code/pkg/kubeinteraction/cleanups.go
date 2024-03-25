@@ -20,8 +20,10 @@ func (k Interaction) CleanupPipelines(ctx context.Context, logger *zap.SugaredLo
 	}
 
 	// Select PR by repository and by its true pipelineRun name (not auto generated one)
-	labelSelector := fmt.Sprintf("%s=%s,%s=%s",
-		keys.Repository, formatting.CleanValueKubernetes(repo.GetName()), keys.OriginalPRName, formatting.CleanValueKubernetes(pr.GetLabels()[keys.OriginalPRName]))
+	labelSelector := fmt.Sprintf("%s=%s,%s=%s,%s=%s",
+		keys.Repository, formatting.CleanValueKubernetes(repo.GetName()), keys.OriginalPRName,
+		formatting.CleanValueKubernetes(pr.GetLabels()[keys.OriginalPRName]),
+		keys.State, StateCompleted)
 	logger.Infof("selecting pipelineruns by labels \"%s\" for deletion", labelSelector)
 
 	pruns, err := k.Run.Clients.Tekton.TektonV1().PipelineRuns(repo.GetNamespace()).List(ctx,
@@ -31,8 +33,9 @@ func (k Interaction) CleanupPipelines(ctx context.Context, logger *zap.SugaredLo
 	}
 
 	for c, prun := range psort.PipelineRunSortByCompletionTime(pruns.Items) {
-		if prun.GetStatusCondition().GetCondition(apis.ConditionSucceeded).GetReason() == "Running" {
-			logger.Infof("skipping %s since currently running", prun.GetName())
+		prReason := prun.GetStatusCondition().GetCondition(apis.ConditionSucceeded).GetReason()
+		if prReason == tektonv1.PipelineRunReasonRunning.String() || prReason == tektonv1.PipelineRunReasonPending.String() {
+			logger.Infof("skipping cleaning PipelineRun %s since the conditions.reason is %s", prun.GetName(), prReason)
 			continue
 		}
 
