@@ -1,6 +1,6 @@
 module github.com/openshift-pipelines/opc
 
-go 1.20
+go 1.21
 
 require (
 	github.com/openshift-pipelines/pipelines-as-code v0.25.0
