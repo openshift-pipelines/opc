@@ -1072,7 +1072,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-pipelines/pipelines-as-code v0.24.1
+# github.com/openshift-pipelines/pipelines-as-code v0.24.5
 ## explicit; go 1.20
 github.com/openshift-pipelines/pipelines-as-code/pkg/acl
 github.com/openshift-pipelines/pipelines-as-code/pkg/action
@@ -1402,7 +1402,7 @@ github.com/tektoncd/chains/pkg/chains/storage/pubsub
 github.com/tektoncd/chains/pkg/chains/storage/tekton
 github.com/tektoncd/chains/pkg/config
 github.com/tektoncd/chains/pkg/patch
-# github.com/tektoncd/cli v0.35.1
+# github.com/tektoncd/cli v0.35.2
 ## explicit; go 1.20
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/bundle
@@ -1519,7 +1519,7 @@ github.com/tektoncd/pipeline/pkg/remote/oci
 github.com/tektoncd/pipeline/pkg/result
 github.com/tektoncd/pipeline/pkg/spire/config
 github.com/tektoncd/pipeline/pkg/substitution
-# github.com/tektoncd/results v0.9.1
+# github.com/tektoncd/results v0.9.2
 ## explicit; go 1.19
 github.com/tektoncd/results/pkg/cli/client
 github.com/tektoncd/results/pkg/cli/cmd
