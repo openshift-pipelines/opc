@@ -97,8 +97,15 @@ func inlineTasks(tasks []tektonv1.PipelineTask, ropt *Opts, types TektonTypes) (
 			if err != nil {
 				return nil, err
 			}
+			tmd := tektonv1.PipelineTaskMetadata{
+				Annotations: taskResolved.GetObjectMeta().GetAnnotations(),
+				Labels:      taskResolved.GetObjectMeta().GetLabels(),
+			}
 			task.TaskRef = nil
-			task.TaskSpec = &tektonv1.EmbeddedTask{TaskSpec: taskResolved.Spec}
+			task.TaskSpec = &tektonv1.EmbeddedTask{
+				TaskSpec: taskResolved.Spec,
+				Metadata: tmd,
+			}
 		}
 		pipelineTasks = append(pipelineTasks, task)
 	}
@@ -123,7 +130,7 @@ func ReadTektonTypes(ctx context.Context, log *zap.SugaredLogger, data string) (
 
 		obj, _, err := decoder.Decode([]byte(doc), nil, nil)
 		if err != nil {
-			log.Infof("Skipping document not looking like a kubernetes resources: %v", err)
+			log.Infof("skipping yaml document not looking like a kubernetes resources: %v", err)
 			continue
 		}
 		switch o := obj.(type) {
@@ -152,7 +159,7 @@ func ReadTektonTypes(ctx context.Context, log *zap.SugaredLogger, data string) (
 		case *tektonv1.Task:
 			types.Tasks = append(types.Tasks, o)
 		default:
-			log.Info("Skipping document not looking like a tekton resource we can Resolve.")
+			log.Info("skipping yaml document not looking like a tekton resource we can Resolve.")
 		}
 	}
 

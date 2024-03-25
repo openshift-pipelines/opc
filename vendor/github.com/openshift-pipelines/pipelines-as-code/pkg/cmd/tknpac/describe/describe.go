@@ -79,7 +79,7 @@ func Root(run *params.Run, ioStreams *cli.IOStreams) *cobra.Command {
 		Annotations: map[string]string{
 			"commandType": "main",
 		},
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			return completion.BaseCompletion("repositories", args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -130,7 +130,7 @@ func Root(run *params.Run, ioStreams *cli.IOStreams) *cobra.Command {
 	cmd.Flags().StringP(
 		targetPRFlag, "t", "", "Show this PipelineRun information")
 	_ = cmd.RegisterFlagCompletionFunc(targetPRFlag,
-		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			return completion.BaseCompletion("pipelinerun", args)
 		},
 	)
@@ -138,7 +138,7 @@ func Root(run *params.Run, ioStreams *cli.IOStreams) *cobra.Command {
 	cmd.Flags().StringP(
 		namespaceFlag, "n", "", "If present, the namespace scope for this CLI request")
 	_ = cmd.RegisterFlagCompletionFunc(namespaceFlag,
-		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			return completion.BaseCompletion(namespaceFlag, args)
 		},
 	)
@@ -195,7 +195,7 @@ func describe(ctx context.Context, cs *params.Run, clock clockwork.Clock, opts *
 			runTimeObj = append(runTimeObj, &events.Items[i])
 		}
 
-		// we do twice the prun list, but since it's behind a flag and not the default behavior, it's ok (i guess)
+		// we do twice the prun list, but since it's behind a flag and not the default behavior, it's ok (I guess)
 		label := keys.Repository + "=" + repository.Name
 		prs, err := cs.Clients.Tekton.TektonV1().PipelineRuns(repository.Namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: label,

@@ -1,6 +1,10 @@
 package info
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
+)
 
 type Event struct {
 	State
@@ -19,25 +23,25 @@ type Event struct {
 	// TriggerTarget stable field across providers, ie: on Gitlab, Github and
 	// others it would be always be pull_request we can rely on to know if it's
 	// a push or a pull_request
-	// we need to merge this with the TriggerType type by doing a review of
-	// every instance using this and adapt it.
-	TriggerTarget string
+	TriggerTarget triggertype.Trigger
 
 	// Target PipelineRun, the target PipelineRun user request. Used in incoming webhook
 	TargetPipelineRun string
 
-	BaseBranch        string // branch against where we are making the PR
-	DefaultBranch     string // master/main branches to know where things like the OWNERS file is located.
-	HeadBranch        string // branch from where our SHA get tested
-	BaseURL           string // url against where we are making the PR
-	HeadURL           string // url from where our SHA get tested
-	SHA               string
-	Sender            string
-	URL               string // WEB url not the git URL, which would match to the repo.spec
-	SHAURL            string // pretty URL for web browsing for UIs (cli/web)
-	SHATitle          string // commit title for UIs
+	BaseBranch    string // branch against where we are making the PR
+	DefaultBranch string // master/main branches to know where things like the OWNERS file is located.
+	HeadBranch    string // branch from where our SHA get tested
+	BaseURL       string // url against where we are making the PR
+	HeadURL       string // url from where our SHA get tested
+	SHA           string
+	Sender        string
+	URL           string // WEB url not the git URL, which would match to the repo.spec
+	SHAURL        string // pretty URL for web browsing for UIs (cli/web)
+	SHATitle      string // commit title for UIs
+
 	PullRequestNumber int    // Pull or Merge Request number
 	PullRequestTitle  string // Title of the pull Request
+	TriggerComment    string // The comment triggering the pipelinerun when using on-comment annotation
 
 	// TODO: move forge specifics to each driver
 	// Github
@@ -91,15 +95,3 @@ func NewEvent() *Event {
 		Request:  &Request{},
 	}
 }
-
-type TriggerType string
-
-const (
-	TriggerTypeOkToTest              TriggerType = "ok-to-test"
-	TriggerTypeRetest                TriggerType = "retest"
-	TriggerTypePush                  TriggerType = "push"
-	TriggerTypePullRequest           TriggerType = "pull_request"
-	TriggerTypeCancel                TriggerType = "cancel"
-	TriggerTypeCheckSuiteRerequested TriggerType = "check-suite-rerequested"
-	TriggerTypeCheckRunRerequested   TriggerType = "check-run-rerequested"
-)

@@ -8,12 +8,14 @@ import (
 
 	"github.com/gobwas/glob"
 	"github.com/google/cel-go/common/types"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	apipac "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/opscomments"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
-	"github.com/openshift-pipelines/pipelines-as-code/test/pkg/options"
 	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
 )
@@ -85,13 +87,13 @@ func getAnnotationValues(annotation string) ([]string, error) {
 	return split, nil
 }
 
-func getTargetBranch(prun *tektonv1.PipelineRun, logger *zap.SugaredLogger, event *info.Event) (bool, string, string, error) {
+func getTargetBranch(prun *tektonv1.PipelineRun, event *info.Event) (bool, string, string, error) {
 	var targetEvent, targetBranch string
 	if key, ok := prun.GetObjectMeta().GetAnnotations()[keys.OnEvent]; ok {
-		targetEvents := []string{event.TriggerTarget}
-		if event.EventType == options.IncomingEvent {
+		targetEvents := []string{event.TriggerTarget.String()}
+		if event.EventType == triggertype.Incoming.String() {
 			// if we have a incoming event, we want to match pipelineruns on both incoming and push
-			targetEvents = []string{options.IncomingEvent, options.PushEvent}
+			targetEvents = []string{triggertype.Incoming.String(), triggertype.Push.String()}
 		}
 		matched, err := matchOnAnnotation(key, targetEvents, false)
 		targetEvent = key
@@ -115,7 +117,6 @@ func getTargetBranch(prun *tektonv1.PipelineRun, logger *zap.SugaredLogger, even
 	}
 
 	if targetEvent == "" || targetBranch == "" {
-		logger.Infof("skipping pipelinerun %s, no on-target-event or on-target-branch has been set in pipelinerun", prun.GetGenerateName())
 		return false, "", "", nil
 	}
 	return true, targetEvent, targetBranch, nil
@@ -129,12 +130,18 @@ type Match struct {
 
 func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger, pruns []*tektonv1.PipelineRun, cs *params.Run, event *info.Event, vcx provider.Interface) ([]Match, error) {
 	matchedPRs := []Match{}
-	configurations := map[string]map[string]string{}
-	logger.Infof("matching pipelineruns to event: URL=%s, target-branch=%s, source-branch=%s, target-event=%s",
+	infomsg := fmt.Sprintf("matching pipelineruns to event: URL=%s, target-branch=%s, source-branch=%s, target-event=%s",
 		event.URL,
 		event.BaseBranch,
 		event.HeadBranch,
 		event.TriggerTarget)
+
+	if event.EventType == triggertype.Incoming.String() {
+		infomsg = fmt.Sprintf("%s, target-pipelinerun=%s", infomsg, event.TargetPipelineRun)
+	} else if event.EventType == triggertype.PullRequest.String() {
+		infomsg = fmt.Sprintf("%s, pull-request=%d", infomsg, event.PullRequestNumber)
+	}
+	logger.Info(infomsg)
 
 	for _, prun := range pruns {
 		prMatch := Match{
@@ -143,7 +150,7 @@ func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger
 		}
 
 		if event.TargetPipelineRun != "" && event.TargetPipelineRun == strings.TrimSuffix(prun.GetGenerateName(), "-") {
-			logger.Infof("matched target pipelinerun with name: %s, annotation Config: %q", prun.GetGenerateName(), prMatch.Config)
+			logger.Infof("matched target pipelinerun with name: %s, target pipelinerun: %s", prun.GetGenerateName(), event.TargetPipelineRun)
 			matchedPRs = append(matchedPRs, prMatch)
 			continue
 		}
@@ -158,14 +165,35 @@ func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger
 		}
 
 		if targetNS, ok := prun.GetObjectMeta().GetAnnotations()[keys.TargetNamespace]; ok {
+			name := prun.GetName()
+			if name == "" {
+				name = prun.GetGenerateName()
+			}
 			prMatch.Config["target-namespace"] = targetNS
 			prMatch.Repo, _ = MatchEventURLRepo(ctx, cs, event, targetNS)
 			if prMatch.Repo == nil {
-				logger.Warnf("could not find Repository CRD in branch %s, the pipelineRun %s has a label that explicitly targets it", targetNS, prun.GetGenerateName())
+				logger.Warnf("could not find Repository CRD in branch %s, the pipelineRun %s has a label that explicitly targets it", targetNS, name)
 				continue
 			}
 		}
 
+		if targetComment, ok := prun.GetObjectMeta().GetAnnotations()[keys.OnComment]; ok {
+			re, err := regexp.Compile(targetComment)
+			if err != nil {
+				logger.Warnf("could not compile regexp %s from pipelineRun %s", targetComment, prun.GetGenerateName())
+				continue
+			}
+			if re.MatchString(event.TriggerComment) {
+				event.EventType = opscomments.OnCommentEventType.String()
+				logger.Infof("matched pipelinerun with name: %s on gitops comment: %q", prun.GetGenerateName(), event.TriggerComment)
+				matchedPRs = append(matchedPRs, prMatch)
+				continue
+			}
+		}
+		// if the event is a comment event, but we don't have any match from the keys.OnComment then skip the other evaluations
+		if event.EventType == opscomments.NoOpsCommentEventType.String() || event.EventType == opscomments.OnCommentEventType.String() {
+			continue
+		}
 		if celExpr, ok := prun.GetObjectMeta().GetAnnotations()[keys.OnCelExpression]; ok {
 			out, err := celEvaluate(ctx, celExpr, event, vcx)
 			if err != nil {
@@ -178,7 +206,7 @@ func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger
 			}
 			logger.Infof("CEL expression has been evaluated and matched")
 		} else {
-			matched, targetEvent, targetBranch, err := getTargetBranch(prun, logger, event)
+			matched, targetEvent, targetBranch, err := getTargetBranch(prun, event)
 			if err != nil {
 				return matchedPRs, err
 			}
@@ -197,17 +225,40 @@ func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger
 		return matchedPRs, nil
 	}
 
-	logger.Warn("cannot match pipeline from payload to a pipelinerun in .tekton/ dir")
-	logger.Warnf("payload target event is %s with source branch %s and target branch %s", event.EventType, event.HeadBranch, event.BaseBranch)
-	logger.Warn("available configuration of the PipelineRuns annotations in .tekton/ dir")
-	for name, maps := range configurations {
-		logger.Infof("PipelineRun: %s, target-branch=%s, target-event=%s",
-			name, maps["target-branch"], maps["target-event"])
-	}
+	return nil, fmt.Errorf(buildAvailableMatchingAnnotationErr(event, pruns))
+}
 
-	// TODO: more descriptive error message
-	return nil, fmt.Errorf("cannot match pipeline from payload to a pipelinerun in .tekton/ dir, event=%s, branch=%s",
-		event.EventType, event.BaseBranch)
+func buildAvailableMatchingAnnotationErr(event *info.Event, pruns []*tektonv1.PipelineRun) string {
+	errmsg := "available annotations of the PipelineRuns annotations in .tekton/ dir:"
+	for _, prun := range pruns {
+		name := prun.GetName()
+		if name == "" {
+			name = prun.GetGenerateName()
+		}
+		errmsg += fmt.Sprintf(" [PipelineRun: %s, annotations:", name)
+		for annotation, value := range prun.GetAnnotations() {
+			if !strings.HasPrefix(annotation, pipelinesascode.GroupName+"/on-") {
+				continue
+			}
+			errmsg += fmt.Sprintf(" %s: ", strings.Replace(annotation, pipelinesascode.GroupName+"/", "", 1))
+			if annotation == keys.OnCelExpression {
+				errmsg += "celexpression"
+			} else {
+				errmsg += value
+			}
+			errmsg += ", "
+		}
+		errmsg = strings.TrimSuffix(errmsg, ", ")
+		errmsg += "],"
+	}
+	errmsg = strings.TrimSpace(errmsg)
+	errmsg = strings.TrimSuffix(errmsg, ",")
+	nopsevent := ""
+	if event.EventType != opscomments.NoOpsCommentEventType.String() {
+		nopsevent = fmt.Sprintf(" payload target event is %s with", event.EventType)
+	}
+	errmsg = fmt.Sprintf("cannot match the event to any pipelineruns in the .tekton/ directory,%s source branch %s and target branch %s. %s", nopsevent, event.HeadBranch, event.BaseBranch, errmsg)
+	return errmsg
 }
 
 func matchOnAnnotation(annotations string, eventType []string, branchMatching bool) (bool, error) {
