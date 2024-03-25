@@ -3,7 +3,7 @@ TKN_VERSION := $(shell sed -n '/[ ]*github.com\/tektoncd\/cli v[0-9]*\.[0-9]*\.[
 RESULTS_VERSION := $(shell sed -n '/[ ]*github.com\/tektoncd\/results v[0-9]*\.[0-9]*\.[0-9]*/ { s/.* v//;p ;}' go.mod)
 
 GO := go
-GOVERSION := 1.20
+GOVERSION := 1.21
 OPC_VERSION := devel
 BINARYNAME := opc
 GOLANGCI_LINT := golangci-lint
@@ -47,7 +47,7 @@ lint-go: ## runs go linter on all go files
 	@$(GOLANGCI_LINT) run ./... --modules-download-mode=vendor \
 							--max-issues-per-linter=0 \
 							--max-same-issues=0 \
-							--deadline 10m
+							--timeout 10m
 
 .PHONY: generate version-file version-updates updates build all vendor tidy lint-go mkbin
 
