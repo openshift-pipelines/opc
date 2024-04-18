@@ -70,7 +70,7 @@ func (p *PacRun) verifyRepoAndUser(ctx context.Context) (*v1alpha1.Repository, e
 	if p.event.InstallationID > 0 {
 		p.event.Provider.WebhookSecret, _ = GetCurrentNSWebhookSecret(ctx, p.k8int, p.run)
 	} else {
-		err := SecretFromRepository(ctx, p.run, p.k8int, p.vcx.GetConfig(), p.event, repo, p.logger)
+		err := SecretFromRepository(ctx, p.k8int, p.vcx.GetConfig(), p.event, repo, p.pacInfo.WebhookType, p.logger)
 		if err != nil {
 			return repo, err
 		}
@@ -99,7 +99,7 @@ is that what you want? make sure you use -n when generating the secret, eg: echo
 	}
 
 	if p.event.InstallationID > 0 {
-		token, err := github.ScopeTokenToListOfRepos(ctx, p.vcx, repo, p.run, p.event, p.eventEmitter, p.logger)
+		token, err := github.ScopeTokenToListOfRepos(ctx, p.vcx, p.pacInfo, repo, p.run, p.event, p.eventEmitter, p.logger)
 		if err != nil {
 			return nil, err
 		}
@@ -168,6 +168,13 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 	if err != nil {
 		return nil, err
 	}
+
+	if types.ValidationErrors != nil {
+		for k, v := range types.ValidationErrors {
+			kv := fmt.Sprintf("prun: %s tekton validation error: %s", k, v)
+			p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "PipelineRunValidationErrors", kv)
+		}
+	}
 	pipelineRuns := types.PipelineRuns
 	if len(pipelineRuns) == 0 {
 		msg := fmt.Sprintf("cannot locate templates in %s/ directory for this repository in %s", tektonDir, p.event.HeadBranch)
@@ -208,15 +215,18 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 	}
 
 	// if /test command is used then filter out the pipelinerun
-	pipelineRuns = filterRunningPipelineRunOnTargetTest(p.event.TargetTestPipelineRun, pipelineRuns)
-	if pipelineRuns == nil {
-		msg := fmt.Sprintf("cannot find pipelinerun %s in this repository", p.event.TargetTestPipelineRun)
-		p.eventEmitter.EmitMessage(repo, zap.InfoLevel, "RepositoryCannotLocatePipelineRun", msg)
-		return nil, nil
+	if p.event.TargetTestPipelineRun != "" {
+		targetPR := filterRunningPipelineRunOnTargetTest(p.event.TargetTestPipelineRun, pipelineRuns)
+		if targetPR == nil {
+			msg := fmt.Sprintf("cannot find the targeted pipelinerun %s in this repository", p.event.TargetTestPipelineRun)
+			p.eventEmitter.EmitMessage(repo, zap.InfoLevel, "RepositoryCannotLocatePipelineRun", msg)
+			return nil, nil
+		}
+		pipelineRuns = []*tektonv1.PipelineRun{targetPR}
 	}
 
 	// finally resolve with fetching the remote tasks (if enabled)
-	if p.run.Info.Pac.RemoteTasks {
+	if p.pacInfo.RemoteTasks {
 		// only resolve on the matched pipelineruns if we don't do explicit /test of unmatched pipelineruns
 		if p.event.TargetTestPipelineRun == "" {
 			types.PipelineRuns = nil
@@ -246,11 +256,13 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 	// if we are doing explicit /test command then we only want to run the one that has matched the /test
 	if p.event.TargetTestPipelineRun != "" {
 		p.eventEmitter.EmitMessage(repo, zap.InfoLevel, "RepositoryMatchedPipelineRun", fmt.Sprintf("explicit testing via /test of PipelineRun %s", p.event.TargetTestPipelineRun))
+		selectedPr := filterRunningPipelineRunOnTargetTest(p.event.TargetTestPipelineRun, pipelineRuns)
 		return []matcher.Match{{
-			PipelineRun: pipelineRuns[0],
+			PipelineRun: selectedPr,
 			Repo:        repo,
 		}}, nil
 	}
+
 	matchedPRs, err = matcher.MatchPipelinerunByAnnotation(ctx, p.logger, pipelineRuns, p.run, p.event, p.vcx)
 	if err != nil {
 		// Don't fail when you don't have a match between pipeline and annotations
@@ -261,14 +273,11 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 	return matchedPRs, nil
 }
 
-func filterRunningPipelineRunOnTargetTest(testPipeline string, prs []*tektonv1.PipelineRun) []*tektonv1.PipelineRun {
-	if testPipeline == "" {
-		return prs
-	}
+func filterRunningPipelineRunOnTargetTest(testPipeline string, prs []*tektonv1.PipelineRun) *tektonv1.PipelineRun {
 	for _, pr := range prs {
 		if prName, ok := pr.GetAnnotations()[apipac.OriginalPRName]; ok {
 			if prName == testPipeline {
-				return []*tektonv1.PipelineRun{pr}
+				return pr
 			}
 		}
 	}
@@ -331,9 +340,9 @@ func (p *PacRun) checkAccessOrErrror(ctx context.Context, repo *v1alpha1.Reposit
 	}
 	p.eventEmitter.EmitMessage(repo, zap.InfoLevel, "RepositoryPermissionDenied", msg)
 	status := provider.StatusOpts{
-		Status:     "queued",
+		Status:     queuedStatus,
 		Title:      "Pending approval",
-		Conclusion: "pending",
+		Conclusion: pendingConclusion,
 		Text:       msg,
 		DetailsURL: p.event.URL,
 	}

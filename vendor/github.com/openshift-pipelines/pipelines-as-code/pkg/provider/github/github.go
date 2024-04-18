@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v59/github"
+	"github.com/google/go-github/v61/github"
 	"github.com/jonboulle/clockwork"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
@@ -44,6 +44,7 @@ type Provider struct {
 	Client        *github.Client
 	Logger        *zap.SugaredLogger
 	Run           *params.Run
+	pacInfo       *info.PacOpts
 	Token, APIURL *string
 	ApplicationID *int64
 	providerName  string
@@ -68,6 +69,10 @@ func New() *Provider {
 			mutex: &sync.Mutex{},
 		},
 	}
+}
+
+func (v *Provider) SetPacInfo(pacInfo *info.PacOpts) {
+	v.pacInfo = pacInfo
 }
 
 // detectGHERawURL Detect if we have a raw URL in GHE.
