@@ -9,7 +9,7 @@ import (
 	"text/tabwriter"
 	"text/template"
 
-	"github.com/google/go-github/v59/github"
+	"github.com/google/go-github/v61/github"
 	"github.com/juju/ansiterm"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
@@ -64,7 +64,8 @@ func install(ctx context.Context, run *params.Run, ios *cli.IOStreams, apiURL st
 		return err
 	}
 	info := &InstallInfo{run: run, apiURL: apiURL}
-	if jwtToken, err := app.GenerateJWT(ctx, targetNs, info.run); err == nil {
+	ip := app.NewInstallation(nil, run, nil, nil, targetNs)
+	if jwtToken, err := ip.GenerateJWT(ctx); err == nil {
 		info.jwtToken = jwtToken
 		if err := info.get(ctx); err != nil {
 			return err

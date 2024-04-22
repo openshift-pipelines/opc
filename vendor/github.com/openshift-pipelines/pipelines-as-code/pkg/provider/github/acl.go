@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/go-github/v59/github"
+	"github.com/google/go-github/v61/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/acl"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/policy"
@@ -126,14 +126,14 @@ func (v *Provider) aclAllowedOkToTestFromAnOwner(ctx context.Context, event *inf
 	case *github.IssueCommentEvent:
 		// if we don't need to check old comments, then on issue comment we
 		// need to check if comment have /ok-to-test and is from allowed user
-		if !v.Run.Info.Pac.RememberOKToTest {
+		if !v.pacInfo.RememberOKToTest {
 			return v.aclAllowedOkToTestCurrentComment(ctx, revent, event.Comment.GetID())
 		}
 		revent.URL = event.Issue.GetPullRequestLinks().GetHTMLURL()
 	case *github.PullRequestEvent:
 		// if we don't need to check old comments, then on push event we don't need
 		// to check anything for the non-allowed user
-		if !v.Run.Info.Pac.RememberOKToTest {
+		if !v.pacInfo.RememberOKToTest {
 			return false, nil
 		}
 		revent.URL = event.GetPullRequest().GetHTMLURL()

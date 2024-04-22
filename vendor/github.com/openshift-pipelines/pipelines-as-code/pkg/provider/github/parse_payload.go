@@ -11,17 +11,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bradleyfalzon/ghinstallation/v2"
-	oGitHub "github.com/google/go-github/v57/github"
-	"github.com/google/go-github/v59/github"
+	ghinstallation "github.com/bradleyfalzon/ghinstallation/v2"
+	oGitHub "github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v61/github"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/opscomments"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
 // GetAppIDAndPrivateKey retrieves the GitHub application ID and private key from a secret in the specified namespace.
@@ -99,7 +100,7 @@ func (v *Provider) parseEventType(request *http.Request, event *info.Event) erro
 	event.Provider.URL = request.Header.Get("X-GitHub-Enterprise-Host")
 
 	if event.EventType == "push" {
-		event.TriggerTarget = "push"
+		event.TriggerTarget = triggertype.Push
 	} else {
 		event.TriggerTarget = triggertype.PullRequest
 	}
@@ -184,13 +185,13 @@ func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *h
 	processedEvent.Provider.URL = event.Provider.URL
 
 	// regenerate token scoped to the repo IDs
-	if run.Info.Pac.SecretGHAppRepoScoped && installationIDFrompayload != -1 && len(v.RepositoryIDs) > 0 {
+	if v.pacInfo.SecretGHAppRepoScoped && installationIDFrompayload != -1 && len(v.RepositoryIDs) > 0 {
 		repoLists := []string{}
-		if run.Info.Pac.SecretGhAppTokenScopedExtraRepos != "" {
+		if v.pacInfo.SecretGhAppTokenScopedExtraRepos != "" {
 			// this is going to show up a lot in the logs but i guess that
 			// would make people fix the value instead of being lost into
 			// the top of the logs at controller start.
-			for _, configValue := range strings.Split(run.Info.Pac.SecretGhAppTokenScopedExtraRepos, ",") {
+			for _, configValue := range strings.Split(v.pacInfo.SecretGhAppTokenScopedExtraRepos, ",") {
 				configValueS := strings.TrimSpace(configValue)
 				if configValueS == "" {
 					continue
@@ -237,6 +238,9 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 	case *github.IssueCommentEvent:
 		if v.Client == nil {
 			return nil, fmt.Errorf("gitops style comments operation is only supported with github apps integration")
+		}
+		if gitEvent.GetAction() != "created" {
+			return nil, fmt.Errorf("only newly created comment is supported, received: %s", gitEvent.GetAction())
 		}
 		processedEvent, err = v.handleIssueCommentEvent(ctx, gitEvent)
 		if err != nil {
@@ -393,6 +397,7 @@ func (v *Provider) handleCommitCommentEvent(ctx context.Context, event *github.C
 	runevent.BaseURL = runevent.HeadURL
 	runevent.EventType = "push"
 	runevent.TriggerTarget = "push"
+	runevent.TriggerComment = event.GetComment().GetBody()
 
 	// Set main as default branch to runevent.HeadBranch, runevent.BaseBranch
 	runevent.HeadBranch, runevent.BaseBranch = "main", "main"
