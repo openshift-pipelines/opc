@@ -5,6 +5,8 @@ import (
 	"os"
 	"syscall"
 
+	magcli "github.com/openshift-pipelines/manual-approval-gate/pkg/cli"
+	magcmd "github.com/openshift-pipelines/manual-approval-gate/pkg/cli/cmd"
 	opccli "github.com/openshift-pipelines/opc/pkg"
 	paccli "github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac"
@@ -24,6 +26,7 @@ See https://pipelinesascode.com for more details`
 	pacShortdesc     = "CLI to interact with Pipelines as Code resources"
 	tknShortDesc     = "CLI to interact with Openshift Pipelines resources"
 	resultsShortDesc = "CLI to interact with Tekton Results API."
+	magShortDesc     = "CLI to interact with Manual Approval Gate."
 	binaryName       = `opc`
 )
 
@@ -38,11 +41,20 @@ func main() {
 	pac.Short = pacShortdesc
 	pac.Long = pacLongDesc
 	tkn.AddCommand(pac)
+
+	// adding manual approval gate cli
+	p := &magcli.ApprovalTaskParams{}
+	mag := magcmd.Root(p)
+	mag.Use = "approvaltask"
+	mag.Short = magShortDesc
+	tkn.AddCommand(mag)
+
 	// adding results
 	results := resultscmd.Root()
 	results.Use = "results"
 	results.Short = resultsShortDesc
 	tkn.AddCommand(results)
+
 	pluginList := plugins.GetAllTknPluginFromPaths()
 	newPluginList := []string{}
 	// remove pac from the plugin list

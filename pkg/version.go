@@ -20,10 +20,11 @@ var versionFile string
 var versionTmpl string
 
 type versions struct {
-	Opc     string `json:"opc"`
-	Tkn     string `json:"tkn"`
-	Pac     string `json:"pac"`
-	Results string `json:"results"`
+	Opc                string `json:"opc"`
+	Tkn                string `json:"tkn"`
+	Pac                string `json:"pac"`
+	Results            string `json:"results"`
+	ManualApprovalGate string `json:"manualapprovalgate"`
 }
 
 func VersionCommand(ioStreams *paccli.IOStreams) *cobra.Command {
@@ -46,6 +47,8 @@ func VersionCommand(ioStreams *paccli.IOStreams) *cobra.Command {
 					fmt.Fprintln(ioStreams.Out, v.Opc)
 				case "results":
 					fmt.Fprintln(ioStreams.Out, v.Results)
+				case "manualapprovalgate":
+					fmt.Fprintln(ioStreams.Out, v.ManualApprovalGate)
 				default:
 					return fmt.Errorf("unknown component: %v", args[1])
 				}
