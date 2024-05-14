@@ -3,6 +3,7 @@ module github.com/openshift-pipelines/opc
 go 1.22.0
 
 require (
+	github.com/openshift-pipelines/manual-approval-gate v0.2.0
 	github.com/openshift-pipelines/pipelines-as-code v0.27.0
 	github.com/spf13/cobra v1.8.0
 	github.com/tektoncd/cli v0.37.0
@@ -226,6 +227,8 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
+	github.com/openshift/api v0.0.0-20240422085825-2624175e9673 // indirect
+	github.com/openshift/client-go v0.0.0-20240422164335-6c851f4919dd // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect

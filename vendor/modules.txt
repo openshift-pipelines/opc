@@ -1078,6 +1078,22 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
+# github.com/openshift-pipelines/manual-approval-gate v0.2.0
+## explicit; go 1.21
+github.com/openshift-pipelines/manual-approval-gate/pkg/actions
+github.com/openshift-pipelines/manual-approval-gate/pkg/apis/approvaltask
+github.com/openshift-pipelines/manual-approval-gate/pkg/apis/approvaltask/v1alpha1
+github.com/openshift-pipelines/manual-approval-gate/pkg/cli
+github.com/openshift-pipelines/manual-approval-gate/pkg/cli/cmd
+github.com/openshift-pipelines/manual-approval-gate/pkg/cli/cmd/approve
+github.com/openshift-pipelines/manual-approval-gate/pkg/cli/cmd/describe
+github.com/openshift-pipelines/manual-approval-gate/pkg/cli/cmd/list
+github.com/openshift-pipelines/manual-approval-gate/pkg/cli/cmd/reject
+github.com/openshift-pipelines/manual-approval-gate/pkg/cli/flags
+github.com/openshift-pipelines/manual-approval-gate/pkg/cli/formatter
+github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned
+github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned/scheme
+github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned/typed/approvaltask/v1alpha1
 # github.com/openshift-pipelines/pipelines-as-code v0.27.0
 ## explicit; go 1.21
 github.com/openshift-pipelines/pipelines-as-code/pkg/acl
@@ -1138,6 +1154,15 @@ github.com/openshift-pipelines/pipelines-as-code/pkg/secrets
 github.com/openshift-pipelines/pipelines-as-code/pkg/secrets/types
 github.com/openshift-pipelines/pipelines-as-code/pkg/sort
 github.com/openshift-pipelines/pipelines-as-code/pkg/templates
+# github.com/openshift/api v0.0.0-20240422085825-2624175e9673
+## explicit; go 1.21
+github.com/openshift/api/user/v1
+# github.com/openshift/client-go v0.0.0-20240422164335-6c851f4919dd
+## explicit; go 1.21
+github.com/openshift/client-go/user/applyconfigurations/internal
+github.com/openshift/client-go/user/applyconfigurations/user/v1
+github.com/openshift/client-go/user/clientset/versioned/scheme
+github.com/openshift/client-go/user/clientset/versioned/typed/user/v1
 # github.com/opentracing/opentracing-go v1.2.0
 ## explicit; go 1.14
 github.com/opentracing/opentracing-go
