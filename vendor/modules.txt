@@ -1094,7 +1094,7 @@ github.com/openshift-pipelines/manual-approval-gate/pkg/cli/formatter
 github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned
 github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned/scheme
 github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned/typed/approvaltask/v1alpha1
-# github.com/openshift-pipelines/pipelines-as-code v0.27.0
+# github.com/openshift-pipelines/pipelines-as-code v0.27.1
 ## explicit; go 1.21
 github.com/openshift-pipelines/pipelines-as-code/pkg/acl
 github.com/openshift-pipelines/pipelines-as-code/pkg/action
