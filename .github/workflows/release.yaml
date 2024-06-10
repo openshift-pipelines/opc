@@ -26,7 +26,7 @@ jobs:
       with:
         go-version: '1.22'
 
-    - uses: goreleaser/goreleaser-action@v5.1.0
+    - uses: goreleaser/goreleaser-action@v6.0.0
       with:
         version: latest
         args: release --timeout=60m --clean
