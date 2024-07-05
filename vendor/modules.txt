@@ -846,8 +846,8 @@ github.com/hashicorp/go-cleanhttp
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
-# github.com/hashicorp/go-retryablehttp v0.7.5
-## explicit; go 1.13
+# github.com/hashicorp/go-retryablehttp v0.7.7
+## explicit; go 1.19
 github.com/hashicorp/go-retryablehttp
 # github.com/hashicorp/go-rootcerts v1.0.2
 ## explicit; go 1.12
@@ -1094,7 +1094,7 @@ github.com/openshift-pipelines/manual-approval-gate/pkg/cli/formatter
 github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned
 github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned/scheme
 github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned/typed/approvaltask/v1alpha1
-# github.com/openshift-pipelines/pipelines-as-code v0.27.1
+# github.com/openshift-pipelines/pipelines-as-code v0.27.2
 ## explicit; go 1.21
 github.com/openshift-pipelines/pipelines-as-code/pkg/acl
 github.com/openshift-pipelines/pipelines-as-code/pkg/action
