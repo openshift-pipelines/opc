@@ -7,7 +7,7 @@ require (
 	github.com/openshift-pipelines/pipelines-as-code v0.27.2
 	github.com/spf13/cobra v1.8.1
 	github.com/tektoncd/cli v0.37.0
-	github.com/tektoncd/results v0.10.0
+	github.com/tektoncd/results v0.11.0
 )
 
 replace (
