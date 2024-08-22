@@ -14,10 +14,10 @@ linters:
   enable:
     - asciicheck
     - bodyclose
+    - copyloopvar
     - dogsled
     - durationcheck
     - exhaustive
-    - exportloopref
     - forbidigo
     - forcetypeassert
     - gochecknoinits
