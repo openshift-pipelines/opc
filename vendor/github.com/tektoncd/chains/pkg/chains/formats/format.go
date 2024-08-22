@@ -25,6 +25,7 @@ type Payloader interface {
 	CreatePayload(ctx context.Context, obj interface{}) (interface{}, error)
 	Type() config.PayloadType
 	Wrap() bool
+	RetrieveAllArtifactURIs(ctx context.Context, obj interface{}) ([]string, error)
 }
 
 const (
@@ -32,18 +33,16 @@ const (
 	PayloadTypeSimpleSigning config.PayloadType = "simplesigning"
 	PayloadTypeInTotoIte6    config.PayloadType = "in-toto"
 	PayloadTypeSlsav1        config.PayloadType = "slsa/v1"
-	PayloadTypeSlsav2alpha1  config.PayloadType = "slsa/v2alpha1"
-	PayloadTypeSlsav2alpha2  config.PayloadType = "slsa/v2alpha2"
 	PayloadTypeSlsav2alpha3  config.PayloadType = "slsa/v2alpha3"
+	PayloadTypeSlsav2alpha4  config.PayloadType = "slsa/v2alpha4"
 )
 
 var (
 	IntotoAttestationSet = map[config.PayloadType]struct{}{
 		PayloadTypeInTotoIte6:   {},
 		PayloadTypeSlsav1:       {},
-		PayloadTypeSlsav2alpha1: {},
-		PayloadTypeSlsav2alpha2: {},
 		PayloadTypeSlsav2alpha3: {},
+		PayloadTypeSlsav2alpha4: {},
 	}
 	payloaderMap = map[config.PayloadType]PayloaderInit{}
 )
