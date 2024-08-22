@@ -62,7 +62,8 @@ func (c *DynamoDB) BatchExecuteStatementRequest(input *BatchExecuteStatementInpu
 // This operation allows you to perform batch reads or writes on data stored
 // in DynamoDB, using PartiQL. Each read statement in a BatchExecuteStatement
 // must specify an equality condition on all key attributes. This enforces that
-// each SELECT statement in a batch returns at most a single item.
+// each SELECT statement in a batch returns at most a single item. For more
+// information, see Running batch operations with PartiQL for DynamoDB (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.multiplestatements.batching.html).
 //
 // The entire batch must consist of either read statements or write statements,
 // you cannot mix both in one batch.
@@ -429,8 +430,12 @@ func (c *DynamoDB) BatchWriteItemRequest(input *BatchWriteItemInput) (req *reque
 // check for unprocessed items and submit a new BatchWriteItem request with
 // those unprocessed items until all items have been processed.
 //
-// If none of the items can be processed due to insufficient provisioned throughput
-// on all of the tables in the request, then BatchWriteItem returns a ProvisionedThroughputExceededException.
+// For tables and indexes with provisioned capacity, if none of the items can
+// be processed due to insufficient provisioned throughput on all of the tables
+// in the request, then BatchWriteItem returns a ProvisionedThroughputExceededException.
+// For all tables and indexes, if none of the items can be processed due to
+// other throttling scenarios (such as exceeding partition level limits), then
+// BatchWriteItem returns a ThrottlingException.
 //
 // If DynamoDB returns any unprocessed items, you should retry the batch operation
 // on those items. However, we strongly recommend that you use an exponential
@@ -785,12 +790,16 @@ func (c *DynamoDB) CreateGlobalTableRequest(input *CreateGlobalTableInput) (req 
 // relationship between two or more DynamoDB tables with the same table name
 // in the provided Regions.
 //
-// For global tables, this operation only applies to global tables using Version
-// 2019.11.21 (Current version), as it provides greater flexibility, higher
-// efficiency and consumes less write capacity than 2017.11.29 (Legacy). To
-// determine which version you are using, see Determining the version (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.DetermineVersion.html).
+// This documentation is for version 2017.11.29 (Legacy) of global tables, which
+// should be avoided for new global tables. Customers should use Global Tables
+// version 2019.11.21 (Current) (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html)
+// when possible, because it provides greater flexibility, higher efficiency,
+// and consumes less write capacity than 2017.11.29 (Legacy).
+//
+// To determine which version you're using, see Determining the global table
+// version you are using (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.DetermineVersion.html).
 // To update existing global tables from version 2017.11.29 (Legacy) to version
-// 2019.11.21 (Current), see Updating global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_upgrade.html).
+// 2019.11.21 (Current), see Upgrading global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_upgrade.html).
 //
 // If you want to add a new replica table to a global table, each of the following
 // conditions must be true:
@@ -1560,7 +1569,7 @@ func (c *DynamoDB) DeleteTableRequest(input *DeleteTableInput) (req *request.Req
 //
 // DynamoDB might continue to accept data read and write operations, such as
 // GetItem and PutItem, on a table in the DELETING state until the table deletion
-// is complete.
+// is complete. For the full list of table states, see TableStatus (https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TableDescription.html#DDB-Type-TableDescription-TableStatus).
 //
 // When you delete a table, any indexes on that table are also deleted.
 //
@@ -2271,12 +2280,16 @@ func (c *DynamoDB) DescribeGlobalTableRequest(input *DescribeGlobalTableInput) (
 //
 // Returns information about the specified global table.
 //
-// For global tables, this operation only applies to global tables using Version
-// 2019.11.21 (Current version), as it provides greater flexibility, higher
-// efficiency and consumes less write capacity than 2017.11.29 (Legacy). To
-// determine which version you are using, see Determining the version (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.DetermineVersion.html).
+// This documentation is for version 2017.11.29 (Legacy) of global tables, which
+// should be avoided for new global tables. Customers should use Global Tables
+// version 2019.11.21 (Current) (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html)
+// when possible, because it provides greater flexibility, higher efficiency,
+// and consumes less write capacity than 2017.11.29 (Legacy).
+//
+// To determine which version you're using, see Determining the global table
+// version you are using (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.DetermineVersion.html).
 // To update existing global tables from version 2017.11.29 (Legacy) to version
-// 2019.11.21 (Current), see Updating global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_upgrade.html).
+// 2019.11.21 (Current), see Upgrading global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_upgrade.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2385,12 +2398,16 @@ func (c *DynamoDB) DescribeGlobalTableSettingsRequest(input *DescribeGlobalTable
 //
 // Describes Region-specific settings for a global table.
 //
-// For global tables, this operation only applies to global tables using Version
-// 2019.11.21 (Current version), as it provides greater flexibility, higher
-// efficiency and consumes less write capacity than 2017.11.29 (Legacy). To
-// determine which version you are using, see Determining the version (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.DetermineVersion.html).
+// This documentation is for version 2017.11.29 (Legacy) of global tables, which
+// should be avoided for new global tables. Customers should use Global Tables
+// version 2019.11.21 (Current) (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html)
+// when possible, because it provides greater flexibility, higher efficiency,
+// and consumes less write capacity than 2017.11.29 (Legacy).
+//
+// To determine which version you're using, see Determining the global table
+// version you are using (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.DetermineVersion.html).
 // To update existing global tables from version 2017.11.29 (Legacy) to version
-// 2019.11.21 (Current), see Updating global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_upgrade.html).
+// 2019.11.21 (Current), see Upgrading global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_upgrade.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -4712,12 +4729,16 @@ func (c *DynamoDB) ListGlobalTablesRequest(input *ListGlobalTablesInput) (req *r
 //
 // Lists all global tables that have a replica in the specified Region.
 //
-// For global tables, this operation only applies to global tables using Version
-// 2019.11.21 (Current version), as it provides greater flexibility, higher
-// efficiency and consumes less write capacity than 2017.11.29 (Legacy). To
-// determine which version you are using, see Determining the version (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.DetermineVersion.html).
+// This documentation is for version 2017.11.29 (Legacy) of global tables, which
+// should be avoided for new global tables. Customers should use Global Tables
+// version 2019.11.21 (Current) (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html)
+// when possible, because it provides greater flexibility, higher efficiency,
+// and consumes less write capacity than 2017.11.29 (Legacy).
+//
+// To determine which version you're using, see Determining the global table
+// version you are using (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.DetermineVersion.html).
 // To update existing global tables from version 2017.11.29 (Legacy) to version
-// 2019.11.21 (Current), see Updating global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_upgrade.html).
+// 2019.11.21 (Current), see Upgrading global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_upgrade.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -7391,12 +7412,16 @@ func (c *DynamoDB) UpdateGlobalTableRequest(input *UpdateGlobalTableInput) (req 
 // schema, have DynamoDB Streams enabled, and have the same provisioned and
 // maximum write capacity units.
 //
-// For global tables, this operation only applies to global tables using Version
-// 2019.11.21 (Current version), as it provides greater flexibility, higher
-// efficiency and consumes less write capacity than 2017.11.29 (Legacy). To
-// determine which version you are using, see Determining the version (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.DetermineVersion.html).
+// This documentation is for version 2017.11.29 (Legacy) of global tables, which
+// should be avoided for new global tables. Customers should use Global Tables
+// version 2019.11.21 (Current) (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html)
+// when possible, because it provides greater flexibility, higher efficiency,
+// and consumes less write capacity than 2017.11.29 (Legacy).
+//
+// To determine which version you're using, see Determining the global table
+// version you are using (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.DetermineVersion.html).
 // To update existing global tables from version 2017.11.29 (Legacy) to version
-// 2019.11.21 (Current), see Updating global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_upgrade.html).
+// 2019.11.21 (Current), see Upgrading global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_upgrade.html).
 //
 // For global tables, this operation only applies to global tables using Version
 // 2019.11.21 (Current version). If you are using global tables Version 2019.11.21
@@ -7537,12 +7562,16 @@ func (c *DynamoDB) UpdateGlobalTableSettingsRequest(input *UpdateGlobalTableSett
 //
 // Updates settings for a global table.
 //
-// For global tables, this operation only applies to global tables using Version
-// 2019.11.21 (Current version), as it provides greater flexibility, higher
-// efficiency and consumes less write capacity than 2017.11.29 (Legacy). To
-// determine which version you are using, see Determining the version (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.DetermineVersion.html).
+// This documentation is for version 2017.11.29 (Legacy) of global tables, which
+// should be avoided for new global tables. Customers should use Global Tables
+// version 2019.11.21 (Current) (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html)
+// when possible, because it provides greater flexibility, higher efficiency,
+// and consumes less write capacity than 2017.11.29 (Legacy).
+//
+// To determine which version you're using, see Determining the global table
+// version you are using (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables.DetermineVersion.html).
 // To update existing global tables from version 2017.11.29 (Legacy) to version
-// 2019.11.21 (Current), see Updating global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_upgrade.html).
+// 2019.11.21 (Current), see Upgrading global tables (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/V2globaltables_upgrade.html).
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -11668,6 +11697,9 @@ type CreateTableInput struct {
 	// DynamoDB counts whitespaces when calculating the size of a policy against
 	// this limit. For a full list of all considerations that apply for resource-based
 	// policies, see Resource-based policy considerations (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/rbac-considerations.html).
+	//
+	// You need to specify the CreateTable and PutResourcePolicy IAM actions for
+	// authorizing a user to create a table with a resource-based policy.
 	ResourcePolicy *string `type:"string"`
 
 	// Represents the settings used to enable server-side encryption.
@@ -21400,7 +21432,7 @@ type QueryOutput struct {
 
 	// The number of items evaluated, before any QueryFilter is applied. A high
 	// ScannedCount value with few, or no, Count results indicates an inefficient
-	// Query operation. For more information, see Count and ScannedCount (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/QueryAndScan.html#Count)
+	// Query operation. For more information, see Count and ScannedCount (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.Count)
 	// in the Amazon DynamoDB Developer Guide.
 	//
 	// If you did not use a filter in the request, then ScannedCount is the same
