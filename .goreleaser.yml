@@ -1,3 +1,4 @@
+version: 2
 before:
   hooks:
     - sed -i 's/devel/{{ .Tag }}/' ./pkg/version.json
@@ -49,7 +50,7 @@ brews:
     repository:
       owner: openshift-pipelines
       name: opc
-    folder: Formula
+    directory: Formula
     homepage: "https://github.com/openshift-pipelines/opc"
     description: "A CLI for OpenShift Pipeline"
     install: |
