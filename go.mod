@@ -6,7 +6,7 @@ require (
 	github.com/openshift-pipelines/manual-approval-gate v0.3.0
 	github.com/openshift-pipelines/pipelines-as-code v0.27.2
 	github.com/spf13/cobra v1.8.1
-	github.com/tektoncd/cli v0.38.0
+	github.com/tektoncd/cli v0.38.1
 	github.com/tektoncd/results v0.11.0
 )
 
@@ -272,8 +272,8 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tektoncd/chains v0.22.0 // indirect
 	github.com/tektoncd/hub v1.18.0 // indirect
-	github.com/tektoncd/pipeline v0.62.1 // indirect
-	github.com/tektoncd/triggers v0.29.0 // indirect
+	github.com/tektoncd/pipeline v0.62.3 // indirect
+	github.com/tektoncd/triggers v0.29.1 // indirect
 	github.com/thales-e-security/pool v0.0.2 // indirect
 	github.com/theupdateframework/go-tuf v0.7.0 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
