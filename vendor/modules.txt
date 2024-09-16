@@ -1596,8 +1596,8 @@ github.com/tektoncd/pipeline/pkg/remote/oci
 github.com/tektoncd/pipeline/pkg/result
 github.com/tektoncd/pipeline/pkg/spire/config
 github.com/tektoncd/pipeline/pkg/substitution
-# github.com/tektoncd/results v0.11.0
-## explicit; go 1.19
+# github.com/tektoncd/results v0.12.0
+## explicit; go 1.22.0
 github.com/tektoncd/results/pkg/cli/client
 github.com/tektoncd/results/pkg/cli/cmd
 github.com/tektoncd/results/pkg/cli/cmd/logs
@@ -1606,8 +1606,9 @@ github.com/tektoncd/results/pkg/cli/config
 github.com/tektoncd/results/pkg/cli/flags
 github.com/tektoncd/results/pkg/cli/format
 github.com/tektoncd/results/pkg/cli/portforward
-github.com/tektoncd/results/proto/pipeline/v1beta1/pipeline_go_proto
+github.com/tektoncd/results/proto/pipeline/v1/pipeline_go_proto
 github.com/tektoncd/results/proto/v1alpha2/results_go_proto
+github.com/tektoncd/results/proto/v1alpha3/results_go_proto
 # github.com/tektoncd/triggers v0.29.1
 ## explicit; go 1.22
 github.com/tektoncd/triggers/pkg/apis/config
@@ -1996,7 +1997,7 @@ google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.65.0
+# google.golang.org/grpc v1.66.2
 ## explicit; go 1.21
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -2025,7 +2026,9 @@ google.golang.org/grpc/credentials/insecure
 google.golang.org/grpc/credentials/oauth
 google.golang.org/grpc/encoding
 google.golang.org/grpc/encoding/proto
+google.golang.org/grpc/experimental/stats
 google.golang.org/grpc/grpclog
+google.golang.org/grpc/grpclog/internal
 google.golang.org/grpc/health/grpc_health_v1
 google.golang.org/grpc/internal
 google.golang.org/grpc/internal/backoff
@@ -2049,12 +2052,14 @@ google.golang.org/grpc/internal/resolver/dns/internal
 google.golang.org/grpc/internal/resolver/passthrough
 google.golang.org/grpc/internal/resolver/unix
 google.golang.org/grpc/internal/serviceconfig
+google.golang.org/grpc/internal/stats
 google.golang.org/grpc/internal/status
 google.golang.org/grpc/internal/syscall
 google.golang.org/grpc/internal/transport
 google.golang.org/grpc/internal/transport/networktype
 google.golang.org/grpc/internal/xds
 google.golang.org/grpc/keepalive
+google.golang.org/grpc/mem
 google.golang.org/grpc/metadata
 google.golang.org/grpc/peer
 google.golang.org/grpc/resolver
@@ -2530,7 +2535,7 @@ k8s.io/utils/pointer
 k8s.io/utils/ptr
 k8s.io/utils/strings/slices
 k8s.io/utils/trace
-# knative.dev/pkg v0.0.0-20240416145024-0f34a8815650
+# knative.dev/pkg v0.0.0-20240614135239-339c22b8218c
 ## explicit; go 1.21
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -2547,6 +2552,7 @@ knative.dev/pkg/logging
 knative.dev/pkg/logging/logkey
 knative.dev/pkg/metrics
 knative.dev/pkg/metrics/metricskey
+knative.dev/pkg/ptr
 knative.dev/pkg/reconciler
 knative.dev/pkg/system
 knative.dev/pkg/tracker
