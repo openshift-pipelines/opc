@@ -35,11 +35,7 @@ func request_Results_CreateResult_0(ctx context.Context, marshaler runtime.Marsh
 	var protoReq CreateResultRequest
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Result); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Result); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -69,11 +65,7 @@ func local_request_Results_CreateResult_0(ctx context.Context, marshaler runtime
 	var protoReq CreateResultRequest
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Result); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Result); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -100,18 +92,14 @@ func local_request_Results_CreateResult_0(ctx context.Context, marshaler runtime
 }
 
 var (
-	filter_Results_UpdateResult_0 = &utilities.DoubleArray{Encoding: map[string]int{"result": 0, "name": 1}, Base: []int{1, 4, 5, 2, 0, 0, 0, 0}, Check: []int{0, 1, 1, 2, 4, 2, 2, 3}}
+	filter_Results_UpdateResult_0 = &utilities.DoubleArray{Encoding: map[string]int{"result": 0, "name": 1}, Base: []int{1, 2, 1, 0, 0}, Check: []int{0, 1, 2, 3, 2}}
 )
 
 func request_Results_UpdateResult_0(ctx context.Context, marshaler runtime.Marshaler, client ResultsClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq UpdateResultRequest
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Result); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Result); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -148,11 +136,7 @@ func local_request_Results_UpdateResult_0(ctx context.Context, marshaler runtime
 	var protoReq UpdateResultRequest
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Result); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Result); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -290,7 +274,7 @@ func local_request_Results_DeleteResult_0(ctx context.Context, marshaler runtime
 }
 
 var (
-	filter_Results_ListResults_0 = &utilities.DoubleArray{Encoding: map[string]int{"parent": 0}, Base: []int{1, 2, 0, 0}, Check: []int{0, 1, 2, 2}}
+	filter_Results_ListResults_0 = &utilities.DoubleArray{Encoding: map[string]int{"parent": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
 func request_Results_ListResults_0(ctx context.Context, marshaler runtime.Marshaler, client ResultsClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -363,11 +347,7 @@ func request_Results_CreateRecord_0(ctx context.Context, marshaler runtime.Marsh
 	var protoReq CreateRecordRequest
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Record); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Record); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -397,11 +377,7 @@ func local_request_Results_CreateRecord_0(ctx context.Context, marshaler runtime
 	var protoReq CreateRecordRequest
 	var metadata runtime.ServerMetadata
 
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq.Record); err != nil && err != io.EOF {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Record); err != nil && err != io.EOF {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -428,7 +404,7 @@ func local_request_Results_CreateRecord_0(ctx context.Context, marshaler runtime
 }
 
 var (
-	filter_Results_UpdateRecord_0 = &utilities.DoubleArray{Encoding: map[string]int{"record": 0, "name": 1}, Base: []int{1, 4, 5, 2, 0, 0, 0, 0}, Check: []int{0, 1, 1, 2, 4, 2, 2, 3}}
+	filter_Results_UpdateRecord_0 = &utilities.DoubleArray{Encoding: map[string]int{"record": 0, "name": 1}, Base: []int{1, 2, 1, 0, 0}, Check: []int{0, 1, 2, 3, 2}}
 )
 
 func request_Results_UpdateRecord_0(ctx context.Context, marshaler runtime.Marshaler, client ResultsClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -580,7 +556,7 @@ func local_request_Results_GetRecord_0(ctx context.Context, marshaler runtime.Ma
 }
 
 var (
-	filter_Results_ListRecords_0 = &utilities.DoubleArray{Encoding: map[string]int{"parent": 0}, Base: []int{1, 2, 0, 0}, Check: []int{0, 1, 2, 2}}
+	filter_Results_ListRecords_0 = &utilities.DoubleArray{Encoding: map[string]int{"parent": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
 func request_Results_ListRecords_0(ctx context.Context, marshaler runtime.Marshaler, client ResultsClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -702,7 +678,7 @@ func local_request_Results_DeleteRecord_0(ctx context.Context, marshaler runtime
 }
 
 var (
-	filter_Results_GetRecordListSummary_0 = &utilities.DoubleArray{Encoding: map[string]int{"parent": 0}, Base: []int{1, 2, 0, 0}, Check: []int{0, 1, 2, 2}}
+	filter_Results_GetRecordListSummary_0 = &utilities.DoubleArray{Encoding: map[string]int{"parent": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
 func request_Results_GetRecordListSummary_0(ctx context.Context, marshaler runtime.Marshaler, client ResultsClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -806,7 +782,7 @@ func request_Logs_GetLog_0(ctx context.Context, marshaler runtime.Marshaler, cli
 }
 
 var (
-	filter_Logs_ListLogs_0 = &utilities.DoubleArray{Encoding: map[string]int{"parent": 0}, Base: []int{1, 2, 0, 0}, Check: []int{0, 1, 2, 2}}
+	filter_Logs_ListLogs_0 = &utilities.DoubleArray{Encoding: map[string]int{"parent": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 )
 
 func request_Logs_ListLogs_0(ctx context.Context, marshaler runtime.Marshaler, client LogsClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -931,6 +907,7 @@ func local_request_Logs_DeleteLog_0(ctx context.Context, marshaler runtime.Marsh
 // UnaryRPC     :call ResultsServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterResultsHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterResultsHandlerServer(ctx context.Context, mux *runtime.ServeMux, server ResultsServer) error {
 
 	mux.Handle("POST", pattern_Results_CreateResult_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -1215,6 +1192,7 @@ func RegisterResultsHandlerServer(ctx context.Context, mux *runtime.ServeMux, se
 // UnaryRPC     :call LogsServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterLogsHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterLogsHandlerServer(ctx context.Context, mux *runtime.ServeMux, server LogsServer) error {
 
 	mux.Handle("GET", pattern_Logs_GetLog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -1280,21 +1258,21 @@ func RegisterLogsHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 // RegisterResultsHandlerFromEndpoint is same as RegisterResultsHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterResultsHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.DialContext(ctx, endpoint, opts...)
+	conn, err := grpc.NewClient(endpoint, opts...)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 			return
 		}
 		go func() {
 			<-ctx.Done()
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 		}()
 	}()
@@ -1312,7 +1290,7 @@ func RegisterResultsHandler(ctx context.Context, mux *runtime.ServeMux, conn *gr
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "ResultsClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "ResultsClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "ResultsClient" to call the correct interceptors.
+// "ResultsClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterResultsHandlerClient(ctx context.Context, mux *runtime.ServeMux, client ResultsClient) error {
 
 	mux.Handle("POST", pattern_Results_CreateResult_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -1611,21 +1589,21 @@ var (
 // RegisterLogsHandlerFromEndpoint is same as RegisterLogsHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterLogsHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.DialContext(ctx, endpoint, opts...)
+	conn, err := grpc.NewClient(endpoint, opts...)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 			return
 		}
 		go func() {
 			<-ctx.Done()
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Errorf("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 		}()
 	}()
@@ -1643,7 +1621,7 @@ func RegisterLogsHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "LogsClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "LogsClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "LogsClient" to call the correct interceptors.
+// "LogsClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterLogsHandlerClient(ctx context.Context, mux *runtime.ServeMux, client LogsClient) error {
 
 	mux.Handle("GET", pattern_Logs_GetLog_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
