@@ -1,7 +1,1 @@
-{
-  "pac": "0.27.2",
-  "tkn": "0.38.0",
-  "results": "0.11.0",
-  "manualapprovalgate": "0.3.0",
-  "opc": "devel"
-}
+{"pac": "0.28.0", "tkn": "0.38.1", "results": "0.12.0", "manualapprovalgate": "0.3.0", "opc": "devel"}
