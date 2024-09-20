@@ -1,6 +1,6 @@
 PAC_VERSION := $(shell sed -n '/[ ]*github.com\/openshift-pipelines\/pipelines-as-code v[0-9]*\.[0-9]*\.[0-9]*/ { s/.* v//;p ;}' go.mod)
 TKN_VERSION := $(shell sed -n '/[ ]*github.com\/tektoncd\/cli v[0-9]*\.[0-9]*\.[0-9]*/ { s/.* v//;p ;}' go.mod)
-RESULTS_VERSION := $(shell sed -n '/[ ]*github.com\/tektoncd\/results v[0-9]*\.[0-9]*\.[0-9]*/ { s/.* v//;p ;}' go.mod)
+RESULTS_VERSION := $(shell sed -n '/[ ]*github.com\/tektoncd\/results v[0-9]*\.[0-9]*\.[0-9]*/ { s/^.*v\([0-9.]*\).*/\1/;p ;}' go.mod)
 MAG_VERSION := $(shell sed -n '/[ ]*github.com\/openshift-pipelines\/manual-approval-gate v[0-9]*\.[0-9]*\.[0-9]*/ { s/.* v//;p ;}' go.mod)
 
 GO := go
