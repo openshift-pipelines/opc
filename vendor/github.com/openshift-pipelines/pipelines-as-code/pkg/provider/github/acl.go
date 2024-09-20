@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/go-github/v61/github"
+	"github.com/google/go-github/v64/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/acl"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/policy"
@@ -109,7 +109,7 @@ func (v *Provider) IsAllowed(ctx context.Context, event *info.Event) (bool, erro
 
 	// error with the policy reason if it was set
 	if policyReason != "" {
-		return false, fmt.Errorf(policyReason)
+		return false, fmt.Errorf("%s", policyReason)
 	}
 
 	// finally silently return false if no rules allowed this
