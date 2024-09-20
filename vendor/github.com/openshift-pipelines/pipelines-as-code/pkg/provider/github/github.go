@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v61/github"
+	"github.com/google/go-github/v64/github"
 	"github.com/jonboulle/clockwork"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
@@ -257,7 +257,7 @@ func (v *Provider) checkWebhookSecretValidity(ctx context.Context, cw clockwork.
 
 		if cw.Now().After(ts) {
 			errm := fmt.Sprintf("token has expired at %s", resp.TokenExpiration.Format(time.RFC1123))
-			return fmt.Errorf(errm)
+			return fmt.Errorf("%s", errm)
 		}
 	}
 
