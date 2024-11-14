@@ -107,17 +107,17 @@ func initConfig(ctx context.Context, cfg *server.Config) (*s3.Client, error) {
 	var awsConfig aws.Config
 	var err error
 	if len(cfg.S3_ENDPOINT) > 0 {
-		customResolver := aws.EndpointResolverWithOptionsFunc(func(_, region string, _ ...any) (aws.Endpoint, error) {
+		customResolver := aws.EndpointResolverWithOptionsFunc(func(_, region string, _ ...any) (aws.Endpoint, error) { //nolint:staticcheck
 			if region == cfg.S3_REGION {
-				return aws.Endpoint{
+				return aws.Endpoint{ //nolint:staticcheck
 					URL:               cfg.S3_ENDPOINT,
 					SigningRegion:     cfg.S3_REGION,
 					HostnameImmutable: cfg.S3_HOSTNAME_IMMUTABLE,
 				}, nil
 			}
-			return aws.Endpoint{}, &aws.EndpointNotFoundError{}
+			return aws.Endpoint{}, &aws.EndpointNotFoundError{} //nolint:staticcheck
 		})
-		awsConfig, err = config.LoadDefaultConfig(ctx, config.WithRegion(cfg.S3_REGION), credentialsOpt, config.WithEndpointResolverWithOptions(customResolver))
+		awsConfig, err = config.LoadDefaultConfig(ctx, config.WithRegion(cfg.S3_REGION), credentialsOpt, config.WithEndpointResolverWithOptions(customResolver)) //nolint:staticcheck
 	} else {
 		awsConfig, err = config.LoadDefaultConfig(ctx, config.WithRegion(cfg.S3_REGION), credentialsOpt)
 	}
@@ -126,7 +126,9 @@ func initConfig(ctx context.Context, cfg *server.Config) (*s3.Client, error) {
 		return nil, err
 	}
 
-	return s3.NewFromConfig(awsConfig), nil
+	return s3.NewFromConfig(awsConfig, func(o *s3.Options) {
+		o.UsePathStyle = true
+	}), nil
 }
 
 func (*s3Stream) Type() string {
