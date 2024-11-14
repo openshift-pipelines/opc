@@ -90,6 +90,7 @@ type GetBucketLifecycleConfigurationInput struct {
 }
 
 func (in *GetBucketLifecycleConfigurationInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.Bucket = in.Bucket
 	p.UseS3ExpressControlEndpoint = ptr.Bool(true)
 }
@@ -98,6 +99,22 @@ type GetBucketLifecycleConfigurationOutput struct {
 
 	// Container for a lifecycle rule.
 	Rules []types.LifecycleRule
+
+	// Indicates which default minimum object size behavior is applied to the
+	// lifecycle configuration.
+	//
+	//   - all_storage_classes_128K - Objects smaller than 128 KB will not transition
+	//   to any storage class by default.
+	//
+	//   - varies_by_storage_class - Objects smaller than 128 KB will transition to
+	//   Glacier Flexible Retrieval or Glacier Deep Archive storage classes. By default,
+	//   all other storage classes will prevent transitions smaller than 128 KB.
+	//
+	// To customize the minimum object size for any transition you can add a filter
+	// that specifies a custom ObjectSizeGreaterThan or ObjectSizeLessThan in the body
+	// of your transition rule. Custom filters always take precedence over the default
+	// transition behavior.
+	TransitionDefaultMinimumObjectSize types.TransitionDefaultMinimumObjectSize
 
 	// Metadata pertaining to the operation's result.
 	ResultMetadata middleware.Metadata
@@ -148,6 +165,9 @@ func (c *Client) addOperationGetBucketLifecycleConfigurationMiddlewares(stack *m
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -164,6 +184,12 @@ func (c *Client) addOperationGetBucketLifecycleConfigurationMiddlewares(stack *m
 		return err
 	}
 	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addIsExpressUserAgent(stack); err != nil {
 		return err
 	}
 	if err = addOpGetBucketLifecycleConfigurationValidationMiddleware(stack); err != nil {
@@ -197,6 +223,18 @@ func (c *Client) addOperationGetBucketLifecycleConfigurationMiddlewares(stack *m
 		return err
 	}
 	if err = addSerializeImmutableHostnameBucketMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

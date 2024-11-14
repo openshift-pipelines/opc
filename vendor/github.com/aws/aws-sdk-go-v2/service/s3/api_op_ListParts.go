@@ -206,6 +206,7 @@ type ListPartsInput struct {
 }
 
 func (in *ListPartsInput) bindEndpointParams(p *EndpointParameters) {
+
 	p.Bucket = in.Bucket
 	p.Key = in.Key
 
@@ -343,6 +344,9 @@ func (c *Client) addOperationListPartsMiddlewares(stack *middleware.Stack, optio
 	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
+	if err = addSpanRetryLoop(stack, options); err != nil {
+		return err
+	}
 	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
@@ -359,6 +363,12 @@ func (c *Client) addOperationListPartsMiddlewares(stack *middleware.Stack, optio
 		return err
 	}
 	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addIsExpressUserAgent(stack); err != nil {
 		return err
 	}
 	if err = addOpListPartsValidationMiddleware(stack); err != nil {
@@ -394,22 +404,20 @@ func (c *Client) addOperationListPartsMiddlewares(stack *middleware.Stack, optio
 	if err = addSerializeImmutableHostnameBucketMiddleware(stack, options); err != nil {
 		return err
 	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-func (v *ListPartsInput) bucket() (string, bool) {
-	if v.Bucket == nil {
-		return "", false
-	}
-	return *v.Bucket, true
-}
-
-// ListPartsAPIClient is a client that implements the ListParts operation.
-type ListPartsAPIClient interface {
-	ListParts(context.Context, *ListPartsInput, ...func(*Options)) (*ListPartsOutput, error)
-}
-
-var _ ListPartsAPIClient = (*Client)(nil)
 
 // ListPartsPaginatorOptions is the paginator options for ListParts
 type ListPartsPaginatorOptions struct {
@@ -474,6 +482,9 @@ func (p *ListPartsPaginator) NextPage(ctx context.Context, optFns ...func(*Optio
 	}
 	params.MaxParts = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.ListParts(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -495,6 +506,20 @@ func (p *ListPartsPaginator) NextPage(ctx context.Context, optFns ...func(*Optio
 
 	return result, nil
 }
+
+func (v *ListPartsInput) bucket() (string, bool) {
+	if v.Bucket == nil {
+		return "", false
+	}
+	return *v.Bucket, true
+}
+
+// ListPartsAPIClient is a client that implements the ListParts operation.
+type ListPartsAPIClient interface {
+	ListParts(context.Context, *ListPartsInput, ...func(*Options)) (*ListPartsOutput, error)
+}
+
+var _ ListPartsAPIClient = (*Client)(nil)
 
 func newServiceMetadataMiddleware_opListParts(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
