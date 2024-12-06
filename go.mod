@@ -8,7 +8,7 @@ require (
 	github.com/openshift-pipelines/pipelines-as-code v0.29.0
 	github.com/spf13/cobra v1.8.1
 	github.com/tektoncd/cli v0.39.0
-	github.com/tektoncd/results v0.13.0
+	github.com/tektoncd/results v0.13.1
 )
 
 replace k8s.io/client-go => k8s.io/client-go v0.31.0
