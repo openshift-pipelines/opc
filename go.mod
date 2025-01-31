@@ -5,11 +5,11 @@ go 1.22.8
 toolchain go1.22.9
 
 require (
-	github.com/openshift-pipelines/manual-approval-gate v0.4.0
-	github.com/openshift-pipelines/pipelines-as-code v0.29.0
+	github.com/openshift-pipelines/manual-approval-gate v0.4.1
+	github.com/openshift-pipelines/pipelines-as-code v0.29.1
 	github.com/spf13/cobra v1.8.1
-	github.com/tektoncd/cli v0.39.0
-	github.com/tektoncd/results v0.13.2
+	github.com/tektoncd/cli v0.39.1
+	github.com/tektoncd/results v0.13.3
 )
 
 replace k8s.io/client-go => k8s.io/client-go v0.31.0
@@ -289,7 +289,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tektoncd/chains v0.23.0 // indirect
 	github.com/tektoncd/hub v1.19.0 // indirect
-	github.com/tektoncd/pipeline v0.65.2 // indirect
+	github.com/tektoncd/pipeline v0.65.6 // indirect
 	github.com/tektoncd/triggers v0.30.0 // indirect
 	github.com/thales-e-security/pool v0.0.2 // indirect
 	github.com/theupdateframework/go-tuf v0.7.0 // indirect
@@ -324,14 +324,14 @@ require (
 	gocloud.dev v0.40.0 // indirect
 	gocloud.dev/docstore/mongodocstore v0.40.0 // indirect
 	gocloud.dev/pubsub/kafkapubsub v0.40.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect
 	golang.org/x/mod v0.21.0 // indirect
-	golang.org/x/net v0.30.0 // indirect
+	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/term v0.27.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/term v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.7.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9 // indirect
