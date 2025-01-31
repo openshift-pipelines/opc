@@ -4,10 +4,10 @@ go 1.22.5
 
 require (
 	github.com/openshift-pipelines/manual-approval-gate v0.3.0
-	github.com/openshift-pipelines/pipelines-as-code v0.28.1
+	github.com/openshift-pipelines/pipelines-as-code v0.28.2
 	github.com/spf13/cobra v1.8.1
-	github.com/tektoncd/cli v0.38.1
-	github.com/tektoncd/results v0.12.1-0.20240920090600-058590c582ea
+	github.com/tektoncd/cli v0.38.2
+	github.com/tektoncd/results v0.12.3
 )
 
 replace k8s.io/client-go => k8s.io/client-go v0.31.0
@@ -310,14 +310,14 @@ require (
 	gocloud.dev v0.39.0 // indirect
 	gocloud.dev/docstore/mongodocstore v0.37.1-0.20240501181211-d8b9c9401f18 // indirect
 	gocloud.dev/pubsub/kafkapubsub v0.37.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
 	golang.org/x/mod v0.21.0 // indirect
-	golang.org/x/net v0.29.0 // indirect
+	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/term v0.27.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/term v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
