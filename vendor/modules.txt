@@ -846,8 +846,8 @@ github.com/hashicorp/go-cleanhttp
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
-# github.com/hashicorp/go-retryablehttp v0.7.5
-## explicit; go 1.13
+# github.com/hashicorp/go-retryablehttp v0.7.7
+## explicit; go 1.19
 github.com/hashicorp/go-retryablehttp
 # github.com/hashicorp/go-rootcerts v1.0.2
 ## explicit; go 1.12
@@ -1094,7 +1094,7 @@ github.com/openshift-pipelines/manual-approval-gate/pkg/cli/formatter
 github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned
 github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned/scheme
 github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned/typed/approvaltask/v1alpha1
-# github.com/openshift-pipelines/pipelines-as-code v0.27.1
+# github.com/openshift-pipelines/pipelines-as-code v0.27.2
 ## explicit; go 1.21
 github.com/openshift-pipelines/pipelines-as-code/pkg/acl
 github.com/openshift-pipelines/pipelines-as-code/pkg/action
@@ -1437,7 +1437,7 @@ github.com/tektoncd/chains/pkg/chains/storage/pubsub
 github.com/tektoncd/chains/pkg/chains/storage/tekton
 github.com/tektoncd/chains/pkg/config
 github.com/tektoncd/chains/pkg/patch
-# github.com/tektoncd/cli v0.37.0
+# github.com/tektoncd/cli v0.37.1
 ## explicit; go 1.22.0
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/bundle
@@ -1798,8 +1798,8 @@ gocloud.dev/docstore/mongodocstore
 # gocloud.dev/pubsub/kafkapubsub v0.36.0
 ## explicit; go 1.20
 gocloud.dev/pubsub/kafkapubsub
-# golang.org/x/crypto v0.22.0
-## explicit; go 1.18
+# golang.org/x/crypto v0.31.0
+## explicit; go 1.20
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/blowfish
@@ -1809,7 +1809,6 @@ golang.org/x/crypto/chacha20poly1305
 golang.org/x/crypto/cryptobyte
 golang.org/x/crypto/cryptobyte/asn1
 golang.org/x/crypto/curve25519
-golang.org/x/crypto/curve25519/internal/field
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/hkdf
 golang.org/x/crypto/internal/alias
@@ -1845,7 +1844,7 @@ golang.org/x/exp/slog/internal/buffer
 ## explicit; go 1.18
 golang.org/x/mod/semver
 golang.org/x/mod/sumdb/note
-# golang.org/x/net v0.24.0
+# golang.org/x/net v0.33.0
 ## explicit; go 1.18
 golang.org/x/net/context
 golang.org/x/net/html
@@ -1873,21 +1872,21 @@ golang.org/x/oauth2/google/internal/stsexchange
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sync v0.7.0
+# golang.org/x/sync v0.10.0
 ## explicit; go 1.18
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.20.0
+# golang.org/x/sys v0.28.0
 ## explicit; go 1.18
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/term v0.20.0
+# golang.org/x/term v0.27.0
 ## explicit; go 1.18
 golang.org/x/term
-# golang.org/x/text v0.15.0
+# golang.org/x/text v0.21.0
 ## explicit; go 1.18
 golang.org/x/text/cases
 golang.org/x/text/encoding
@@ -1909,7 +1908,7 @@ golang.org/x/text/width
 # golang.org/x/time v0.5.0
 ## explicit; go 1.18
 golang.org/x/time/rate
-# golang.org/x/tools v0.20.0
+# golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d
 ## explicit; go 1.19
 golang.org/x/tools/cmd/stringer
 golang.org/x/tools/go/gcexportdata
@@ -1921,7 +1920,6 @@ golang.org/x/tools/internal/event
 golang.org/x/tools/internal/event/core
 golang.org/x/tools/internal/event/keys
 golang.org/x/tools/internal/event/label
-golang.org/x/tools/internal/event/tag
 golang.org/x/tools/internal/gcimporter
 golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/packagesinternal
