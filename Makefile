@@ -3,7 +3,7 @@ TKN_VERSION := $(shell sed -n '/[ ]*github.com\/tektoncd\/cli v[0-9]*\.[0-9]*\.[
 RESULTS_VERSION := $(shell sed -n '/[ ]*github.com\/tektoncd\/results v[0-9]*\.[0-9]*\.[0-9]*/ { s/.* v//;p ;}' go.mod)
 
 GO := go
-GOVERSION := 1.20
+GOVERSION := 1.22.0
 OPC_VERSION := devel
 BINARYNAME := opc
 GOLANGCI_LINT := golangci-lint
