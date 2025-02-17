@@ -1,14 +1,13 @@
+issues:
+  exclude-dirs:
+    - vendor
 run:
   build-tags:
     - e2e
-  skip-dirs:
-    - vendor
 linters-settings:
   gocritic:
     disabled-checks:
       - unlambda
-  errcheck:
-    exclude: .errcheck.txt
   gofumpt:
     extra-rules: true
 linters:
@@ -18,7 +17,7 @@ linters:
     - dogsled
     - durationcheck
     - exhaustive
-    - exportloopref
+    - copyloopvar
     - forbidigo
     - forcetypeassert
     - gochecknoinits
