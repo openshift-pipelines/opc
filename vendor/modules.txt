@@ -1223,7 +1223,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-pipelines/manual-approval-gate v0.4.0
+# github.com/openshift-pipelines/manual-approval-gate v0.5.0
 ## explicit; go 1.22
 github.com/openshift-pipelines/manual-approval-gate/pkg/actions
 github.com/openshift-pipelines/manual-approval-gate/pkg/apis/approvaltask
@@ -1679,7 +1679,7 @@ github.com/tektoncd/hub/api/v1/gen/http/catalog/client
 github.com/tektoncd/hub/api/v1/gen/http/resource/client
 github.com/tektoncd/hub/api/v1/gen/resource
 github.com/tektoncd/hub/api/v1/gen/resource/views
-# github.com/tektoncd/pipeline v0.65.2
+# github.com/tektoncd/pipeline v0.66.0
 ## explicit; go 1.22
 github.com/tektoncd/pipeline/internal/artifactref
 github.com/tektoncd/pipeline/pkg/apis/config
