@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/go-github/v64/github"
+	"github.com/google/go-github/v68/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/acl"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/policy"
@@ -78,7 +78,7 @@ func (v *Provider) IsAllowed(ctx context.Context, event *info.Event) (bool, erro
 	}
 
 	// Try to detect a policy rule allowing this
-	tType, _ := detectTriggerTypeFromPayload("", event.Event)
+	tType, _ := v.detectTriggerTypeFromPayload("", event.Event)
 	policyAllowed, policyReason := aclPolicy.IsAllowed(ctx, tType)
 
 	switch policyAllowed {

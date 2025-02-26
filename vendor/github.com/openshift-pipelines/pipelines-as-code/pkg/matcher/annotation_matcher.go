@@ -71,13 +71,15 @@ func getAnnotationValues(annotation string) ([]string, error) {
 
 	// if it's not an array then it would be a single string
 	if !strings.HasPrefix(annotation, "[") {
-		return []string{annotation}, nil
+		// replace &#44; with comma so users can have comma in the annotation
+		annot := strings.ReplaceAll(annotation, "&#44;", ",")
+		return []string{annot}, nil
 	}
 
 	// Split all tasks by comma and make sure to trim spaces in there
 	split := strings.Split(re.FindStringSubmatch(annotation)[1], ",")
 	for i := range split {
-		split[i] = strings.TrimSpace(split[i])
+		split[i] = strings.TrimSpace(strings.ReplaceAll(split[i], "&#44;", ","))
 	}
 
 	if split[0] == "" {
@@ -90,6 +92,9 @@ func getAnnotationValues(annotation string) ([]string, error) {
 func getTargetBranch(prun *tektonv1.PipelineRun, event *info.Event) (bool, string, string, error) {
 	var targetEvent, targetBranch string
 	if key, ok := prun.GetObjectMeta().GetAnnotations()[keys.OnEvent]; ok {
+		if key == "[]" {
+			return false, "", "", fmt.Errorf("annotation %s is empty", keys.OnEvent)
+		}
 		targetEvents := []string{event.TriggerTarget.String()}
 		if event.EventType == triggertype.Incoming.String() {
 			// if we have a incoming event, we want to match pipelineruns on both incoming and push
@@ -105,6 +110,9 @@ func getTargetBranch(prun *tektonv1.PipelineRun, event *info.Event) (bool, strin
 		}
 	}
 	if key, ok := prun.GetObjectMeta().GetAnnotations()[keys.OnTargetBranch]; ok {
+		if key == "[]" {
+			return false, "", "", fmt.Errorf("annotation %s is empty", keys.OnTargetBranch)
+		}
 		targetEvents := []string{event.BaseBranch}
 		matched, err := matchOnAnnotation(key, targetEvents, true)
 		targetBranch = key
@@ -145,7 +153,12 @@ func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger
 		event.URL,
 		event.BaseBranch,
 		event.HeadBranch,
-		event.TriggerTarget)
+		event.TriggerTarget,
+	)
+
+	if len(event.PullRequestLabel) > 0 {
+		infomsg += fmt.Sprintf(", labels=%s", strings.Join(event.PullRequestLabel, "|"))
+	}
 
 	if event.EventType == triggertype.Incoming.String() {
 		infomsg = fmt.Sprintf("%s, target-pipelinerun=%s", infomsg, event.TargetPipelineRun)
@@ -191,7 +204,10 @@ func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger
 				logger.Warnf("could not compile regexp %s from pipelineRun %s", targetComment, prName)
 				continue
 			}
-			if re.MatchString(event.TriggerComment) {
+
+			strippedComment := strings.TrimSpace(
+				strings.TrimPrefix(strings.TrimSuffix(event.TriggerComment, "\r\n"), "\r\n"))
+			if re.MatchString(strippedComment) {
 				event.EventType = opscomments.OnCommentEventType.String()
 				logger.Infof("matched pipelinerun with name: %s on gitops comment: %q", prName, event.TriggerComment)
 				matchedPRs = append(matchedPRs, prMatch)
@@ -223,6 +239,61 @@ func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger
 			}
 			prMatch.Config["target-branch"] = targetBranch
 			prMatch.Config["target-event"] = targetEvent
+
+			if key, ok := prun.GetObjectMeta().GetAnnotations()[keys.OnPathChange]; ok {
+				changedFiles, err := vcx.GetFiles(ctx, event)
+				if err != nil {
+					logger.Errorf("error getting changed files: %v", err)
+					continue
+				}
+				// // TODO(chmou): we use the matchOnAnnotation function, it's
+				// really made to match git branches but we can still use it for
+				// our own path changes. we may split up if needed to refine.
+				matched, err := matchOnAnnotation(key, changedFiles.All, true)
+				if err != nil {
+					return matchedPRs, err
+				}
+				if !matched {
+					continue
+				}
+				logger.Infof("matched PipelineRun with name: %s, annotation PathChange: %q", prName, key)
+				prMatch.Config["path-change"] = key
+			}
+
+			if key, ok := prun.GetObjectMeta().GetAnnotations()[keys.OnLabel]; ok {
+				matched, err := matchOnAnnotation(key, event.PullRequestLabel, false)
+				if err != nil {
+					return matchedPRs, err
+				}
+				if !matched {
+					continue
+				}
+				logger.Infof("matched PipelineRun with name: %s, annotation Label: %q", prName, key)
+				prMatch.Config["label"] = key
+			} else if event.EventType == string(triggertype.LabelUpdate) {
+				logger.Infof("label update event, PipelineRun %s does not have a on-label for any of those labels: %s", prName, strings.Join(event.PullRequestLabel, "|"))
+				continue
+			}
+
+			if key, ok := prun.GetObjectMeta().GetAnnotations()[keys.OnPathChangeIgnore]; ok {
+				changedFiles, err := vcx.GetFiles(ctx, event)
+				if err != nil {
+					logger.Errorf("error getting changed files: %v", err)
+					continue
+				}
+				// // TODO(chmou): we use the matchOnAnnotation function, it's
+				// really made to match git branches but we can still use it for
+				// our own path changes. we may split up if needed to refine.
+				matched, err := matchOnAnnotation(key, changedFiles.All, true)
+				if err != nil {
+					return matchedPRs, err
+				}
+				if matched {
+					logger.Infof("Skipping pipelinerun with name: %s, annotation PathChangeIgnore: %q", prName, key)
+					continue
+				}
+				prMatch.Config["path-change-ignore"] = key
+			}
 		}
 
 		logger.Infof("matched pipelinerun with name: %s, annotation Config: %q", prName, prMatch.Config)
@@ -278,6 +349,7 @@ func matchOnAnnotation(annotations string, eventType []string, branchMatching bo
 			if v == e {
 				gotit = v
 			}
+
 			if branchMatching && branchMatch(v, e) {
 				gotit = v
 			}
@@ -296,12 +368,8 @@ func MatchRunningPipelineRunForIncomingWebhook(eventType, incomingPipelineRun st
 	}
 
 	for _, pr := range prs {
-		// check incomingPipelineRun with pr name
-		if incomingPipelineRun == pr.GetName() {
-			return []*tektonv1.PipelineRun{pr}
-		}
-		// check incomingPipelineRun with pr generateName
-		if incomingPipelineRun == strings.TrimSuffix(pr.GetGenerateName(), "-") {
+		// check incomingPipelineRun with pr name or generateName
+		if incomingPipelineRun == pr.GetName() || incomingPipelineRun == pr.GetGenerateName() {
 			return []*tektonv1.PipelineRun{pr}
 		}
 	}

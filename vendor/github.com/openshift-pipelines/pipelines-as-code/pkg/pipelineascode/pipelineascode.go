@@ -17,6 +17,7 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/clients"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/secrets"
 	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -31,6 +32,7 @@ const (
 	queuedStatus      = "queued"
 	failureConclusion = "failure"
 	pendingConclusion = "pending"
+	neutralConclusion = "neutral"
 )
 
 type PacRun struct {
@@ -55,6 +57,12 @@ func NewPacs(event *info.Event, vcx provider.Interface, run *params.Run, pacInfo
 
 func (p *PacRun) Run(ctx context.Context) error {
 	matchedPRs, repo, err := p.matchRepoPR(ctx)
+	if repo != nil && p.event.TriggerTarget == triggertype.PullRequestClosed {
+		if err := p.cancelAllInProgressBelongingToPullRequest(ctx, repo); err != nil {
+			return fmt.Errorf("error cancelling in progress pipelineRuns belonging to pull request %d: %w", p.event.PullRequestNumber, err)
+		}
+		return nil
+	}
 	if err != nil {
 		createStatusErr := p.vcx.CreateStatus(ctx, p.event, provider.StatusOpts{
 			Status:     CompletedStatus,
@@ -116,6 +124,9 @@ func (p *PacRun) Run(ctx context.Context) error {
 				}
 			}
 			p.manager.AddPipelineRun(pr)
+			if err := p.cancelInProgressMatchingPR(ctx, pr, repo); err != nil {
+				p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "RepositoryPipelineRun", fmt.Sprintf("error cancelling in progress pipelineRuns: %s", err))
+			}
 		}(match, i)
 	}
 	wg.Wait()

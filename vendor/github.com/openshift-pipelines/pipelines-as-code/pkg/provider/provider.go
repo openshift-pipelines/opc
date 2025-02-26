@@ -5,6 +5,9 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -80,11 +83,13 @@ func GetPipelineRunAndBranchNameFromCancelComment(comment string) (string, strin
 // by /test, /retest or /cancel to return branch name and pipelinerun name.
 func getPipelineRunAndBranchNameFromComment(typeOfComment, comment string) (string, string, error) {
 	var prName, branchName string
-	splitTest := strings.Split(comment, typeOfComment)
+	// avoid parsing error due to branch name contains /test, /retest or /cancel,
+	// here only split the first keyword and not split the later keywords.
+	splitTest := strings.SplitN(comment, typeOfComment, 2)
 
 	// after the split get the second part of the typeOfComment (/test, /retest or /cancel)
 	// as second part can be branch name or pipelinerun name and branch name
-	// ex: /test branch:nightly, /test prname branch:nightly
+	// ex: /test branch:nightly, /test prname branch:nightly, /test prname branch:nightly key=value
 	if splitTest[1] != "" && strings.Contains(splitTest[1], ":") {
 		branchData := strings.Split(splitTest[1], ":")
 
@@ -105,7 +110,8 @@ func getPipelineRunAndBranchNameFromComment(typeOfComment, comment string) (stri
 		// ex: /test prname
 		getFirstLine := strings.Split(splitTest[1], "\n")
 		// trim spaces
-		prName = strings.TrimSpace(getFirstLine[0])
+		// adapt for the comment contains the key=value pair
+		prName = strings.Split(strings.TrimSpace(getFirstLine[0]), " ")[0]
 	}
 	return prName, branchName, nil
 }
@@ -122,4 +128,28 @@ func CompareHostOfURLS(uri1, uri2 string) bool {
 		return false
 	}
 	return u1.Host == u2.Host
+}
+
+func ValidateYaml(content []byte, filename string) error {
+	var validYaml any
+	if err := yaml.Unmarshal(content, &validYaml); err != nil {
+		return fmt.Errorf("error unmarshalling yaml file %s: %w", filename, err)
+	}
+	return nil
+}
+
+// GetCheckName returns the name of the check to be created based on the status
+// and the pacopts.
+// If the pacopts.ApplicationName is set, it will be used as the check name.
+// Otherwise, the OriginalPipelineRunName will be used.
+// If the OriginalPipelineRunName is not set, an empty string will be returned.
+// The check name will be in the format "ApplicationName / OriginalPipelineRunName".
+func GetCheckName(status StatusOpts, pacopts *info.PacOpts) string {
+	if pacopts.ApplicationName != "" {
+		if status.OriginalPipelineRunName == "" {
+			return pacopts.ApplicationName
+		}
+		return fmt.Sprintf("%s / %s", pacopts.ApplicationName, status.OriginalPipelineRunName)
+	}
+	return status.OriginalPipelineRunName
 }

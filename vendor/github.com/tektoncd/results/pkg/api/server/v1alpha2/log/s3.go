@@ -8,7 +8,6 @@ import (
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -141,7 +140,7 @@ func (s3s *s3Stream) WriteTo(w io.Writer) (n int64, err error) {
 		Key:    &s3s.key,
 	})
 	if err != nil {
-		return 0, fmt.Errorf(err.Error())
+		return 0, err
 	}
 
 	defer outPut.Body.Close()
@@ -149,7 +148,7 @@ func (s3s *s3Stream) WriteTo(w io.Writer) (n int64, err error) {
 	reader := bufio.NewReaderSize(outPut.Body, s3s.size)
 	n, err = reader.WriteTo(w)
 	if err != nil {
-		return 0, fmt.Errorf(err.Error())
+		return 0, err
 	}
 	return
 }
@@ -162,7 +161,7 @@ func (s3s *s3Stream) ReadFrom(r io.Reader) (int64, error) {
 
 	size := s3s.partSize + n
 	if size >= s3s.multiPartSize {
-		err = s3s.uploadMultiPart(&s3s.buffer, s3s.partNumber, n)
+		err = s3s.uploadMultiPart(&s3s.buffer, s3s.partNumber, size)
 		if err != nil {
 			return 0, err
 		}
@@ -176,6 +175,10 @@ func (s3s *s3Stream) ReadFrom(r io.Reader) (int64, error) {
 }
 
 func (s3s *s3Stream) uploadMultiPart(reader io.Reader, partNumber int32, partSize int64) error {
+	if partSize == 0 {
+		return nil
+	}
+
 	part, err := s3s.client.UploadPart(s3s.ctx, &s3.UploadPartInput{
 		UploadId:      &s3s.uploadID,
 		Bucket:        &s3s.bucket,
