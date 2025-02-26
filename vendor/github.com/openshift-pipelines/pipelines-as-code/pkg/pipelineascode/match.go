@@ -30,13 +30,14 @@ func (p *PacRun) matchRepoPR(ctx context.Context) ([]matcher.Match, *v1alpha1.Re
 	}
 
 	if p.event.CancelPipelineRuns {
-		return nil, repo, p.cancelPipelineRuns(ctx, repo)
+		return nil, repo, p.cancelPipelineRunsOpsComment(ctx, repo)
 	}
 
 	matchedPRs, err := p.getPipelineRunsFromRepo(ctx, repo)
 	if err != nil {
 		return nil, repo, err
 	}
+
 	return matchedPRs, repo, nil
 }
 
@@ -131,11 +132,31 @@ is that what you want? make sure you use -n when generating the secret, eg: echo
 		return repo, err
 	}
 
+	// Verify whether the sender of the GitOps command (e.g., /test) has the appropriate permissions to
+	// trigger CI on the repository, as any user is able to comment on a pushed commit in open-source repositories.
+	if p.event.TriggerTarget == triggertype.Push && opscomments.IsAnyOpsEventType(p.event.EventType) {
+		status := provider.StatusOpts{
+			Status:     CompletedStatus,
+			Title:      "Permission denied",
+			Conclusion: failureConclusion,
+			DetailsURL: p.event.URL,
+		}
+		if allowed, err := p.checkAccessOrErrror(ctx, repo, status, "by GitOps comment on push commit"); !allowed {
+			return nil, err
+		}
+	}
+
 	// Check if the submitter is allowed to run this.
 	// on push we don't need to check the policy since the user has pushed to the repo so it has access to it.
 	// on comment we skip it for now, we are going to check later on
 	if p.event.TriggerTarget != triggertype.Push && p.event.EventType != opscomments.NoOpsCommentEventType.String() {
-		if allowed, err := p.checkAccessOrErrror(ctx, repo, "via "+p.event.TriggerTarget.String()); !allowed {
+		status := provider.StatusOpts{
+			Status:     queuedStatus,
+			Title:      "Pending approval, waiting for an /ok-to-test",
+			Conclusion: pendingConclusion,
+			DetailsURL: p.event.URL,
+		}
+		if allowed, err := p.checkAccessOrErrror(ctx, repo, status, "via "+p.event.TriggerTarget.String()); !allowed {
 			return nil, err
 		}
 	}
@@ -216,7 +237,6 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 		p.eventEmitter.EmitMessage(nil, zap.InfoLevel, "RepositoryCannotLocatePipelineRun", msg)
 		return nil, nil
 	}
-
 	pipelineRuns, err = resolve.MetadataResolve(pipelineRuns)
 	if err != nil && len(pipelineRuns) == 0 {
 		p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "FailedToResolvePipelineRunMetadata", err.Error())
@@ -229,6 +249,15 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 		if matchedPRs, err = matcher.MatchPipelinerunByAnnotation(ctx, p.logger, pipelineRuns, p.run, p.event, p.vcx); err != nil {
 			// Don't fail when you don't have a match between pipeline and annotations
 			p.eventEmitter.EmitMessage(nil, zap.WarnLevel, "RepositoryNoMatch", err.Error())
+			// In a scenario where an external user submits a pull request and the repository owner uses the
+			// GitOps command `/ok-to-test` to trigger CI, but no matching pull request is found,
+			// a neutral check-run will be created on the pull request to indicate that no PipelineRun was triggered
+			if p.event.EventType == opscomments.OkToTestCommentEventType.String() && len(matchedPRs) == 0 {
+				err = p.createNeutralStatus(ctx)
+				if err != nil {
+					p.eventEmitter.EmitMessage(nil, zap.WarnLevel, "RepositoryCreateStatus", err.Error())
+				}
+			}
 			return nil, nil
 		}
 	}
@@ -236,7 +265,13 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 	// if the event is a comment event, but we don't have any match from the keys.OnComment then do the ACL checks again
 	// we skipped previously so we can get the match from the event to the pipelineruns
 	if p.event.EventType == opscomments.NoOpsCommentEventType.String() || p.event.EventType == opscomments.OnCommentEventType.String() {
-		if allowed, err := p.checkAccessOrErrror(ctx, repo, "by gitops comment"); !allowed {
+		status := provider.StatusOpts{
+			Status:     queuedStatus,
+			Title:      "Pending approval, waiting for an /ok-to-test",
+			Conclusion: pendingConclusion,
+			DetailsURL: p.event.URL,
+		}
+		if allowed, err := p.checkAccessOrErrror(ctx, repo, status, "by GitOps comment on push commit"); !allowed {
 			return nil, err
 		}
 	}
@@ -361,7 +396,7 @@ func (p *PacRun) checkNeedUpdate(_ string) (string, bool) {
 	return "", false
 }
 
-func (p *PacRun) checkAccessOrErrror(ctx context.Context, repo *v1alpha1.Repository, viamsg string) (bool, error) {
+func (p *PacRun) checkAccessOrErrror(ctx context.Context, repo *v1alpha1.Repository, status provider.StatusOpts, viamsg string) (bool, error) {
 	allowed, err := p.vcx.IsAllowed(ctx, p.event)
 	if err != nil {
 		return false, err
@@ -369,20 +404,29 @@ func (p *PacRun) checkAccessOrErrror(ctx context.Context, repo *v1alpha1.Reposit
 	if allowed {
 		return true, nil
 	}
-	msg := fmt.Sprintf("User %s is not allowed to trigger CI %s on this repo.", p.event.Sender, viamsg)
+	msg := fmt.Sprintf("User %s is not allowed to trigger CI %s in this repo.", p.event.Sender, viamsg)
 	if p.event.AccountID != "" {
-		msg = fmt.Sprintf("User: %s AccountID: %s is not allowed to trigger CI %s on this repo.", p.event.Sender, p.event.AccountID, viamsg)
+		msg = fmt.Sprintf("User: %s AccountID: %s is not allowed to trigger CI %s in this repo.", p.event.Sender, p.event.AccountID, viamsg)
 	}
 	p.eventEmitter.EmitMessage(repo, zap.InfoLevel, "RepositoryPermissionDenied", msg)
-	status := provider.StatusOpts{
-		Status:     queuedStatus,
-		Title:      "Pending approval",
-		Conclusion: pendingConclusion,
-		Text:       msg,
-		DetailsURL: p.event.URL,
-	}
+	status.Text = msg
 	if err := p.vcx.CreateStatus(ctx, p.event, status); err != nil {
 		return false, fmt.Errorf("failed to run create status, user is not allowed to run the CI:: %w", err)
 	}
 	return false, nil
+}
+
+func (p *PacRun) createNeutralStatus(ctx context.Context) error {
+	status := provider.StatusOpts{
+		Status:     CompletedStatus,
+		Title:      "No PipelineRun matched",
+		Text:       fmt.Sprintf("No matching PipelineRun found for the '%s' event in Pipelines as Code. Please ensure that PipelineRun is configured for '%s' event.", p.event.TriggerTarget.String(), p.event.TriggerTarget.String()),
+		Conclusion: neutralConclusion,
+		DetailsURL: p.event.URL,
+	}
+	if err := p.vcx.CreateStatus(ctx, p.event, status); err != nil {
+		return fmt.Errorf("failed to run create status, user is not allowed to run the CI:: %w", err)
+	}
+
+	return nil
 }

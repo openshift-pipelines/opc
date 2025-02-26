@@ -12,8 +12,7 @@ import (
 	"strings"
 
 	ghinstallation "github.com/bradleyfalzon/ghinstallation/v2"
-	oGithub "github.com/google/go-github/v62/github"
-	"github.com/google/go-github/v64/github"
+	"github.com/google/go-github/v68/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/opscomments"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
@@ -56,7 +55,7 @@ func (v *Provider) GetAppToken(ctx context.Context, kube kubernetes.Interface, g
 	if err != nil {
 		return "", err
 	}
-	itr.InstallationTokenOptions = &oGithub.InstallationTokenOptions{
+	itr.InstallationTokenOptions = &github.InstallationTokenOptions{
 		RepositoryIDs: v.RepositoryIDs,
 	}
 
@@ -85,7 +84,7 @@ func (v *Provider) GetAppToken(ctx context.Context, kube kubernetes.Interface, g
 	if err != nil {
 		return "", err
 	}
-	v.Token = github.String(token)
+	v.Token = github.Ptr(token)
 
 	return token, err
 }
@@ -254,6 +253,9 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 			return nil, err
 		}
 	case *github.PushEvent:
+		if gitEvent.GetRepo() == nil {
+			return nil, errors.New("error parsing payload the repository should not be nil")
+		}
 		processedEvent.Organization = gitEvent.GetRepo().GetOwner().GetLogin()
 		processedEvent.Repository = gitEvent.GetRepo().GetName()
 		processedEvent.DefaultBranch = gitEvent.GetRepo().GetDefaultBranch()
@@ -274,6 +276,9 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		processedEvent.HeadURL = processedEvent.BaseURL // in push events Head URL is the same as BaseURL
 	case *github.PullRequestEvent:
 		processedEvent.Repository = gitEvent.GetRepo().GetName()
+		if gitEvent.GetRepo() == nil {
+			return nil, errors.New("error parsing payload the repository should not be nil")
+		}
 		processedEvent.Organization = gitEvent.GetRepo().Owner.GetLogin()
 		processedEvent.DefaultBranch = gitEvent.GetRepo().GetDefaultBranch()
 		processedEvent.SHA = gitEvent.GetPullRequest().Head.GetSHA()
@@ -284,12 +289,24 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		processedEvent.HeadURL = gitEvent.GetPullRequest().Head.GetRepo().GetHTMLURL()
 		processedEvent.Sender = gitEvent.GetPullRequest().GetUser().GetLogin()
 		processedEvent.EventType = event.EventType
+
+		if gitEvent.Action != nil && provider.Valid(*gitEvent.Action, pullRequestLabelEvent) {
+			processedEvent.EventType = string(triggertype.LabelUpdate)
+		}
+
+		if gitEvent.GetAction() == "closed" {
+			processedEvent.TriggerTarget = triggertype.PullRequestClosed
+		}
+
 		processedEvent.PullRequestNumber = gitEvent.GetPullRequest().GetNumber()
 		processedEvent.PullRequestTitle = gitEvent.GetPullRequest().GetTitle()
 		// getting the repository ids of the base and head of the pull request
 		// to scope the token to
 		v.RepositoryIDs = []int64{
 			gitEvent.GetPullRequest().GetBase().GetRepo().GetID(),
+		}
+		for _, label := range gitEvent.GetPullRequest().Labels {
+			processedEvent.PullRequestLabel = append(processedEvent.PullRequestLabel, label.GetName())
 		}
 	default:
 		return nil, errors.New("this event is not supported")
@@ -306,6 +323,9 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 
 func (v *Provider) handleReRequestEvent(ctx context.Context, event *github.CheckRunEvent) (*info.Event, error) {
 	runevent := info.NewEvent()
+	if event.GetRepo() == nil {
+		return nil, errors.New("error parsing payload the repository should not be nil")
+	}
 	runevent.Organization = event.GetRepo().GetOwner().GetLogin()
 	runevent.Repository = event.GetRepo().GetName()
 	runevent.URL = event.GetRepo().GetHTMLURL()
@@ -331,6 +351,9 @@ func (v *Provider) handleReRequestEvent(ctx context.Context, event *github.Check
 
 func (v *Provider) handleCheckSuites(ctx context.Context, event *github.CheckSuiteEvent) (*info.Event, error) {
 	runevent := info.NewEvent()
+	if event.GetRepo() == nil {
+		return nil, errors.New("error parsing payload the repository should not be nil")
+	}
 	runevent.Organization = event.GetRepo().GetOwner().GetLogin()
 	runevent.Repository = event.GetRepo().GetName()
 	runevent.URL = event.GetRepo().GetHTMLURL()
@@ -393,6 +416,9 @@ func (v *Provider) handleIssueCommentEvent(ctx context.Context, event *github.Is
 func (v *Provider) handleCommitCommentEvent(ctx context.Context, event *github.CommitCommentEvent) (*info.Event, error) {
 	action := "push"
 	runevent := info.NewEvent()
+	if event.GetRepo() == nil {
+		return nil, errors.New("error parsing payload the repository should not be nil")
+	}
 	runevent.Organization = event.GetRepo().GetOwner().GetLogin()
 	runevent.Repository = event.GetRepo().GetName()
 	runevent.Sender = event.GetSender().GetLogin()
@@ -400,12 +426,12 @@ func (v *Provider) handleCommitCommentEvent(ctx context.Context, event *github.C
 	runevent.SHA = event.GetComment().GetCommitID()
 	runevent.HeadURL = runevent.URL
 	runevent.BaseURL = runevent.HeadURL
-	runevent.EventType = "push"
-	runevent.TriggerTarget = "push"
-	runevent.TriggerComment = event.GetComment().GetBody()
+	runevent.TriggerTarget = triggertype.Push
+	opscomments.SetEventTypeAndTargetPR(runevent, event.GetComment().GetBody())
 
-	// Set main as default branch to runevent.HeadBranch, runevent.BaseBranch
-	runevent.HeadBranch, runevent.BaseBranch = "main", "main"
+	defaultBranch := event.GetRepo().GetDefaultBranch()
+	// Set Event.Repository.DefaultBranch as default branch to runevent.HeadBranch, runevent.BaseBranch
+	runevent.HeadBranch, runevent.BaseBranch = defaultBranch, defaultBranch
 	var (
 		branchName string
 		prName     string
