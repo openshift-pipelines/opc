@@ -9,8 +9,8 @@ class Opc < Formula
 
   on_macos do
     on_intel do
-      url "https://github.com/openshift-pipelines/opc/releases/download/v1.15.0/opc_1.15.0_darwin_x86_64.tar.gz"
-      sha256 "8b5f49a418c6deac1ee42460afc1b2cd7e9872eb9ff337ca23d8617454858f99"
+      url "https://github.com/openshift-pipelines/opc/archive/refs/tags/v1.17.0.tar.gz"
+      sha256 "f573559ff45fa3318efcab344cde08d79d92ac336265cd7f3efcd62a2bfb78e3"
 
       def install
         bin.install "opc" => "opc"
