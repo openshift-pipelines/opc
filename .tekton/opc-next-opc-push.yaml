@@ -17,7 +17,7 @@ metadata:
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: openshift-pipelines-next
-    appstudio.openshift.io/component: opc-next-opc
+    appstudio.openshift.io/component: openshift-pipelines-opc-next-opc
     pipelines.appstudio.openshift.io/type: build
   name: opc-next-opc-on-push
   namespace: tekton-ecosystem-tenant
