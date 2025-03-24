@@ -1,16 +1,18 @@
+issues:
+  exclude-dirs:
+    - vendor
 run:
   build-tags:
     - e2e
-  skip-dirs:
-    - vendor
 linters-settings:
   gocritic:
     disabled-checks:
       - unlambda
   errcheck:
-    exclude: .errcheck.txt
+    exclude-functions: .errcheck.txt
   gofumpt:
     extra-rules: true
+    enabled: true
 linters:
   enable:
     - asciicheck

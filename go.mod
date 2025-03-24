@@ -1,8 +1,6 @@
 module github.com/openshift-pipelines/opc
 
-go 1.21
-
-toolchain go1.21.8
+go 1.22.0
 
 require (
 	github.com/fatih/color v1.16.0 // indirect
