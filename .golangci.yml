@@ -1,62 +1,66 @@
-issues:
-  exclude-dirs:
-    - vendor
+version: "2"
 run:
   build-tags:
     - e2e
-linters-settings:
-  gocritic:
-    disabled-checks:
-      - unlambda
-  gofumpt:
-    extra-rules: true
 linters:
   enable:
     - asciicheck
     - bodyclose
     - copyloopvar
     - dogsled
+    - dupl
     - durationcheck
+    - errorlint
     - exhaustive
     - forbidigo
     - forcetypeassert
     - gochecknoinits
-    - dupl
-    - errcheck
-    - errorlint
-    - gofumpt
-    - goimports
-    - gosec
     - gocritic
-    - misspell
-    - gosec
-    - gosimple
-    - govet
-    - importas
-    - makezero
-    - nakedret
-    - predeclared
-    - revive
-    - staticcheck
-    - stylecheck
-    - unused
-    - unparam
-    - gochecknoinits
-      # - goconst
-      # - gocyclo
-    # - goerr113
-    # - gofmt
     - goheader
     - gomodguard
     - goprintffuncname
+    - gosec
+    - importas
+    - makezero
+    - misspell
+    - nakedret
     - nilerr
     - noctx
-      # - nolintlint (gofumpt conflict with it, create space all the time so :shrug:)
     - prealloc
+    - predeclared
     - promlinter
-    # - rowserrcheck
-    # - sqlclosecheck
+    - revive
+    - staticcheck
     - tparallel
-    #- unconvert
-    # - wastedassign
+    - unparam
     - whitespace
+  settings:
+    gocritic:
+      disabled-checks:
+        - unlambda
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - vendor
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      extra-rules: true
+  exclusions:
+    generated: lax
+    paths:
+      - vendor
+      - third_party$
+      - builtin$
+      - examples$
