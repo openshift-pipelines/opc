@@ -28,12 +28,13 @@ var cancelMergePatch = map[string]interface{}{
 	},
 }
 
-// cancelAllInProgressBelongingToPullRequest cancels all in-progress PipelineRuns
+// cancelAllInProgressBelongingToClosedPullRequest cancels all in-progress PipelineRuns
 // that belong to a specific pull request in the given repository.
-func (p *PacRun) cancelAllInProgressBelongingToPullRequest(ctx context.Context, repo *v1alpha1.Repository) error {
+func (p *PacRun) cancelAllInProgressBelongingToClosedPullRequest(ctx context.Context, repo *v1alpha1.Repository) error {
 	labelSelector := getLabelSelector(map[string]string{
-		keys.URLRepository: formatting.CleanValueKubernetes(p.event.Repository),
-		keys.PullRequest:   strconv.Itoa(int(p.event.PullRequestNumber)),
+		keys.URLRepository:    formatting.CleanValueKubernetes(p.event.Repository),
+		keys.PullRequest:      strconv.Itoa(p.event.PullRequestNumber),
+		keys.CancelInProgress: "true",
 	})
 	prs, err := p.run.Clients.Tekton.TektonV1().PipelineRuns(repo.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labelSelector,
@@ -45,7 +46,7 @@ func (p *PacRun) cancelAllInProgressBelongingToPullRequest(ctx context.Context, 
 	if len(prs.Items) == 0 {
 		msg := fmt.Sprintf("no pipelinerun found for repository: %v and pullRequest %v",
 			p.event.Repository, p.event.PullRequestNumber)
-		p.eventEmitter.EmitMessage(repo, zap.InfoLevel, "RepositoryPipelineRun", msg)
+		p.eventEmitter.EmitMessage(repo, zap.InfoLevel, "CancelInProgress", msg)
 		return nil
 	}
 
@@ -70,7 +71,9 @@ func (p *PacRun) cancelInProgressMatchingPR(ctx context.Context, matchPR *tekton
 		return nil
 	}
 
-	prName, ok := matchPR.GetAnnotations()[keys.OriginalPRName]
+	// As PipelineRuns are filtered by name, OriginalPRName should be taken from
+	// labels instead of annotations because of constraints imposed by kube API.
+	prName, ok := matchPR.GetLabels()[keys.OriginalPRName]
 	if !ok {
 		return nil
 	}
@@ -140,7 +143,7 @@ func (p *PacRun) cancelPipelineRunsOpsComment(ctx context.Context, repo *v1alpha
 	if len(prs.Items) == 0 {
 		msg := fmt.Sprintf("no pipelinerun found for repository: %v , sha: %v and pulRequest %v",
 			p.event.Repository, p.event.SHA, p.event.PullRequestNumber)
-		p.eventEmitter.EmitMessage(repo, zap.InfoLevel, "RepositoryPipelineRun", msg)
+		p.eventEmitter.EmitMessage(repo, zap.InfoLevel, "CancelInProgress", msg)
 		return nil
 	}
 
@@ -173,17 +176,13 @@ func (p *PacRun) cancelPipelineRuns(ctx context.Context, prs *tektonv1.PipelineR
 			continue
 		}
 
-		if pr.IsPending() {
-			p.logger.Infof("cancel-in-progress: skipping cancelling pipelinerun %v/%v in pending state", pr.GetNamespace(), pr.GetName())
-		}
-
 		p.logger.Infof("cancel-in-progress: cancelling pipelinerun %v/%v", pr.GetNamespace(), pr.GetName())
 		wg.Add(1)
 		go func(ctx context.Context, pr tektonv1.PipelineRun) {
 			defer wg.Done()
 			if _, err := action.PatchPipelineRun(ctx, p.logger, "cancel patch", p.run.Clients.Tekton, &pr, cancelMergePatch); err != nil {
 				errMsg := fmt.Sprintf("failed to cancel pipelineRun %s/%s: %s", pr.GetNamespace(), pr.GetName(), err.Error())
-				p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "RepositoryPipelineRun", errMsg)
+				p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "CancelInProgress", errMsg)
 			}
 		}(ctx, pr)
 	}
