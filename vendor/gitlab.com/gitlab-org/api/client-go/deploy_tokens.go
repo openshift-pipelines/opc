@@ -22,13 +22,27 @@ import (
 	"time"
 )
 
-// DeployTokensService handles communication with the deploy tokens related methods
-// of the GitLab API.
-//
-// GitLab API docs: https://docs.gitlab.com/ee/api/deploy_tokens.html
-type DeployTokensService struct {
-	client *Client
-}
+type (
+	DeployTokensServiceInterface interface {
+		ListAllDeployTokens(options ...RequestOptionFunc) ([]*DeployToken, *Response, error)
+		ListProjectDeployTokens(pid interface{}, opt *ListProjectDeployTokensOptions, options ...RequestOptionFunc) ([]*DeployToken, *Response, error)
+		GetProjectDeployToken(pid interface{}, deployToken int, options ...RequestOptionFunc) (*DeployToken, *Response, error)
+		CreateProjectDeployToken(pid interface{}, opt *CreateProjectDeployTokenOptions, options ...RequestOptionFunc) (*DeployToken, *Response, error)
+		DeleteProjectDeployToken(pid interface{}, deployToken int, options ...RequestOptionFunc) (*Response, error)
+		ListGroupDeployTokens(gid interface{}, opt *ListGroupDeployTokensOptions, options ...RequestOptionFunc) ([]*DeployToken, *Response, error)
+		GetGroupDeployToken(gid interface{}, deployToken int, options ...RequestOptionFunc) (*DeployToken, *Response, error)
+		CreateGroupDeployToken(gid interface{}, opt *CreateGroupDeployTokenOptions, options ...RequestOptionFunc) (*DeployToken, *Response, error)
+		DeleteGroupDeployToken(gid interface{}, deployToken int, options ...RequestOptionFunc) (*Response, error)
+	}
+
+	// DeployTokensService handles communication with the deploy tokens related methods
+	// of the GitLab API.
+	//
+	// GitLab API docs: https://docs.gitlab.com/api/deploy_tokens/
+	DeployTokensService struct {
+		client *Client
+	}
+)
 
 // DeployToken represents a GitLab deploy token.
 type DeployToken struct {
@@ -49,7 +63,7 @@ func (k DeployToken) String() string {
 // ListAllDeployTokens gets a list of all deploy tokens.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#list-all-deploy-tokens
+// https://docs.gitlab.com/api/deploy_tokens/#list-all-deploy-tokens
 func (s *DeployTokensService) ListAllDeployTokens(options ...RequestOptionFunc) ([]*DeployToken, *Response, error) {
 	req, err := s.client.NewRequest(http.MethodGet, "deploy_tokens", nil, options)
 	if err != nil {
@@ -69,13 +83,13 @@ func (s *DeployTokensService) ListAllDeployTokens(options ...RequestOptionFunc) 
 // options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#list-project-deploy-tokens
+// https://docs.gitlab.com/api/deploy_tokens/#list-project-deploy-tokens
 type ListProjectDeployTokensOptions ListOptions
 
 // ListProjectDeployTokens gets a list of a project's deploy tokens.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#list-project-deploy-tokens
+// https://docs.gitlab.com/api/deploy_tokens/#list-project-deploy-tokens
 func (s *DeployTokensService) ListProjectDeployTokens(pid interface{}, opt *ListProjectDeployTokensOptions, options ...RequestOptionFunc) ([]*DeployToken, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -100,7 +114,7 @@ func (s *DeployTokensService) ListProjectDeployTokens(pid interface{}, opt *List
 // GetProjectDeployToken gets a single deploy token.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#get-a-project-deploy-token
+// https://docs.gitlab.com/api/deploy_tokens/#get-a-project-deploy-token
 func (s *DeployTokensService) GetProjectDeployToken(pid interface{}, deployToken int, options ...RequestOptionFunc) (*DeployToken, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -125,7 +139,7 @@ func (s *DeployTokensService) GetProjectDeployToken(pid interface{}, deployToken
 // CreateProjectDeployTokenOptions represents the available CreateProjectDeployToken() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#create-a-project-deploy-token
+// https://docs.gitlab.com/api/deploy_tokens/#create-a-project-deploy-token
 type CreateProjectDeployTokenOptions struct {
 	Name      *string    `url:"name,omitempty" json:"name,omitempty"`
 	ExpiresAt *time.Time `url:"expires_at,omitempty" json:"expires_at,omitempty"`
@@ -136,7 +150,7 @@ type CreateProjectDeployTokenOptions struct {
 // CreateProjectDeployToken creates a new deploy token for a project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#create-a-project-deploy-token
+// https://docs.gitlab.com/api/deploy_tokens/#create-a-project-deploy-token
 func (s *DeployTokensService) CreateProjectDeployToken(pid interface{}, opt *CreateProjectDeployTokenOptions, options ...RequestOptionFunc) (*DeployToken, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -161,7 +175,7 @@ func (s *DeployTokensService) CreateProjectDeployToken(pid interface{}, opt *Cre
 // DeleteProjectDeployToken removes a deploy token from the project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#delete-a-project-deploy-token
+// https://docs.gitlab.com/api/deploy_tokens/#delete-a-project-deploy-token
 func (s *DeployTokensService) DeleteProjectDeployToken(pid interface{}, deployToken int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -181,13 +195,13 @@ func (s *DeployTokensService) DeleteProjectDeployToken(pid interface{}, deployTo
 // options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#list-group-deploy-tokens
+// https://docs.gitlab.com/api/deploy_tokens/#list-group-deploy-tokens
 type ListGroupDeployTokensOptions ListOptions
 
 // ListGroupDeployTokens gets a list of a group’s deploy tokens.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#list-group-deploy-tokens
+// https://docs.gitlab.com/api/deploy_tokens/#list-group-deploy-tokens
 func (s *DeployTokensService) ListGroupDeployTokens(gid interface{}, opt *ListGroupDeployTokensOptions, options ...RequestOptionFunc) ([]*DeployToken, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
@@ -212,7 +226,7 @@ func (s *DeployTokensService) ListGroupDeployTokens(gid interface{}, opt *ListGr
 // GetGroupDeployToken gets a single deploy token.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#get-a-group-deploy-token
+// https://docs.gitlab.com/api/deploy_tokens/#get-a-group-deploy-token
 func (s *DeployTokensService) GetGroupDeployToken(gid interface{}, deployToken int, options ...RequestOptionFunc) (*DeployToken, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
@@ -237,7 +251,7 @@ func (s *DeployTokensService) GetGroupDeployToken(gid interface{}, deployToken i
 // CreateGroupDeployTokenOptions represents the available CreateGroupDeployToken() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#create-a-group-deploy-token
+// https://docs.gitlab.com/api/deploy_tokens/#create-a-group-deploy-token
 type CreateGroupDeployTokenOptions struct {
 	Name      *string    `url:"name,omitempty" json:"name,omitempty"`
 	ExpiresAt *time.Time `url:"expires_at,omitempty" json:"expires_at,omitempty"`
@@ -248,7 +262,7 @@ type CreateGroupDeployTokenOptions struct {
 // CreateGroupDeployToken creates a new deploy token for a group.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#create-a-group-deploy-token
+// https://docs.gitlab.com/api/deploy_tokens/#create-a-group-deploy-token
 func (s *DeployTokensService) CreateGroupDeployToken(gid interface{}, opt *CreateGroupDeployTokenOptions, options ...RequestOptionFunc) (*DeployToken, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
@@ -273,7 +287,7 @@ func (s *DeployTokensService) CreateGroupDeployToken(gid interface{}, opt *Creat
 // DeleteGroupDeployToken removes a deploy token from the group.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deploy_tokens.html#delete-a-group-deploy-token
+// https://docs.gitlab.com/api/deploy_tokens/#delete-a-group-deploy-token
 func (s *DeployTokensService) DeleteGroupDeployToken(gid interface{}, deployToken int, options ...RequestOptionFunc) (*Response, error) {
 	group, err := parseID(gid)
 	if err != nil {

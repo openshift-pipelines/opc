@@ -8,7 +8,7 @@ import (
 
 type Event struct {
 	State
-	Event interface{}
+	Event any
 
 	// EventType is what coming from the provider header, i.e:
 	// GitHub -> pull_request
@@ -20,7 +20,7 @@ type Event struct {
 	// Full request
 	Request *Request
 
-	// TriggerTarget stable field across providers, ie: on Gitlab, Github and
+	// TriggerTarget stable field across providers, ie: on GitLab, Github and
 	// others it would be always be pull_request we can rely on to know if it's
 	// a push or a pull_request
 	TriggerTarget triggertype.Trigger
@@ -56,11 +56,11 @@ type Event struct {
 	AccountID string
 
 	// TODO: move out inside the provider
-	// Bitbucket Server
-	CloneURL string // bitbucket server has a different url for cloning the repo than normal public html url
+	// Bitbucket Data Center
+	CloneURL string // bitbucket data center has a different url for cloning the repo than normal public html url
 	Provider *Provider
 
-	// Gitlab
+	// GitLab
 	SourceProjectID int
 	TargetProjectID int
 }
