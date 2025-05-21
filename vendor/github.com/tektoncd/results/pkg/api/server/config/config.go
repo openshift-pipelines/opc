@@ -21,7 +21,9 @@ type Config struct {
 	PROMETHEUS_PORT          string `mapstructure:"PROMETHEUS_PORT"`
 	PROMETHEUS_HISTOGRAM     bool   `mapstructure:"PROMETHEUS_HISTOGRAM"`
 	LOG_LEVEL                string `mapstructure:"LOG_LEVEL"`
+	SQL_LOG_LEVEL            string `mapstructure:"SQL_LOG_LEVEL"`
 	TLS_PATH                 string `mapstructure:"TLS_PATH"`
+	FEATURE_GATES            string `mapstructure:"FEATURE_GATES"`
 
 	GRPC_WORKER_POOL int `mapstructure:"GRPC_WORKER_POOL"`
 	K8S_QPS          int `mapstructure:"K8S_QPS"`
@@ -64,6 +66,7 @@ type Config struct {
 	LOGGING_PLUGIN_TLS_VERIFICATION_DISABLE bool   `mapstructure:"LOGGING_PLUGIN_TLS_VERIFICATION_DISABLE"`
 	LOGGING_PLUGIN_FORWARDER_DELAY_DURATION int64  `mapstructure:"LOGGING_PLUGIN_FORWARDER_DELAY_DURATION"`
 	LOGGING_PLUGIN_QUERY_PARAMS             string `mapstructure:"LOGGING_PLUGIN_QUERY_PARAMS"`
+	LOGGING_PLUGIN_MULTIPART_REGEX          string `mapstructure:"LOGGING_PLUGIN_MULTIPART_REGEX"`
 }
 
 func Get() *Config {
