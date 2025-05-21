@@ -124,7 +124,7 @@ func (p *PacRun) Run(ctx context.Context) error {
 				}
 			}
 			p.manager.AddPipelineRun(pr)
-			if err := p.cancelInProgressMatchingPR(ctx, pr, repo); err != nil {
+			if err := p.cancelInProgressMatchingPipelineRun(ctx, pr, repo); err != nil {
 				p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "RepositoryPipelineRun", fmt.Sprintf("error cancelling in progress pipelineRuns: %s", err))
 			}
 		}(match, i)
@@ -226,7 +226,8 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.Pi
 		TknBinary:       settings.TknBinaryName,
 		TknBinaryURL:    settings.TknBinaryURL,
 	}
-	msg, err := mt.MakeTemplate(formatting.StartingPipelineRunText)
+
+	msg, err := mt.MakeTemplate(p.vcx.GetTemplate(provider.StartingPipelineType))
 	if err != nil {
 		return nil, fmt.Errorf("cannot create message template: %w", err)
 	}
@@ -243,7 +244,7 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.Pi
 	// if pipelineRun is in pending state then report status as queued
 	if pr.Spec.Status == tektonv1.PipelineRunSpecStatusPending {
 		status.Status = queuedStatus
-		if status.Text, err = mt.MakeTemplate(formatting.QueuingPipelineRunText); err != nil {
+		if status.Text, err = mt.MakeTemplate(p.vcx.GetTemplate(provider.QueueingPipelineType)); err != nil {
 			return nil, fmt.Errorf("cannot create message template: %w", err)
 		}
 	}
@@ -267,9 +268,9 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.Pi
 	return pr, nil
 }
 
-func getLogURLMergePatch(clients clients.Clients, pr *tektonv1.PipelineRun) map[string]interface{} {
-	return map[string]interface{}{
-		"metadata": map[string]interface{}{
+func getLogURLMergePatch(clients clients.Clients, pr *tektonv1.PipelineRun) map[string]any {
+	return map[string]any{
+		"metadata": map[string]any{
 			"annotations": map[string]string{
 				keys.LogURL: clients.ConsoleUI().DetailURL(pr),
 			},
@@ -277,9 +278,9 @@ func getLogURLMergePatch(clients clients.Clients, pr *tektonv1.PipelineRun) map[
 	}
 }
 
-func getExecutionOrderPatch(order string) map[string]interface{} {
-	return map[string]interface{}{
-		"metadata": map[string]interface{}{
+func getExecutionOrderPatch(order string) map[string]any {
+	return map[string]any{
+		"metadata": map[string]any{
 			"annotations": map[string]string{
 				keys.ExecutionOrder: order,
 			},

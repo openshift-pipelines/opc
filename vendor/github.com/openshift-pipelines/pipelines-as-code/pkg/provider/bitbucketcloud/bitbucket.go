@@ -16,19 +16,37 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider/bitbucketcloud/types"
+	providerMetrics "github.com/openshift-pipelines/pipelines-as-code/pkg/provider/metrics"
 	"go.uber.org/zap"
 )
 
 var _ provider.Interface = (*Provider)(nil)
 
 type Provider struct {
-	Client        *bitbucket.Client
+	bbClient      *bitbucket.Client
 	Logger        *zap.SugaredLogger
 	run           *params.Run
 	pacInfo       *info.PacOpts
 	Token, APIURL *string
 	Username      *string
 	provenance    string
+	eventEmitter  *events.EventEmitter
+	repo          *v1alpha1.Repository
+	triggerEvent  string
+}
+
+func (v *Provider) Client() *bitbucket.Client {
+	providerMetrics.RecordAPIUsage(
+		v.Logger,
+		"bitbucketcloud",
+		v.triggerEvent,
+		v.repo,
+	)
+	return v.bbClient
+}
+
+func (v *Provider) CreateComment(_ context.Context, _ *info.Event, _, _ string) error {
+	return nil
 }
 
 // CheckPolicyAllowing TODO: Implement ME.
@@ -45,9 +63,7 @@ func (v *Provider) SetPacInfo(pacInfo *info.PacOpts) {
 	v.pacInfo = pacInfo
 }
 
-const taskStatusTemplate = `| **Status** | **Duration** | **Name** |
-| --- | --- | --- |
-{{range $taskrun := .TaskRunList }}|{{ formatCondition $taskrun.PipelineRunTaskRunStatus.Status.Conditions }}|{{ formatDuration $taskrun.PipelineRunTaskRunStatus.Status.StartTime $taskrun.PipelineRunTaskRunStatus.Status.CompletionTime }}|{{ $taskrun.ConsoleLogURL }}|
+const taskStatusTemplate = `{{range $taskrun := .TaskRunList }} | **{{ formatCondition $taskrun.PipelineRunTaskRunStatus.Status.Conditions }}** | {{ $taskrun.ConsoleLogURL }} | *{{ formatDuration $taskrun.PipelineRunTaskRunStatus.Status.StartTime $taskrun.PipelineRunTaskRunStatus.Status.CompletionTime }}* |
 {{ end }}`
 
 func (v *Provider) Validate(_ context.Context, _ *params.Run, _ *info.Event) error {
@@ -104,13 +120,16 @@ func (v *Provider) CreateStatus(_ context.Context, event *info.Event, statusopts
 		Revision: event.SHA,
 	}
 
-	if v.Client == nil {
+	if v.bbClient == nil {
 		return fmt.Errorf("no token has been set, cannot set status")
 	}
 
-	_, err := v.Client.Repositories.Commits.CreateCommitStatus(cmo, cso)
+	_, err := v.Client().Repositories.Commits.CreateCommitStatus(cmo, cso)
 	if err != nil {
-		return err
+		// Only emit an event to notify the user that something went wrong with the commit status API,
+		// and proceed with creating the comment (if applicable).
+		v.eventEmitter.EmitMessage(v.repo, zap.ErrorLevel, "FailedToSetCommitStatus",
+			"cannot set status with the Bitbucket Cloud token because of: "+err.Error())
 	}
 
 	eventType := triggertype.IsPullRequestType(event.EventType)
@@ -121,7 +140,7 @@ func (v *Provider) CreateStatus(_ context.Context, event *info.Event, statusopts
 		if statusopts.OriginalPipelineRunName != "" {
 			onPr = "/" + statusopts.OriginalPipelineRunName
 		}
-		_, err = v.Client.Repositories.PullRequests.AddComment(
+		_, err = v.Client().Repositories.PullRequests.AddComment(
 			&bitbucket.PullRequestCommentOptions{
 				Owner:         event.Organization,
 				RepoSlug:      event.Repository,
@@ -161,7 +180,7 @@ func (v *Provider) getDir(event *info.Event, path string) ([]bitbucket.Repositor
 		Path:     path,
 	}
 
-	repositoryFiles, err := v.Client.Repositories.Repository.ListFiles(repoFileOpts)
+	repositoryFiles, err := v.Client().Repositories.Repository.ListFiles(repoFileOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -176,17 +195,20 @@ func (v *Provider) GetFileInsideRepo(_ context.Context, event *info.Event, path,
 	return v.getBlob(event, revision, path)
 }
 
-func (v *Provider) SetClient(_ context.Context, run *params.Run, event *info.Event, _ *v1alpha1.Repository, _ *events.EventEmitter) error {
+func (v *Provider) SetClient(_ context.Context, run *params.Run, event *info.Event, repo *v1alpha1.Repository, eventEmitter *events.EventEmitter) error {
 	if event.Provider.Token == "" {
 		return fmt.Errorf("no git_provider.secret has been set in the repo crd")
 	}
 	if event.Provider.User == "" {
 		return fmt.Errorf("no git_provider.user has been in repo crd")
 	}
-	v.Client = bitbucket.NewBasicAuth(event.Provider.User, event.Provider.Token)
+	v.bbClient = bitbucket.NewBasicAuth(event.Provider.User, event.Provider.Token)
 	v.Token = &event.Provider.Token
 	v.Username = &event.Provider.User
 	v.run = run
+	v.eventEmitter = eventEmitter
+	v.repo = repo
+	v.triggerEvent = event.EventType
 	return nil
 }
 
@@ -195,7 +217,7 @@ func (v *Provider) GetCommitInfo(_ context.Context, event *info.Event) error {
 	if branchortag == "" {
 		branchortag = event.HeadBranch
 	}
-	response, err := v.Client.Repositories.Commits.GetCommits(&bitbucket.CommitsOptions{
+	response, err := v.Client().Repositories.Commits.GetCommits(&bitbucket.CommitsOptions{
 		Owner:       event.Organization,
 		RepoSlug:    event.Repository,
 		Branchortag: branchortag,
@@ -203,11 +225,11 @@ func (v *Provider) GetCommitInfo(_ context.Context, event *info.Event) error {
 	if err != nil {
 		return err
 	}
-	commitMap, ok := response.(map[string]interface{})
+	commitMap, ok := response.(map[string]any)
 	if !ok {
 		return fmt.Errorf("cannot convert")
 	}
-	values, ok := commitMap["values"].([]interface{})
+	values, ok := commitMap["values"].([]any)
 	if !ok {
 		return fmt.Errorf("cannot convert")
 	}
@@ -226,7 +248,7 @@ func (v *Provider) GetCommitInfo(_ context.Context, event *info.Event) error {
 	event.SHA = commitinfo.Hash
 
 	// now to get the default branch from repository.Get
-	repo, err := v.Client.Repositories.Repository.Get(&bitbucket.RepositoryOptions{
+	repo, err := v.Client().Repositories.Repository.Get(&bitbucket.RepositoryOptions{
 		Owner:    event.Organization,
 		RepoSlug: event.Repository,
 	})
@@ -278,7 +300,7 @@ func (v *Provider) concatAllYamlFiles(objects []bitbucket.RepositoryFile, event 
 }
 
 func (v *Provider) getBlob(runevent *info.Event, ref, path string) (string, error) {
-	blob, err := v.Client.Repositories.Repository.GetFileBlob(&bitbucket.RepositoryBlobOptions{
+	blob, err := v.Client().Repositories.Repository.GetFileBlob(&bitbucket.RepositoryBlobOptions{
 		Owner:    runevent.Organization,
 		RepoSlug: runevent.Repository,
 		Ref:      ref,
@@ -296,4 +318,8 @@ func (v *Provider) GetFiles(_ context.Context, _ *info.Event) (changedfiles.Chan
 
 func (v *Provider) CreateToken(_ context.Context, _ []string, _ *info.Event) (string, error) {
 	return "", nil
+}
+
+func (v *Provider) GetTemplate(commentType provider.CommentType) string {
+	return provider.GetMarkdownTemplate(commentType)
 }

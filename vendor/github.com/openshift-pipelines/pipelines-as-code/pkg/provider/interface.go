@@ -24,6 +24,7 @@ type StatusOpts struct {
 	Summary                  string
 	Title                    string
 	InstanceCountForCheckRun int
+	AccessDenied             bool
 }
 
 type Interface interface {
@@ -44,6 +45,8 @@ type Interface interface {
 	GetTaskURI(ctx context.Context, event *info.Event, uri string) (bool, string, error)
 	CreateToken(context.Context, []string, *info.Event) (string, error)
 	CheckPolicyAllowing(context.Context, *info.Event, []string) (bool, string)
+	GetTemplate(CommentType) string
+	CreateComment(ctx context.Context, event *info.Event, comment, updateMarker string) error
 }
 
 const DefaultProviderAPIUser = "git"

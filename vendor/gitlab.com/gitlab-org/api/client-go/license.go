@@ -22,19 +22,29 @@ import (
 	"time"
 )
 
-// LicenseService handles communication with the license
-// related methods of the GitLab API.
-//
-// GitLab API docs:
-// https://docs.gitlab.com/ee/api/license.html
-type LicenseService struct {
-	client *Client
-}
+type (
+	LicenseServiceInterface interface {
+		GetLicense(options ...RequestOptionFunc) (*License, *Response, error)
+		AddLicense(opt *AddLicenseOptions, options ...RequestOptionFunc) (*License, *Response, error)
+		DeleteLicense(licenseID int, options ...RequestOptionFunc) (*Response, error)
+	}
+
+	// LicenseService handles communication with the license
+	// related methods of the GitLab API.
+	//
+	// GitLab API docs:
+	// https://docs.gitlab.com/api/license/
+	LicenseService struct {
+		client *Client
+	}
+)
+
+var _ LicenseServiceInterface = (*LicenseService)(nil)
 
 // License represents a GitLab license.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/license.html
+// https://docs.gitlab.com/api/license/
 type License struct {
 	ID               int        `json:"id"`
 	Plan             string     `json:"plan"`
@@ -70,7 +80,7 @@ func (l License) String() string {
 // GetLicense retrieves information about the current license.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/license.html#retrieve-information-about-the-current-license
+// https://docs.gitlab.com/api/license/#retrieve-information-about-the-current-license
 func (s *LicenseService) GetLicense(options ...RequestOptionFunc) (*License, *Response, error) {
 	req, err := s.client.NewRequest(http.MethodGet, "license", nil, options)
 	if err != nil {
@@ -88,7 +98,7 @@ func (s *LicenseService) GetLicense(options ...RequestOptionFunc) (*License, *Re
 
 // AddLicenseOptions represents the available AddLicense() options.
 //
-// https://docs.gitlab.com/ee/api/license.html#add-a-new-license
+// https://docs.gitlab.com/api/license/#add-a-new-license
 type AddLicenseOptions struct {
 	License *string `url:"license" json:"license"`
 }
@@ -96,7 +106,7 @@ type AddLicenseOptions struct {
 // AddLicense adds a new license.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/license.html#add-a-new-license
+// https://docs.gitlab.com/api/license/#add-a-new-license
 func (s *LicenseService) AddLicense(opt *AddLicenseOptions, options ...RequestOptionFunc) (*License, *Response, error) {
 	req, err := s.client.NewRequest(http.MethodPost, "license", opt, options)
 	if err != nil {
@@ -115,7 +125,7 @@ func (s *LicenseService) AddLicense(opt *AddLicenseOptions, options ...RequestOp
 // DeleteLicense deletes an existing license.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/license.html#delete-a-license
+// https://docs.gitlab.com/api/license/#delete-a-license
 func (s *LicenseService) DeleteLicense(licenseID int, options ...RequestOptionFunc) (*Response, error) {
 	u := fmt.Sprintf("license/%d", licenseID)
 
