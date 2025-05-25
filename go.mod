@@ -162,7 +162,7 @@ require (
 	github.com/google/gnostic-models v0.6.9-0.20230804172637-c7be7c783f49 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-containerregistry v0.20.3 // indirect
-	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20240108195214-a0658aa1d0cc // indirect
+	github.com/google/go-containerregistry/pkg/authn/k8schain 4eb8c4d84ef0 // indirect
 	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20240108195214-a0658aa1d0cc // indirect
 	github.com/google/go-github/scrape v0.0.0-20250130204427-cbe65f01498a // indirect
 	github.com/google/go-github/v55 v55.0.0 // indirect
