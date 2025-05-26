@@ -2,17 +2,25 @@ package gitlab
 
 import "net/http"
 
-// MarkdownService handles communication with the markdown related methods of
-// the GitLab API.
-//
-// Gitlab API docs: https://docs.gitlab.com/ee/api/markdown.html
-type MarkdownService struct {
-	client *Client
-}
+type (
+	MarkdownServiceInterface interface {
+		Render(opt *RenderOptions, options ...RequestOptionFunc) (*Markdown, *Response, error)
+	}
+
+	// MarkdownService handles communication with the markdown related methods of
+	// the GitLab API.
+	//
+	// GitLab API docs: https://docs.gitlab.com/api/markdown/
+	MarkdownService struct {
+		client *Client
+	}
+)
+
+var _ MarkdownServiceInterface = (*MarkdownService)(nil)
 
 // Markdown represents a markdown document.
 //
-// Gitlab API docs: https://docs.gitlab.com/ee/api/markdown.html
+// Gitlab API docs: https://docs.gitlab.com/api/markdown/
 type Markdown struct {
 	HTML string `json:"html"`
 }
@@ -20,7 +28,7 @@ type Markdown struct {
 // RenderOptions represents the available Render() options.
 //
 // Gitlab API docs:
-// https://docs.gitlab.com/ee/api/markdown.html#render-an-arbitrary-markdown-document
+// https://docs.gitlab.com/api/markdown/#render-an-arbitrary-markdown-document
 type RenderOptions struct {
 	Text                    *string `url:"text,omitempty" json:"text,omitempty"`
 	GitlabFlavouredMarkdown *bool   `url:"gfm,omitempty" json:"gfm,omitempty"`
@@ -30,7 +38,7 @@ type RenderOptions struct {
 // Render an arbitrary markdown document.
 //
 // Gitlab API docs:
-// https://docs.gitlab.com/ee/api/markdown.html#render-an-arbitrary-markdown-document
+// https://docs.gitlab.com/api/markdown/#render-an-arbitrary-markdown-document
 func (s *MarkdownService) Render(opt *RenderOptions, options ...RequestOptionFunc) (*Markdown, *Response, error) {
 	req, err := s.client.NewRequest(http.MethodPost, "markdown", opt, options)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	apipac "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
@@ -19,6 +20,12 @@ import (
 	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
 )
+
+const validationErrorTemplate = `> [!CAUTION]
+> There are some errors in your PipelineRun template.
+
+| PipelineRun | Error |
+|------|-------|`
 
 func (p *PacRun) matchRepoPR(ctx context.Context) ([]matcher.Match, *v1alpha1.Repository, error) {
 	repo, err := p.verifyRepoAndUser(ctx)
@@ -47,7 +54,7 @@ func (p *PacRun) verifyRepoAndUser(ctx context.Context) (*v1alpha1.Repository, e
 	// Match the Event URL to a Repository URL,
 	repo, err := matcher.MatchEventURLRepo(ctx, p.run, p.event, "")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error matching Repository for event: %w", err)
 	}
 
 	if repo == nil {
@@ -136,10 +143,11 @@ is that what you want? make sure you use -n when generating the secret, eg: echo
 	// trigger CI on the repository, as any user is able to comment on a pushed commit in open-source repositories.
 	if p.event.TriggerTarget == triggertype.Push && opscomments.IsAnyOpsEventType(p.event.EventType) {
 		status := provider.StatusOpts{
-			Status:     CompletedStatus,
-			Title:      "Permission denied",
-			Conclusion: failureConclusion,
-			DetailsURL: p.event.URL,
+			Status:       CompletedStatus,
+			Title:        "Permission denied",
+			Conclusion:   failureConclusion,
+			DetailsURL:   p.event.URL,
+			AccessDenied: true,
 		}
 		if allowed, err := p.checkAccessOrErrror(ctx, repo, status, "by GitOps comment on push commit"); !allowed {
 			return nil, err
@@ -151,10 +159,11 @@ is that what you want? make sure you use -n when generating the secret, eg: echo
 	// on comment we skip it for now, we are going to check later on
 	if p.event.TriggerTarget != triggertype.Push && p.event.EventType != opscomments.NoOpsCommentEventType.String() {
 		status := provider.StatusOpts{
-			Status:     queuedStatus,
-			Title:      "Pending approval, waiting for an /ok-to-test",
-			Conclusion: pendingConclusion,
-			DetailsURL: p.event.URL,
+			Status:       queuedStatus,
+			Title:        "Pending approval, waiting for an /ok-to-test",
+			Conclusion:   pendingConclusion,
+			DetailsURL:   p.event.URL,
+			AccessDenied: true,
 		}
 		if allowed, err := p.checkAccessOrErrror(ctx, repo, status, "via "+p.event.TriggerTarget.String()); !allowed {
 			return nil, err
@@ -170,12 +179,18 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 		provenance = repo.Spec.Settings.PipelineRunProvenance
 	}
 	rawTemplates, err := p.vcx.GetTektonDir(ctx, p.event, tektonDir, provenance)
-	if err != nil && strings.Contains(err.Error(), "error unmarshalling yaml file") {
+	if err != nil && p.event.TriggerTarget == triggertype.PullRequest && strings.Contains(err.Error(), "error unmarshalling yaml file") {
 		// make the error a bit more friendly for users who don't know what marshalling or intricacies of the yaml parser works
-		errmsg := err.Error()
-		errmsg = strings.ReplaceAll(errmsg, " error converting YAML to JSON: yaml:", "")
-		errmsg = strings.ReplaceAll(errmsg, "unmarshalling", "while parsing the")
-		return nil, fmt.Errorf("%s", errmsg)
+		// format is "error unmarshalling yaml file pr-bad-format.yaml: yaml: line 3: could not find expected ':'"
+		// get the filename with a regexp
+		reg := regexp.MustCompile(`error unmarshalling yaml file\s([^:]*):\s*(yaml:\s*)?(.*)`)
+		matches := reg.FindStringSubmatch(err.Error())
+		if len(matches) == 4 {
+			p.reportValidationErrors(ctx, repo, map[string]string{matches[1]: matches[3]})
+			return nil, nil
+		}
+
+		return nil, err
 	}
 	if err != nil || rawTemplates == "" {
 		msg := fmt.Sprintf("cannot locate templates in %s/ directory for this repository in %s", tektonDir, p.event.HeadBranch)
@@ -215,7 +230,7 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 			return nil, err
 		}
 		// Don't fail or do anything if we don't have a match yet, we will do it properly later in this function
-		_, _ = matcher.MatchPipelinerunByAnnotation(ctx, p.logger, rtypes.PipelineRuns, p.run, p.event, p.vcx)
+		_, _ = matcher.MatchPipelinerunByAnnotation(ctx, p.logger, rtypes.PipelineRuns, p.run, p.event, p.vcx, p.eventEmitter, repo)
 	}
 	// Replace those {{var}} placeholders user has in her template to the run.Info variable
 	allTemplates := p.makeTemplate(ctx, repo, rawTemplates)
@@ -225,15 +240,12 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 		return nil, err
 	}
 
-	if types.ValidationErrors != nil {
-		for k, v := range types.ValidationErrors {
-			kv := fmt.Sprintf("prun: %s tekton validation error: %s", k, v)
-			p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "PipelineRunValidationErrors", kv)
-		}
+	if len(types.ValidationErrors) > 0 && p.event.TriggerTarget == triggertype.PullRequest {
+		p.reportValidationErrors(ctx, repo, types.ValidationErrors)
 	}
 	pipelineRuns := types.PipelineRuns
 	if len(pipelineRuns) == 0 {
-		msg := fmt.Sprintf("cannot locate templates in %s/ directory for this repository in %s", tektonDir, p.event.HeadBranch)
+		msg := fmt.Sprintf("cannot locate valid templates in %s/ directory for this repository in %s", tektonDir, p.event.HeadBranch)
 		p.eventEmitter.EmitMessage(nil, zap.InfoLevel, "RepositoryCannotLocatePipelineRun", msg)
 		return nil, nil
 	}
@@ -246,7 +258,7 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 	// Match the PipelineRun with annotation
 	var matchedPRs []matcher.Match
 	if p.event.TargetTestPipelineRun == "" {
-		if matchedPRs, err = matcher.MatchPipelinerunByAnnotation(ctx, p.logger, pipelineRuns, p.run, p.event, p.vcx); err != nil {
+		if matchedPRs, err = matcher.MatchPipelinerunByAnnotation(ctx, p.logger, pipelineRuns, p.run, p.event, p.vcx, p.eventEmitter, repo); err != nil {
 			// Don't fail when you don't have a match between pipeline and annotations
 			p.eventEmitter.EmitMessage(nil, zap.WarnLevel, "RepositoryNoMatch", err.Error())
 			// In a scenario where an external user submits a pull request and the repository owner uses the
@@ -266,10 +278,11 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 	// we skipped previously so we can get the match from the event to the pipelineruns
 	if p.event.EventType == opscomments.NoOpsCommentEventType.String() || p.event.EventType == opscomments.OnCommentEventType.String() {
 		status := provider.StatusOpts{
-			Status:     queuedStatus,
-			Title:      "Pending approval, waiting for an /ok-to-test",
-			Conclusion: pendingConclusion,
-			DetailsURL: p.event.URL,
+			Status:       queuedStatus,
+			Title:        "Pending approval, waiting for an /ok-to-test",
+			Conclusion:   pendingConclusion,
+			DetailsURL:   p.event.URL,
+			AccessDenied: true,
 		}
 		if allowed, err := p.checkAccessOrErrror(ctx, repo, status, "by GitOps comment on push commit"); !allowed {
 			return nil, err
@@ -319,7 +332,7 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 		}
 	}
 
-	err = changeSecret(pipelineRuns)
+	err = p.changePipelineRun(ctx, repo, pipelineRuns)
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +346,7 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 		}}, nil
 	}
 
-	matchedPRs, err = matcher.MatchPipelinerunByAnnotation(ctx, p.logger, pipelineRuns, p.run, p.event, p.vcx)
+	matchedPRs, err = matcher.MatchPipelinerunByAnnotation(ctx, p.logger, pipelineRuns, p.run, p.event, p.vcx, p.eventEmitter, repo)
 	if err != nil {
 		// Don't fail when you don't have a match between pipeline and annotations
 		p.eventEmitter.EmitMessage(nil, zap.WarnLevel, "RepositoryNoMatch", err.Error())
@@ -354,12 +367,13 @@ func filterRunningPipelineRunOnTargetTest(testPipeline string, prs []*tektonv1.P
 	return nil
 }
 
-// changeSecret we need to go in each pipelinerun,
-// change the secret template variable with a random one as generated from GetBasicAuthSecretName
-// and store in the annotations so we can create one delete after.
-func changeSecret(prs []*tektonv1.PipelineRun) error {
-	for k, p := range prs {
-		b, err := json.Marshal(p)
+// changePipelineRun go over each pipelineruns and modify things into it.
+//
+// - the secret template variable with a random one as generated from GetBasicAuthSecretName
+// - the template variable with the one from the event (this includes the remote pipeline that has template variables).
+func (p *PacRun) changePipelineRun(ctx context.Context, repo *v1alpha1.Repository, prs []*tektonv1.PipelineRun) error {
+	for k, pr := range prs {
+		b, err := json.Marshal(pr)
 		if err != nil {
 			return err
 		}
@@ -367,7 +381,8 @@ func changeSecret(prs []*tektonv1.PipelineRun) error {
 		name := secrets.GenerateBasicAuthSecretName()
 		processed := templates.ReplacePlaceHoldersVariables(string(b), map[string]string{
 			"git_auth_secret": name,
-		}, nil, nil, map[string]interface{}{})
+		}, nil, nil, map[string]any{})
+		processed = p.makeTemplate(ctx, repo, processed)
 
 		var np *tektonv1.PipelineRun
 		err = json.Unmarshal([]byte(processed), &np)
@@ -379,6 +394,7 @@ func changeSecret(prs []*tektonv1.PipelineRun) error {
 			np.Annotations = map[string]string{}
 		}
 		np.Annotations[apipac.GitAuthSecret] = name
+
 		prs[k] = np
 	}
 	return nil
@@ -399,7 +415,7 @@ func (p *PacRun) checkNeedUpdate(_ string) (string, bool) {
 func (p *PacRun) checkAccessOrErrror(ctx context.Context, repo *v1alpha1.Repository, status provider.StatusOpts, viamsg string) (bool, error) {
 	allowed, err := p.vcx.IsAllowed(ctx, p.event)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("unable to verify event authorization: %w", err)
 	}
 	if allowed {
 		return true, nil
@@ -410,6 +426,7 @@ func (p *PacRun) checkAccessOrErrror(ctx context.Context, repo *v1alpha1.Reposit
 	}
 	p.eventEmitter.EmitMessage(repo, zap.InfoLevel, "RepositoryPermissionDenied", msg)
 	status.Text = msg
+
 	if err := p.vcx.CreateStatus(ctx, p.event, status); err != nil {
 		return false, fmt.Errorf("failed to run create status, user is not allowed to run the CI:: %w", err)
 	}
@@ -429,4 +446,23 @@ func (p *PacRun) createNeutralStatus(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// reportValidationErrors reports validation errors found in PipelineRuns by:
+// 1. Creating error messages for each validation error
+// 2. Emitting error messages to the event system
+// 3. Creating a markdown formatted comment on the repository with all errors.
+func (p *PacRun) reportValidationErrors(ctx context.Context, repo *v1alpha1.Repository, validationErrors map[string]string) {
+	errorRows := make([]string, 0, len(validationErrors))
+	for name, err := range validationErrors {
+		errorRows = append(errorRows, fmt.Sprintf("| %s | `%s` |", name, err))
+		p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "PipelineRunValidationErrors",
+			fmt.Sprintf("cannot read the PipelineRun: %s, error: %s", name, err))
+	}
+	markdownErrMessage := fmt.Sprintf(`%s
+%s`, validationErrorTemplate, strings.Join(errorRows, "\n"))
+	if err := p.vcx.CreateComment(ctx, p.event, markdownErrMessage, validationErrorTemplate); err != nil {
+		p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "PipelineRunCommentCreationError",
+			fmt.Sprintf("failed to create comment: %s", err.Error()))
+	}
 }
