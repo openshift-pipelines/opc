@@ -10,7 +10,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main" &&
+      == "release-v1.19.x" &&
       ("***".pathChanged() ||
       ".konflux/dockerfiles/opc.Dockerfile".pathChanged() ||
       ".tekton/opc-next-opc-push.yaml".pathChanged())
