@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/google/go-github/v68/github"
+	"github.com/google/go-github/v71/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/formatting"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
@@ -114,5 +114,5 @@ func generateNamespaceName(nsTemplate string, gitEvent *github.RepositoryEvent) 
 		"repo_owner": repoOwner,
 		"repo_name":  repoName,
 	}
-	return templates.ReplacePlaceHoldersVariables(nsTemplate, maptemplate, nil, http.Header{}, map[string]interface{}{}), nil
+	return templates.ReplacePlaceHoldersVariables(nsTemplate, maptemplate, nil, http.Header{}, map[string]any{}), nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	apipac "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/events"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/opscomments"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
@@ -24,6 +25,8 @@ const (
 	// regex allows array of string or a single string
 	// eg. ["foo", "bar"], ["foo"] or "foo".
 	reValidateTag = `^\[(.*)\]$|^[^[\]\s]*$`
+	// maximum number of characters to display in logs for gitops comments.
+	maxCommentLogLength = 160
 )
 
 // prunBranch is value from annotations and baseBranch is event.Base value from event.
@@ -147,7 +150,42 @@ func getName(prun *tektonv1.PipelineRun) string {
 	return name
 }
 
-func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger, pruns []*tektonv1.PipelineRun, cs *params.Run, event *info.Event, vcx provider.Interface) ([]Match, error) {
+// checkPipelineRunAnnotation checks if the Pipelinerun has
+// `on-event`/`on-target-branch annotations` with `on-cel-expression`
+// and if present then warns the user that `on-cel-expression` will take precedence.
+func checkPipelineRunAnnotation(prun *tektonv1.PipelineRun, eventEmitter *events.EventEmitter, repo *apipac.Repository) {
+	// Define the annotations to check in a slice for easy iteration
+	checks := []struct {
+		key   string
+		value string
+	}{
+		{"on-event", prun.GetObjectMeta().GetAnnotations()[keys.OnEvent]},
+		{"on-target-branch", prun.GetObjectMeta().GetAnnotations()[keys.OnTargetBranch]},
+	}
+
+	// Preallocate the annotations slice with the exact capacity needed
+	annotations := make([]string, 0, len(checks))
+
+	// Iterate through each check and append the key if the value is non-empty
+	for _, check := range checks {
+		if check.value != "" {
+			annotations = append(annotations, check.key)
+		}
+	}
+
+	prName := getName(prun)
+	if len(annotations) > 0 {
+		ignoredAnnotations := strings.Join(annotations, ", ")
+		msg := fmt.Sprintf(
+			"Warning: The Pipelinerun '%s' has 'on-cel-expression' defined along with [%s] annotation(s). The 'on-cel-expression' will take precedence and these annotations will be ignored",
+			prName,
+			ignoredAnnotations,
+		)
+		eventEmitter.EmitMessage(repo, zap.WarnLevel, "RespositoryTakesOnCelExpressionPrecedence", msg)
+	}
+}
+
+func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger, pruns []*tektonv1.PipelineRun, cs *params.Run, event *info.Event, vcx provider.Interface, eventEmitter *events.EventEmitter, repo *apipac.Repository) ([]Match, error) {
 	matchedPRs := []Match{}
 	infomsg := fmt.Sprintf("matching pipelineruns to event: URL=%s, target-branch=%s, source-branch=%s, target-event=%s",
 		event.URL,
@@ -209,7 +247,13 @@ func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger
 				strings.TrimPrefix(strings.TrimSuffix(event.TriggerComment, "\r\n"), "\r\n"))
 			if re.MatchString(strippedComment) {
 				event.EventType = opscomments.OnCommentEventType.String()
-				logger.Infof("matched pipelinerun with name: %s on gitops comment: %q", prName, event.TriggerComment)
+
+				comment := event.TriggerComment
+				if len(comment) > maxCommentLogLength {
+					comment = comment[:maxCommentLogLength] + "..."
+				}
+				logger.Infof("matched pipelinerun with name: %s on gitops comment: %q", prName, comment)
+
 				matchedPRs = append(matchedPRs, prMatch)
 				continue
 			}
@@ -228,6 +272,8 @@ func MatchPipelinerunByAnnotation(ctx context.Context, logger *zap.SugaredLogger
 		}
 
 		if celExpr, ok := prun.GetObjectMeta().GetAnnotations()[keys.OnCelExpression]; ok {
+			checkPipelineRunAnnotation(prun, eventEmitter, repo)
+
 			out, err := celEvaluate(ctx, celExpr, event, vcx)
 			if err != nil {
 				logger.Errorf("there was an error evaluating the CEL expression, skipping: %v", err)
