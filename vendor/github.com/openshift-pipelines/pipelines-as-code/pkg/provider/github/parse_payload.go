@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	ghinstallation "github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/google/go-github/v68/github"
+	"github.com/google/go-github/v71/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/opscomments"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
@@ -73,10 +73,10 @@ func (v *Provider) GetAppToken(ctx context.Context, kube kubernetes.Interface, g
 			gheURL = "https://" + gheURL
 		}
 		uploadURL := gheURL + "/api/uploads"
-		v.Client, _ = github.NewClient(&http.Client{Transport: itr}).WithEnterpriseURLs(gheURL, uploadURL)
-		itr.BaseURL = strings.TrimSuffix(v.Client.BaseURL.String(), "/")
+		v.ghClient, _ = github.NewClient(&http.Client{Transport: itr}).WithEnterpriseURLs(gheURL, uploadURL)
+		itr.BaseURL = strings.TrimSuffix(v.Client().BaseURL.String(), "/")
 	} else {
-		v.Client = github.NewClient(&http.Client{Transport: itr})
+		v.ghClient = github.NewClient(&http.Client{Transport: itr})
 	}
 
 	// Get a token ASAP because we need it for setting private repos
@@ -208,7 +208,58 @@ func (v *Provider) ParsePayload(ctx context.Context, run *params.Run, request *h
 	return processedEvent, nil
 }
 
-func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt interface{}) (*info.Event, error) {
+// isCommitPartOfPullRequest checks if the commit from a push event is part of an open pull request
+// If it is, it returns true and the PR number.
+func (v *Provider) isCommitPartOfPullRequest(ctx context.Context, sha, org, repo string) (bool, int, error) {
+	if v.ghClient == nil {
+		return false, 0, fmt.Errorf("github client is not initialized")
+	}
+
+	// Validate input parameters
+	if sha == "" {
+		return false, 0, fmt.Errorf("sha cannot be empty")
+	}
+	if org == "" {
+		return false, 0, fmt.Errorf("organization cannot be empty")
+	}
+	if repo == "" {
+		return false, 0, fmt.Errorf("repository cannot be empty")
+	}
+
+	// Use pagination to handle repositories with many PRs
+	opts := &github.ListOptions{
+		PerPage: 100, // GitHub's maximum per page
+	}
+
+	for {
+		// Use the "List pull requests associated with a commit" API to check if the commit is part of any open PR
+		prs, resp, err := v.ghClient.PullRequests.ListPullRequestsWithCommit(ctx, org, repo, sha, opts)
+		if err != nil {
+			// Log the error for debugging purposes
+			v.Logger.Debugf("Failed to list pull requests for commit %s in %s/%s: %v", sha, org, repo, err)
+			return false, 0, fmt.Errorf("failed to list pull requests for commit %s: %w", sha, err)
+		}
+
+		// Check if any of the returned PRs are open
+		for _, pr := range prs {
+			if pr.GetState() == "open" {
+				v.Logger.Debugf("Commit %s is part of open PR #%d in %s/%s", sha, pr.GetNumber(), org, repo)
+				return true, pr.GetNumber(), nil
+			}
+		}
+
+		// Check if there are more pages
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+
+	v.Logger.Debugf("Commit %s is not part of any open pull request in %s/%s", sha, org, repo)
+	return false, 0, nil
+}
+
+func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt any) (*info.Event, error) {
 	var processedEvent *info.Event
 	var err error
 
@@ -216,7 +267,7 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 
 	switch gitEvent := eventInt.(type) {
 	case *github.CheckRunEvent:
-		if v.Client == nil {
+		if v.ghClient == nil {
 			return nil, fmt.Errorf("check run rerequest is only supported with github apps integration")
 		}
 
@@ -225,7 +276,7 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		}
 		return v.handleReRequestEvent(ctx, gitEvent)
 	case *github.CheckSuiteEvent:
-		if v.Client == nil {
+		if v.ghClient == nil {
 			return nil, fmt.Errorf("check suite rerequest is only supported with github apps integration")
 		}
 
@@ -234,8 +285,9 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		}
 		return v.handleCheckSuites(ctx, gitEvent)
 	case *github.IssueCommentEvent:
-		if v.Client == nil {
-			return nil, fmt.Errorf("gitops style comments operation is only supported with github apps integration")
+		if v.ghClient == nil {
+			return nil, fmt.Errorf("no github client has been initialized, " +
+				"exiting... (hint: did you forget setting a secret on your repo?)")
 		}
 		if gitEvent.GetAction() != "created" {
 			return nil, fmt.Errorf("only newly created comment is supported, received: %s", gitEvent.GetAction())
@@ -245,8 +297,9 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 			return nil, err
 		}
 	case *github.CommitCommentEvent:
-		if v.Client == nil {
-			return nil, fmt.Errorf("gitops style comments operation is only supported with github apps integration")
+		if v.ghClient == nil {
+			return nil, fmt.Errorf("no github client has been initialized, " +
+				"exiting... (hint: did you forget setting a secret on your repo?)")
 		}
 		processedEvent, err = v.handleCommitCommentEvent(ctx, gitEvent)
 		if err != nil {
@@ -256,16 +309,44 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		if gitEvent.GetRepo() == nil {
 			return nil, errors.New("error parsing payload the repository should not be nil")
 		}
+
+		// When a branch is deleted via repository UI, it triggers a push event.
+		// However, Pipelines as Code does not support handling branch delete events,
+		// so we return an error here to indicate this unsupported operation.
+		if gitEvent.After != nil {
+			if provider.IsZeroSHA(*gitEvent.After) {
+				return nil, fmt.Errorf("branch %s has been deleted, exiting", gitEvent.GetRef())
+			}
+		}
+
+		// Check if this push commit is part of an open pull request
+		sha := gitEvent.GetHeadCommit().GetID()
+		if sha == "" {
+			sha = gitEvent.GetBefore()
+		}
+		org := gitEvent.GetRepo().GetOwner().GetLogin()
+		repoName := gitEvent.GetRepo().GetName()
+
+		// Only check if the flag is enabled
+		if v.pacInfo.SkipPushEventForPRCommits {
+			isPartOfPR, prNumber, err := v.isCommitPartOfPullRequest(ctx, sha, org, repoName)
+			if err != nil {
+				v.Logger.Warnf("Error checking if push commit is part of PR: %v", err)
+			}
+
+			// If the commit is part of a PR, skip processing the push event
+			if isPartOfPR {
+				v.Logger.Infof("Skipping push event for commit %s as it belongs to pull request #%d", sha, prNumber)
+				return nil, fmt.Errorf("commit %s is part of pull request #%d, skipping push event", sha, prNumber)
+			}
+		}
+
 		processedEvent.Organization = gitEvent.GetRepo().GetOwner().GetLogin()
 		processedEvent.Repository = gitEvent.GetRepo().GetName()
 		processedEvent.DefaultBranch = gitEvent.GetRepo().GetDefaultBranch()
 		processedEvent.URL = gitEvent.GetRepo().GetHTMLURL()
 		v.RepositoryIDs = []int64{gitEvent.GetRepo().GetID()}
-		processedEvent.SHA = gitEvent.GetHeadCommit().GetID()
-		// on push event we may not get a head commit but only
-		if processedEvent.SHA == "" {
-			processedEvent.SHA = gitEvent.GetBefore()
-		}
+		processedEvent.SHA = sha
 		processedEvent.SHAURL = gitEvent.GetHeadCommit().GetURL()
 		processedEvent.SHATitle = gitEvent.GetHeadCommit().GetMessage()
 		processedEvent.Sender = gitEvent.GetSender().GetLogin()
@@ -274,6 +355,7 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		processedEvent.HeadBranch = processedEvent.BaseBranch // in push events Head Branch is the same as Basebranch
 		processedEvent.BaseURL = gitEvent.GetRepo().GetHTMLURL()
 		processedEvent.HeadURL = processedEvent.BaseURL // in push events Head URL is the same as BaseURL
+		v.userType = gitEvent.GetSender().GetType()
 	case *github.PullRequestEvent:
 		processedEvent.Repository = gitEvent.GetRepo().GetName()
 		if gitEvent.GetRepo() == nil {
@@ -289,6 +371,7 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 		processedEvent.HeadURL = gitEvent.GetPullRequest().Head.GetRepo().GetHTMLURL()
 		processedEvent.Sender = gitEvent.GetPullRequest().GetUser().GetLogin()
 		processedEvent.EventType = event.EventType
+		v.userType = gitEvent.GetPullRequest().GetUser().GetType()
 
 		if gitEvent.Action != nil && provider.Valid(*gitEvent.Action, pullRequestLabelEvent) {
 			processedEvent.EventType = string(triggertype.LabelUpdate)
@@ -341,6 +424,7 @@ func (v *Provider) handleReRequestEvent(ctx context.Context, event *github.Check
 		// we allow the rerequest user here, not the push user, i guess it's
 		// fine because you can't do a rereq without being a github owner?
 		runevent.Sender = event.GetSender().GetLogin()
+		v.userType = event.GetSender().GetType()
 		return runevent, nil
 	}
 	runevent.PullRequestNumber = event.GetCheckRun().GetCheckSuite().PullRequests[0].GetNumber()
@@ -371,6 +455,7 @@ func (v *Provider) handleCheckSuites(ctx context.Context, event *github.CheckSui
 		// we allow the rerequest user here, not the push user, i guess it's
 		// fine because you can't do a rereq without being a github owner?
 		runevent.Sender = event.GetSender().GetLogin()
+		v.userType = event.GetSender().GetType()
 		return runevent, nil
 		// return nil, fmt.Errorf("check suite event is not supported for push events")
 	}
@@ -399,6 +484,7 @@ func (v *Provider) handleIssueCommentEvent(ctx context.Context, event *github.Is
 	if !event.GetIssue().IsPullRequest() {
 		return info.NewEvent(), fmt.Errorf("issue comment is not coming from a pull_request")
 	}
+	v.userType = event.GetSender().GetType()
 	opscomments.SetEventTypeAndTargetPR(runevent, event.GetComment().GetBody())
 	// We are getting the full URL so we have to get the last part to get the PR number,
 	// we don't have to care about URL query string/hash and other stuff because
@@ -422,6 +508,7 @@ func (v *Provider) handleCommitCommentEvent(ctx context.Context, event *github.C
 	runevent.Organization = event.GetRepo().GetOwner().GetLogin()
 	runevent.Repository = event.GetRepo().GetName()
 	runevent.Sender = event.GetSender().GetLogin()
+	v.userType = event.GetSender().GetType()
 	runevent.URL = event.GetRepo().GetHTMLURL()
 	runevent.SHA = event.GetComment().GetCommitID()
 	runevent.HeadURL = runevent.URL
@@ -464,7 +551,7 @@ func (v *Provider) handleCommitCommentEvent(ctx context.Context, event *github.C
 	}
 
 	// Check if the specified branch contains the commit
-	if err = v.isBranchContainsCommit(ctx, runevent, branchName); err != nil {
+	if err = v.isHeadCommitOfBranch(ctx, runevent, branchName); err != nil {
 		if provider.IsCancelComment(event.GetComment().GetBody()) {
 			runevent.CancelPipelineRuns = false
 		}
@@ -474,6 +561,6 @@ func (v *Provider) handleCommitCommentEvent(ctx context.Context, event *github.C
 	runevent.HeadBranch = branchName
 	runevent.BaseBranch = branchName
 
-	v.Logger.Infof("commit_comment: pipelinerun %s on %s/%s#%s has been requested", action, runevent.Organization, runevent.Repository, runevent.SHA)
+	v.Logger.Infof("github commit_comment: pipelinerun %s on %s/%s#%s has been requested", action, runevent.Organization, runevent.Repository, runevent.SHA)
 	return runevent, nil
 }

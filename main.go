@@ -18,6 +18,7 @@ import (
 	tknversion "github.com/tektoncd/cli/pkg/cmd/version"
 	"github.com/tektoncd/cli/pkg/plugins"
 	resultscmd "github.com/tektoncd/results/pkg/cli/cmd"
+	resultscommon "github.com/tektoncd/results/pkg/cli/common"
 )
 
 const (
@@ -50,7 +51,8 @@ func main() {
 	tkn.AddCommand(mag)
 
 	// adding results
-	results := resultscmd.Root()
+	rp := &resultscommon.ResultsParams{}
+	results := resultscmd.Root(rp)
 	results.Use = "results"
 	results.Short = resultsShortDesc
 	tkn.AddCommand(results)

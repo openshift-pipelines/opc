@@ -25,9 +25,9 @@ func (p *CustomParams) getChangedFiles(ctx context.Context) changedfiles.Changed
 }
 
 // makeStandardParamsFromEvent will create a map of standard params out of the event.
-func (p *CustomParams) makeStandardParamsFromEvent(ctx context.Context) (map[string]string, map[string]interface{}) {
+func (p *CustomParams) makeStandardParamsFromEvent(ctx context.Context) (map[string]string, map[string]any) {
 	repoURL := p.event.URL
-	// On bitbucket server you are have a special url for checking it out, they
+	// On bitbucket data center you are have a special url for checking it out, they
 	// seemed to fix it in 2.0 but i guess we have to live with this until then.
 	if p.event.CloneURL != "" {
 		repoURL = p.event.CloneURL
@@ -36,6 +36,11 @@ func (p *CustomParams) makeStandardParamsFromEvent(ctx context.Context) (map[str
 	triggerCommentAsSingleLine := strings.ReplaceAll(strings.ReplaceAll(p.event.TriggerComment, "\r\n", "\\n"), "\n", "\\n")
 	pullRequestLabels := strings.Join(p.event.PullRequestLabel, "\\n")
 
+	gitTag := ""
+	if strings.HasPrefix(p.event.BaseBranch, "refs/tags/") {
+		gitTag = strings.TrimPrefix(p.event.BaseBranch, "refs/tags/")
+	}
+
 	return map[string]string{
 			"revision":            p.event.SHA,
 			"repo_url":            repoURL,
@@ -43,13 +48,14 @@ func (p *CustomParams) makeStandardParamsFromEvent(ctx context.Context) (map[str
 			"repo_name":           strings.ToLower(p.event.Repository),
 			"target_branch":       formatting.SanitizeBranch(p.event.BaseBranch),
 			"source_branch":       formatting.SanitizeBranch(p.event.HeadBranch),
+			"git_tag":             gitTag,
 			"source_url":          p.event.HeadURL,
 			"sender":              strings.ToLower(p.event.Sender),
 			"target_namespace":    p.repo.GetNamespace(),
 			"event_type":          opscomments.EventTypeBackwardCompat(p.eventEmitter, p.repo, p.event.EventType),
 			"trigger_comment":     triggerCommentAsSingleLine,
 			"pull_request_labels": pullRequestLabels,
-		}, map[string]interface{}{
+		}, map[string]any{
 			"all":      changedFiles.All,
 			"added":    changedFiles.Added,
 			"deleted":  changedFiles.Deleted,

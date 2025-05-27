@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v68/github"
+	"github.com/google/go-github/v71/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/action"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction"
@@ -18,6 +18,11 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
 	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+)
+
+const (
+	botType         = "Bot"
+	pendingApproval = "Pending approval, waiting for an /ok-to-test"
 )
 
 const taskStatusTemplate = `
@@ -35,12 +40,10 @@ const taskStatusTemplate = `
 {{- end }}
 </table>`
 
-const pendingApproval = "Pending approval, waiting for an /ok-to-test"
-
 func (v *Provider) getExistingCheckRunID(ctx context.Context, runevent *info.Event, status provider.StatusOpts) (*int64, error) {
 	opt := github.ListOptions{PerPage: v.PaginedNumber}
 	for {
-		res, resp, err := v.Client.Checks.ListCheckRunsForRef(ctx, runevent.Organization, runevent.Repository,
+		res, resp, err := v.Client().Checks.ListCheckRunsForRef(ctx, runevent.Organization, runevent.Repository,
 			runevent.SHA, &github.ListCheckRunsOptions{
 				AppID:       v.ApplicationID,
 				ListOptions: opt,
@@ -115,7 +118,7 @@ func (v *Provider) createCheckRunStatus(ctx context.Context, runevent *info.Even
 		StartedAt:  &now,
 	}
 
-	checkRun, _, err := v.Client.Checks.CreateCheckRun(ctx, runevent.Organization, runevent.Repository, checkrunoption)
+	checkRun, _, err := v.Client().Checks.CreateCheckRun(ctx, runevent.Organization, runevent.Repository, checkrunoption)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +270,7 @@ func (v *Provider) getOrUpdateCheckRunStatus(ctx context.Context, runevent *info
 		opts.Conclusion = github.Ptr("cancelled")
 	}
 
-	_, _, err = v.Client.Checks.UpdateCheckRun(ctx, runevent.Organization, runevent.Repository, *checkRunID, opts)
+	_, _, err = v.Client().Checks.UpdateCheckRun(ctx, runevent.Organization, runevent.Repository, *checkRunID, opts)
 	return err
 }
 
@@ -281,9 +284,9 @@ func isPipelineRunCancelledOrStopped(run *tektonv1.PipelineRun) bool {
 	return false
 }
 
-func metadataPatch(checkRunID *int64, logURL string) map[string]interface{} {
-	return map[string]interface{}{
-		"metadata": map[string]interface{}{
+func metadataPatch(checkRunID *int64, logURL string) map[string]any {
+	return map[string]any{
+		"metadata": map[string]any{
 			"labels": map[string]string{
 				keys.CheckRunID: strconv.FormatInt(*checkRunID, 10),
 			},
@@ -320,7 +323,7 @@ func (v *Provider) createStatusCommit(ctx context.Context, runevent *info.Event,
 		CreatedAt:   &github.Timestamp{Time: now},
 	}
 
-	if _, _, err := v.Client.Repositories.CreateStatus(ctx,
+	if _, _, err := v.Client().Repositories.CreateStatus(ctx,
 		runevent.Organization, runevent.Repository, runevent.SHA, ghstatus); err != nil {
 		return err
 	}
@@ -331,7 +334,7 @@ func (v *Provider) createStatusCommit(ctx context.Context, runevent *info.Event,
 
 	if (status.Status == "completed" || (status.Status == "queued" && status.Title == pendingApproval)) &&
 		status.Text != "" && eventType == triggertype.PullRequest {
-		_, _, err = v.Client.Issues.CreateComment(ctx, runevent.Organization, runevent.Repository,
+		_, _, err = v.Client().Issues.CreateComment(ctx, runevent.Organization, runevent.Repository,
 			runevent.PullRequestNumber,
 			&github.IssueComment{
 				Body: github.Ptr(fmt.Sprintf("%s<br>%s", status.Summary, status.Text)),
@@ -346,8 +349,13 @@ func (v *Provider) createStatusCommit(ctx context.Context, runevent *info.Event,
 }
 
 func (v *Provider) CreateStatus(ctx context.Context, runevent *info.Event, statusOpts provider.StatusOpts) error {
-	if v.Client == nil {
+	if v.ghClient == nil {
 		return fmt.Errorf("cannot set status on github no token or url set")
+	}
+
+	// If the request comes from a bot user, skip setting the status and just log the event silently
+	if statusOpts.AccessDenied && v.userType == botType {
+		return nil
 	}
 
 	switch statusOpts.Conclusion {
@@ -386,7 +394,6 @@ func (v *Provider) CreateStatus(ctx context.Context, runevent *info.Event, statu
 		onPr = "/" + statusOpts.OriginalPipelineRunName
 	}
 	statusOpts.Summary = fmt.Sprintf("%s%s %s", v.pacInfo.ApplicationName, onPr, statusOpts.Summary)
-
 	// If we have an installationID which mean we have a github apps and we can use the checkRun API
 	if runevent.InstallationID > 0 {
 		return v.getOrUpdateCheckRunStatus(ctx, runevent, statusOpts)
