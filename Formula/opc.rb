@@ -5,12 +5,12 @@
 class Opc < Formula
   desc "A CLI for OpenShift Pipeline"
   homepage "https://github.com/openshift-pipelines/opc"
-  version "1.17.0"
+  version "1.18.0"
 
   on_macos do
     if Hardware::CPU.intel?
-      url "https://github.com/openshift-pipelines/opc/releases/download/v1.17.0/opc_1.17.0_darwin_x86_64.tar.gz"
-      sha256 "eaf30d97bb363a6f996e1f500c114d4fd0f962967a94f1f9cf3cdd718f4889d3"
+      url "https://github.com/openshift-pipelines/opc/releases/download/v1.18.0/opc_1.18.0_darwin_x86_64.tar.gz"
+      sha256 "c0ba99cef2e21eace7b6cfe73ad54c797eec3c8931228fcfa658483b2b9a2ea9"
 
       def install
         bin.install "opc" => "opc"
@@ -22,8 +22,8 @@ class Opc < Formula
       end
     end
     if Hardware::CPU.arm?
-      url "https://github.com/openshift-pipelines/opc/releases/download/v1.17.0/opc_1.17.0_darwin_arm64.tar.gz"
-      sha256 "fa28f110b6ca2084aa38448b071660a9641151966ab0ed505e010c7ac82b39cb"
+      url "https://github.com/openshift-pipelines/opc/releases/download/v1.18.0/opc_1.18.0_darwin_arm64.tar.gz"
+      sha256 "e92fd4f95eeb3063f1a84126f61944446983bec1cfe7b0fbb2e2eb9a4b76e9ed"
 
       def install
         bin.install "opc" => "opc"
@@ -37,34 +37,28 @@ class Opc < Formula
   end
 
   on_linux do
-    if Hardware::CPU.intel?
-      if Hardware::CPU.is_64_bit?
-        url "https://github.com/openshift-pipelines/opc/releases/download/v1.17.0/opc_1.17.0_linux_x86_64.tar.gz"
-        sha256 "d3c482a72c45c125168bdf5b242cf03095fef077b00030eebe129848e09840c3"
-
-        def install
-          bin.install "opc" => "opc"
-          output = Utils.popen_read("SHELL=bash #{bin}/opc completion bash")
-          (bash_completion/"opc").write output
-          output = Utils.popen_read("SHELL=zsh #{bin}/opc completion zsh")
-          (zsh_completion/"_opc").write output
-          prefix.install_metafiles
-        end
+    if Hardware::CPU.intel? and Hardware::CPU.is_64_bit?
+      url "https://github.com/openshift-pipelines/opc/releases/download/v1.18.0/opc_1.18.0_linux_x86_64.tar.gz"
+      sha256 "86bba925d643f0aaaf87c25e4a80875a0c119e494ff98f60b002ec03132be31d"
+      def install
+        bin.install "opc" => "opc"
+        output = Utils.popen_read("SHELL=bash #{bin}/opc completion bash")
+        (bash_completion/"opc").write output
+        output = Utils.popen_read("SHELL=zsh #{bin}/opc completion zsh")
+        (zsh_completion/"_opc").write output
+        prefix.install_metafiles
       end
     end
-    if Hardware::CPU.arm?
-      if Hardware::CPU.is_64_bit?
-        url "https://github.com/openshift-pipelines/opc/releases/download/v1.17.0/opc_1.17.0_linux_arm64.tar.gz"
-        sha256 "9e16faefd12c939a3dafb426c5e3061b7565272b4dd2fb20b20befb6b4d4812b"
-
-        def install
-          bin.install "opc" => "opc"
-          output = Utils.popen_read("SHELL=bash #{bin}/opc completion bash")
-          (bash_completion/"opc").write output
-          output = Utils.popen_read("SHELL=zsh #{bin}/opc completion zsh")
-          (zsh_completion/"_opc").write output
-          prefix.install_metafiles
-        end
+    if Hardware::CPU.arm? and Hardware::CPU.is_64_bit?
+      url "https://github.com/openshift-pipelines/opc/releases/download/v1.18.0/opc_1.18.0_linux_arm64.tar.gz"
+      sha256 "c27ea3dc60891619a4454c80f78527b6c87270d310330c20615fa62063d88754"
+      def install
+        bin.install "opc" => "opc"
+        output = Utils.popen_read("SHELL=bash #{bin}/opc completion bash")
+        (bash_completion/"opc").write output
+        output = Utils.popen_read("SHELL=zsh #{bin}/opc completion zsh")
+        (zsh_completion/"_opc").write output
+        prefix.install_metafiles
       end
     end
   end
