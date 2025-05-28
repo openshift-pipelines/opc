@@ -5,7 +5,10 @@ FROM $GO_BUILDER AS builder
 
 WORKDIR /go/src/github.com/openshift-pipelines/opc
 COPY . .
-RUN go build -buildvcs=false -mod=vendor -o /tmp/opc main.go
+COPY .konflux/patches patches/
+RUN set -e; for f in patches/*.patch; do echo ${f}; [[ -f ${f} ]] || continue; git apply ${f}; done
+ENV GOEXPERIMENT="strictfipsruntime"
+RUN go build -buildvcs=false -mod=vendor -tags disable_gcp,strictfipsruntime  -o /tmp/opc main.go
 
 FROM $RUNTIME
 ARG VERSION=opc-main
