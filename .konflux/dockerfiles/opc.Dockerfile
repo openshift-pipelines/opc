@@ -11,7 +11,7 @@ ENV GOEXPERIMENT="strictfipsruntime"
 RUN go build -buildvcs=false -mod=vendor -tags disable_gcp,strictfipsruntime  -o /tmp/opc main.go
 
 FROM $RUNTIME
-ARG VERSION=opc-main
+ARG VERSION=opc-1.19
 COPY --from=builder /tmp/opc /usr/bin
 
 RUN microdnf install -y shadow-utils && \
