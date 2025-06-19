@@ -7,6 +7,7 @@ ASSIST_VERSION := $(shell sed -n '/[ ]*github.com\/openshift-pipelines\/tekton-a
 GO := go
 GOVERSION := 1.24
 OPC_VERSION := devel
+OSP_VERSION := devel
 BINARYNAME := opc
 GOLANGCI_LINT := golangci-lint
 
@@ -30,7 +31,7 @@ windows: mkbin generate
 
 generate: version-file ## updates version of pipeline-as-code, cli, mag, assist and results in pkg/version file
 version-file:
-	echo '{"pac": "$(PAC_VERSION)", "tkn": "$(TKN_VERSION)", "results": "$(RESULTS_VERSION)", "manualapprovalgate": "$(MAG_VERSION)", "assist": "$(ASSIST_VERSION)", "opc": "$(OPC_VERSION)"}' > pkg/version.json
+	echo '{"pac": "$(PAC_VERSION)", "tkn": "$(TKN_VERSION)", "results": "$(RESULTS_VERSION)", "manualapprovalgate": "$(MAG_VERSION)", "assist": "$(ASSIST_VERSION)", "opc": "$(OPC_VERSION)", "openshiftpipelines": "$(OSP_VERSION)"}' > pkg/version.json
 
 version-updates: ## updates pipeline-as-code, cli, mag, assist and results version in go.mod
 	$(GO) get -u github.com/openshift-pipelines/pipelines-as-code
@@ -51,7 +52,11 @@ lint-go: ## runs go linter on all go files
 							--max-same-issues=0 \
 							--timeout 10m
 
-.PHONY: generate version-file version-updates updates build all vendor tidy lint-go mkbin
+test: ## runs unit tests
+	@echo "Running unit tests..."
+	@$(GO) test -v -mod=vendor ./...
+
+.PHONY: generate version-file version-updates updates build all vendor tidy lint-go test mkbin
 
 .PHONY: help
 help: ## print this help

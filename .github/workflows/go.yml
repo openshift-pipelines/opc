@@ -14,7 +14,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.24.6'
 
       - uses: actions/cache@v4
         with:
@@ -45,7 +45,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.24.6'
 
       - uses: actions/cache@v4
         with:
@@ -63,4 +63,30 @@ jobs:
       - name: Build binary, making sure it does compile
         run: |
           make build
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.6'
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/.cache/pip
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Run unit tests
+        run: |
+          make test
 
