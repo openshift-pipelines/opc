@@ -1029,8 +1029,8 @@ github.com/imdario/mergo
 ## explicit; go 1.23.0
 github.com/in-toto/archivista/pkg/api
 github.com/in-toto/archivista/pkg/http-client
-# github.com/in-toto/attestation v1.1.1
-## explicit; go 1.20
+# github.com/in-toto/attestation v1.1.2
+## explicit; go 1.22
 github.com/in-toto/attestation/go/v1
 # github.com/in-toto/go-witness v0.8.1
 ## explicit; go 1.22.8
@@ -1038,8 +1038,8 @@ github.com/in-toto/go-witness/cryptoutil
 github.com/in-toto/go-witness/dsse
 github.com/in-toto/go-witness/log
 github.com/in-toto/go-witness/timestamp
-# github.com/in-toto/in-toto-golang v0.9.1-0.20240317085821-8e2966059a09
-## explicit; go 1.20
+# github.com/in-toto/in-toto-golang v0.9.1-0.20250622141841-35ad503efd26
+## explicit; go 1.24
 github.com/in-toto/in-toto-golang/in_toto
 github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/common
 github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.1
@@ -2203,13 +2203,13 @@ google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/api/label
 google.golang.org/genproto/googleapis/api/metric
 google.golang.org/genproto/googleapis/api/monitoredres
-# google.golang.org/genproto/googleapis/rpc v0.0.0-20250428153025-10db94c68c34
+# google.golang.org/genproto/googleapis/rpc v0.0.0-20250505200425-f936aa4a68b2
 ## explicit; go 1.23.0
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.72.0
-## explicit; go 1.23
+# google.golang.org/grpc v1.73.0
+## explicit; go 1.23.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes
 google.golang.org/grpc/authz/audit
@@ -2226,6 +2226,7 @@ google.golang.org/grpc/balancer/leastrequest
 google.golang.org/grpc/balancer/pickfirst
 google.golang.org/grpc/balancer/pickfirst/internal
 google.golang.org/grpc/balancer/pickfirst/pickfirstleaf
+google.golang.org/grpc/balancer/ringhash
 google.golang.org/grpc/balancer/rls
 google.golang.org/grpc/balancer/rls/internal/adaptive
 google.golang.org/grpc/balancer/rls/internal/keys
@@ -2291,6 +2292,7 @@ google.golang.org/grpc/internal/resolver/dns
 google.golang.org/grpc/internal/resolver/dns/internal
 google.golang.org/grpc/internal/resolver/passthrough
 google.golang.org/grpc/internal/resolver/unix
+google.golang.org/grpc/internal/ringhash
 google.golang.org/grpc/internal/serviceconfig
 google.golang.org/grpc/internal/stats
 google.golang.org/grpc/internal/status
@@ -2333,7 +2335,6 @@ google.golang.org/grpc/xds/internal/balancer/clusterresolver
 google.golang.org/grpc/xds/internal/balancer/loadstore
 google.golang.org/grpc/xds/internal/balancer/outlierdetection
 google.golang.org/grpc/xds/internal/balancer/priority
-google.golang.org/grpc/xds/internal/balancer/ringhash
 google.golang.org/grpc/xds/internal/balancer/wrrlocality
 google.golang.org/grpc/xds/internal/clusterspecifier
 google.golang.org/grpc/xds/internal/clusterspecifier/rls
