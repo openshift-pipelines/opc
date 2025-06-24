@@ -12,7 +12,6 @@ import (
 
 	"github.com/tektoncd/results/pkg/cli/options"
 
-	"github.com/tektoncd/results/pkg/cli/client"
 	"github.com/tektoncd/results/pkg/cli/client/records"
 
 	"github.com/jonboulle/clockwork"
@@ -21,7 +20,7 @@ import (
 	"github.com/tektoncd/cli/pkg/formatted"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/results/pkg/cli/common"
-	"github.com/tektoncd/results/pkg/cli/config"
+	"github.com/tektoncd/results/pkg/cli/common/prerun"
 	pb "github.com/tektoncd/results/proto/v1alpha2/results_go_proto"
 )
 
@@ -36,7 +35,7 @@ NAME	UID	STARTED	DURATION	STATUS
 {{ end -}}
 {{- end -}}
 {{- range $_, $pr := .PipelineRuns.Items }}{{- if $pr }}{{- if $.AllNamespaces -}}
-{{ $pr.Namespace }}	{{ $pr.Name }} {{ $pr.UID }}	{{ formatAge $pr.Status.StartTime $.Time }}	{{ formatDuration $pr.Status.StartTime $pr.Status.CompletionTime }}	{{ formatCondition $pr.Status.Conditions }}
+{{ $pr.Namespace }}	{{ $pr.Name }}	{{ $pr.UID }}	{{ formatAge $pr.Status.StartTime $.Time }}	{{ formatDuration $pr.Status.StartTime $pr.Status.CompletionTime }}	{{ formatCondition $pr.Status.Conditions }}
 {{ else -}}
 {{ $pr.Name }}	{{ $pr.UID }}	{{ formatAge $pr.Status.StartTime $.Time }}	{{ formatDuration $pr.Status.StartTime $pr.Status.CompletionTime }}	{{ formatCondition $pr.Status.Conditions }}
 {{ end -}}{{- end -}}{{- end -}}
@@ -86,28 +85,22 @@ List PipelineRuns with partial pipeline name match:
 			if allNs && nsSet {
 				return errors.New("cannot use --all-namespaces/-A and --namespace/-n together")
 			}
-			c, err := config.NewConfig(p)
+			// Initialize the client
+			var err error
+			opts.Client, err = prerun.InitClient(p, cmd)
 			if err != nil {
 				return err
 			}
-			opts.Client, err = client.NewRESTClient(c.Get())
-			if err != nil {
-				return err
-			}
-
 			if opts.Limit < 5 || opts.Limit > 1000 {
 				return errors.New("limit should be between 5 and 1000")
 			}
-
-			if len(args) > 0 {
-				opts.ResourceName = args[0]
-			}
-
 			// Validate label format if provided
 			if opts.Label != "" {
 				return common.ValidateLabels(opts.Label)
 			}
-
+			if len(args) > 0 {
+				opts.ResourceName = args[0]
+			}
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -117,7 +110,7 @@ List PipelineRuns with partial pipeline name match:
 			// Handle all namespaces
 			parent := fmt.Sprintf("%s/results/-", p.Namespace())
 			if opts.AllNamespaces {
-				parent = "*/results/-"
+				parent = common.AllNamespacesResultsParent
 			}
 
 			// Create initial request
