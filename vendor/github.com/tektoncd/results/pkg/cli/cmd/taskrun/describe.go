@@ -12,10 +12,9 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"github.com/tektoncd/results/pkg/cli/client"
 	"github.com/tektoncd/results/pkg/cli/client/records"
 	"github.com/tektoncd/results/pkg/cli/common"
-	"github.com/tektoncd/results/pkg/cli/config"
+	"github.com/tektoncd/results/pkg/cli/common/prerun"
 	"github.com/tektoncd/results/pkg/cli/options"
 	pb "github.com/tektoncd/results/proto/v1alpha2/results_go_proto"
 
@@ -109,22 +108,19 @@ Describe a TaskRun as json
 			}
 			return nil
 		},
-		PreRunE: func(_ *cobra.Command, _ []string) error {
-			c, err := config.NewConfig(p)
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+			opts.Client, err = prerun.InitClient(p, cmd)
 			if err != nil {
 				return err
 			}
-			opts.Client, err = client.NewRESTClient(c.Get())
-			if err != nil {
-				return err
-			}
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
 			if len(args) > 0 {
 				opts.ResourceName = args[0]
 			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ctx := cmd.Context()
 
 			filter := common.BuildFilterString(opts)
 			parent := fmt.Sprintf("%s/results/-", p.Namespace())

@@ -9,7 +9,6 @@ import (
 
 	"github.com/tektoncd/results/pkg/cli/options"
 
-	"github.com/tektoncd/results/pkg/cli/client"
 	"github.com/tektoncd/results/pkg/cli/client/records"
 
 	"github.com/jonboulle/clockwork"
@@ -18,7 +17,7 @@ import (
 	"github.com/tektoncd/cli/pkg/formatted"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/results/pkg/cli/common"
-	"github.com/tektoncd/results/pkg/cli/config"
+	"github.com/tektoncd/results/pkg/cli/common/prerun"
 	pb "github.com/tektoncd/results/proto/v1alpha2/results_go_proto"
 
 	"k8s.io/cli-runtime/pkg/printers"
@@ -148,22 +147,20 @@ Describe a PipelineRun as json:
 			}
 			return nil
 		},
-		PreRunE: func(_ *cobra.Command, _ []string) error {
-			c, err := config.NewConfig(p)
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			// Initialize the client using the shared prerun function
+			var err error
+			opts.Client, err = prerun.InitClient(p, cmd)
 			if err != nil {
 				return err
 			}
-			opts.Client, err = client.NewRESTClient(c.Get())
-			if err != nil {
-				return err
-			}
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
 			if len(args) > 0 {
 				opts.ResourceName = args[0]
 			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ctx := cmd.Context()
 
 			// Build filter string to find the PipelineRun
 			filter := common.BuildFilterString(opts)
