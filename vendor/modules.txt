@@ -1756,7 +1756,7 @@ github.com/tektoncd/pipeline/pkg/remote/oci
 github.com/tektoncd/pipeline/pkg/result
 github.com/tektoncd/pipeline/pkg/spire/config
 github.com/tektoncd/pipeline/pkg/substitution
-# github.com/tektoncd/results v0.15.1
+# github.com/tektoncd/results v0.15.2
 ## explicit; go 1.23.4
 github.com/tektoncd/results/pkg/api/server/cel
 github.com/tektoncd/results/pkg/api/server/config
