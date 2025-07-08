@@ -258,7 +258,7 @@ func parseTS(headerTS string) (time.Time, error) {
 // the issue was.
 func (v *Provider) checkWebhookSecretValidity(ctx context.Context, cw clockwork.Clock) error {
 	rl, resp, err := v.Client().RateLimit.Get(ctx)
-	if resp.StatusCode == http.StatusNotFound {
+	if resp != nil && resp.StatusCode == http.StatusNotFound {
 		v.Logger.Info("skipping checking if token has expired, rate_limit api is not enabled on token")
 		return nil
 	}
@@ -266,16 +266,23 @@ func (v *Provider) checkWebhookSecretValidity(ctx context.Context, cw clockwork.
 	if err != nil {
 		return fmt.Errorf("error making request to the GitHub API checking rate limit: %w", err)
 	}
-	if resp.Header.Get("GitHub-Authentication-Token-Expiration") != "" {
+
+	if resp != nil && resp.Header.Get("GitHub-Authentication-Token-Expiration") != "" {
 		ts, err := parseTS(resp.Header.Get("GitHub-Authentication-Token-Expiration"))
 		if err != nil {
 			return fmt.Errorf("error parsing token expiration date: %w", err)
 		}
 
 		if cw.Now().After(ts) {
-			errm := fmt.Sprintf("token has expired at %s", resp.TokenExpiration.Format(time.RFC1123))
-			return fmt.Errorf("%s", errm)
+			errMsg := fmt.Sprintf("token has expired at %s", resp.TokenExpiration.Format(time.RFC1123))
+			return fmt.Errorf("%s", errMsg)
 		}
+	}
+
+	// Guard against nil rl or rl.SCIM which could lead to a panic.
+	if rl == nil || rl.SCIM == nil {
+		v.Logger.Info("skipping token expiration check, SCIM rate limit API is not available for this token")
+		return nil
 	}
 
 	if rl.SCIM.Remaining == 0 {
@@ -324,7 +331,11 @@ func (v *Provider) GetTektonDir(ctx context.Context, runevent *info.Event, path,
 		revision = runevent.DefaultBranch
 		v.Logger.Infof("Using PipelineRun definition from default_branch: %s", runevent.DefaultBranch)
 	} else {
-		v.Logger.Infof("Using PipelineRun definition from source pull request %s/%s#%d SHA on %s", runevent.Organization, runevent.Repository, runevent.PullRequestNumber, runevent.SHA)
+		prInfo := ""
+		if runevent.TriggerTarget == triggertype.PullRequest {
+			prInfo = fmt.Sprintf("%s/%s#%d", runevent.Organization, runevent.Repository, runevent.PullRequestNumber)
+		}
+		v.Logger.Infof("Using PipelineRun definition from source %s %s on commit SHA %s", runevent.TriggerTarget.String(), prInfo, runevent.SHA)
 	}
 
 	rootobjects, _, err := v.Client().Git.GetTree(ctx, runevent.Organization, runevent.Repository, revision, false)
