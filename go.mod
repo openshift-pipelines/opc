@@ -8,7 +8,7 @@ require (
 	github.com/openshift-pipelines/manual-approval-gate v0.6.0
 	github.com/openshift-pipelines/pipelines-as-code v0.35.0
 	github.com/spf13/cobra v1.9.1
-	github.com/tektoncd/cli v0.41.0
+	github.com/tektoncd/cli v0.41.1
 	github.com/tektoncd/results v0.15.2
 )
 
