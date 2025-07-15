@@ -12,7 +12,6 @@ import (
 	paccli "github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
-	tkncli "github.com/tektoncd/cli/pkg/cli"
 	tknversion "github.com/tektoncd/cli/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -32,16 +31,15 @@ var versionTmpl string
 var defaultNamespaces = []string{"tekton-pipelines", "openshift-pipelines", "tekton-chains", "tekton-operator", "openshift-operators"}
 
 type versions struct {
-	Opc                      string `json:"opc"`
-	Tkn                      string `json:"tkn"`
-	Pac                      string `json:"pac"`
-	Results                  string `json:"results"`
-	ManualApprovalGate       string `json:"manualapprovalgate"`
+	Opc                string `json:"opc"`
+	Tkn                string `json:"tkn"`
+	Pac                string `json:"pac"`
+	Results            string `json:"results"`
+	ManualApprovalGate string `json:"manualapprovalgate"`
 	OpenShiftPipelines string `json:"openshiftpipelines"`
 }
 
 func getConfigMap(c *cli.Clients, name, ns string) (*corev1.ConfigMap, error) {
-
 	var (
 		err       error
 		configMap *corev1.ConfigMap
@@ -80,7 +78,11 @@ func getConfigMap(c *cli.Clients, name, ns string) (*corev1.ConfigMap, error) {
 func GetRedHatOpenShiftPipelinesVersion(c *cli.Clients, ns string) (string, error) {
 	configMap, err := getConfigMap(c, operatorInfo, ns)
 	if err != nil {
-		return "", nil // Not found or inaccessible, return no version
+		// If ConfigMap is not found, return empty version without error
+		if errors.IsNotFound(err) || strings.Contains(err.Error(), "not found") {
+			return "", nil
+		}
+		return "", err
 	}
 
 	// 1. Check for a dedicated "product" field
@@ -114,7 +116,7 @@ func GetRedHatOpenShiftPipelinesVersion(c *cli.Clients, ns string) (string, erro
 }
 
 func getLiveInformations(iostreams *paccli.IOStreams) error {
-	tp := &tkncli.TektonParams{}
+	tp := &cli.TektonParams{}
 	cs, err := tp.Clients()
 	if err != nil {
 		return err
