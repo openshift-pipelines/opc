@@ -52,7 +52,11 @@ lint-go: ## runs go linter on all go files
 							--max-same-issues=0 \
 							--timeout 10m
 
-.PHONY: generate version-file version-updates updates build all vendor tidy lint-go mkbin
+test: ## runs unit tests
+	@echo "Running unit tests..."
+	@$(GO) test -v -mod=vendor ./...
+
+.PHONY: generate version-file version-updates updates build all vendor tidy lint-go test mkbin
 
 .PHONY: help
 help: ## print this help
