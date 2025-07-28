@@ -1,8 +1,8 @@
 module github.com/openshift-pipelines/opc
 
-go 1.23.8
+go 1.24
 
-toolchain go1.23.9
+toolchain go1.24.4
 
 require (
 	github.com/openshift-pipelines/manual-approval-gate v0.6.0
@@ -200,9 +200,9 @@ require (
 	github.com/hashicorp/vault/api v1.16.0 // indirect
 	github.com/imdario/mergo v1.0.1 // indirect
 	github.com/in-toto/archivista v0.9.1 // indirect
-	github.com/in-toto/attestation v1.1.1 // indirect
+	github.com/in-toto/attestation v1.1.2 // indirect
 	github.com/in-toto/go-witness v0.8.1 // indirect
-	github.com/in-toto/in-toto-golang v0.9.1-0.20240317085821-8e2966059a09 // indirect
+	github.com/in-toto/in-toto-golang v0.9.1-0.20250622141841-35ad503efd26 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
@@ -347,8 +347,8 @@ require (
 	google.golang.org/api v0.231.0 // indirect
 	google.golang.org/genproto v0.0.0-20250324211829-b45e905df463 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250428153025-10db94c68c34 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250428153025-10db94c68c34 // indirect
-	google.golang.org/grpc v1.72.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250505200425-f936aa4a68b2 // indirect
+	google.golang.org/grpc v1.73.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
