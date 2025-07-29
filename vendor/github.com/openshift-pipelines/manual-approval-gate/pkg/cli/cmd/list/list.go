@@ -41,16 +41,48 @@ NAME	NumberOfApprovalsRequired	PendingApprovals	Rejected	STATUS
 `
 
 func pendingApprovals(at *v1alpha1.ApprovalTask) int {
-	return at.Spec.NumberOfApprovalsRequired - len(at.Status.ApproversResponse)
+	// Count unique users who have responded (approved or rejected)
+	respondedUsers := make(map[string]bool)
+
+	for _, approver := range at.Status.ApproversResponse {
+		if v1alpha1.DefaultedApproverType(approver.Type) == "User" {
+			respondedUsers[approver.Name] = true
+		} else if v1alpha1.DefaultedApproverType(approver.Type) == "Group" {
+			// Count individual group members who have responded
+			for _, member := range approver.GroupMembers {
+				if member.Response == "approved" || member.Response == "rejected" {
+					respondedUsers[member.Name] = true
+				}
+			}
+		}
+	}
+
+	return at.Spec.NumberOfApprovalsRequired - len(respondedUsers)
 }
 
 func rejected(at *v1alpha1.ApprovalTask) int {
 	count := 0
+	rejectedUsers := make(map[string]bool)
+
 	for _, approver := range at.Status.ApproversResponse {
-		if approver.Response == "rejected" {
-			count = count + 1
+		if v1alpha1.DefaultedApproverType(approver.Type) == "User" && approver.Response == "rejected" {
+			if !rejectedUsers[approver.Name] {
+				rejectedUsers[approver.Name] = true
+				count++
+			}
+		} else if v1alpha1.DefaultedApproverType(approver.Type) == "Group" {
+			// Count individual group members who have rejected
+			for _, member := range approver.GroupMembers {
+				if member.Response == "rejected" {
+					if !rejectedUsers[member.Name] {
+						rejectedUsers[member.Name] = true
+						count++
+					}
+				}
+			}
 		}
 	}
+
 	return count
 }
 

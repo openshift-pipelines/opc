@@ -5,7 +5,7 @@ go 1.23.8
 toolchain go1.23.9
 
 require (
-	github.com/openshift-pipelines/manual-approval-gate v0.6.0
+	github.com/openshift-pipelines/manual-approval-gate v0.7.0
 	github.com/openshift-pipelines/pipelines-as-code v0.35.0
 	github.com/spf13/cobra v1.9.1
 	github.com/tektoncd/cli v0.41.1
