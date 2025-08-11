@@ -27,7 +27,7 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: alexellis/setup-arkade@v3
       - uses: alexellis/arkade-get@master
@@ -58,7 +58,7 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build binary, making sure it does compile
         run: |

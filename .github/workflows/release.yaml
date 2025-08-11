@@ -19,7 +19,7 @@ jobs:
         docker-images: false
         swap-storage: false
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - run: git fetch --prune --unshallow
 
     - uses: actions/setup-go@v5
