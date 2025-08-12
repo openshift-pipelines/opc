@@ -1258,7 +1258,7 @@ github.com/openshift-pipelines/manual-approval-gate/pkg/cli/formatter
 github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned
 github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned/scheme
 github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned/typed/approvaltask/v1alpha1
-# github.com/openshift-pipelines/pipelines-as-code v0.35.0
+# github.com/openshift-pipelines/pipelines-as-code v0.37.0
 ## explicit; go 1.23.8
 github.com/openshift-pipelines/pipelines-as-code/pkg/acl
 github.com/openshift-pipelines/pipelines-as-code/pkg/action
@@ -1290,6 +1290,7 @@ github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac/webhook
 github.com/openshift-pipelines/pipelines-as-code/pkg/configutil
 github.com/openshift-pipelines/pipelines-as-code/pkg/consoleui
 github.com/openshift-pipelines/pipelines-as-code/pkg/customparams
+github.com/openshift-pipelines/pipelines-as-code/pkg/errors
 github.com/openshift-pipelines/pipelines-as-code/pkg/events
 github.com/openshift-pipelines/pipelines-as-code/pkg/formatting
 github.com/openshift-pipelines/pipelines-as-code/pkg/generated/clientset/versioned
@@ -1297,6 +1298,7 @@ github.com/openshift-pipelines/pipelines-as-code/pkg/generated/clientset/version
 github.com/openshift-pipelines/pipelines-as-code/pkg/generated/clientset/versioned/typed/pipelinesascode/v1alpha1
 github.com/openshift-pipelines/pipelines-as-code/pkg/git
 github.com/openshift-pipelines/pipelines-as-code/pkg/hub
+github.com/openshift-pipelines/pipelines-as-code/pkg/hub/vars
 github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction
 github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction/status
 github.com/openshift-pipelines/pipelines-as-code/pkg/matcher
@@ -2481,7 +2483,7 @@ k8s.io/api/storagemigration/v1alpha1
 ## explicit; go 1.23.0
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
-# k8s.io/apimachinery v0.33.0 => k8s.io/apimachinery v0.32.4
+# k8s.io/apimachinery v0.33.3 => k8s.io/apimachinery v0.32.4
 ## explicit; go 1.23.0
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors

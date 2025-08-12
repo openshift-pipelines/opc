@@ -846,8 +846,8 @@ github.com/opencontainers/image-spec v1.1.0 h1:8SG7/vwALn54lVB/0yZ/MMwhFrPYtpEHQ
 github.com/opencontainers/image-spec v1.1.0/go.mod h1:W4s4sFTMaBeK1BQLXbG4AdM2szdn85PY75RI83NrTrM=
 github.com/openshift-pipelines/manual-approval-gate v0.6.0 h1:ohvFnwfgqTEpWOjzJb9gcYo0mND+V28F7ce/VdNug70=
 github.com/openshift-pipelines/manual-approval-gate v0.6.0/go.mod h1:2Qp7sSrb3d9SDC8n9b43KrHw2T7RD/BGpm3TQlfIwOI=
-github.com/openshift-pipelines/pipelines-as-code v0.35.0 h1:O6nUjazm1crEgp7kspRwXAHVkMD3llrI2iGpc3nYv68=
-github.com/openshift-pipelines/pipelines-as-code v0.35.0/go.mod h1:sWw55rgEurnYNKkpItE0iBrczF3Nv/XTUzWEiYSmrVY=
+github.com/openshift-pipelines/pipelines-as-code v0.37.0 h1:FDxGCS5eBjUwGm1mEROYYaLcl95x2zaxbUKI4aM7Km8=
+github.com/openshift-pipelines/pipelines-as-code v0.37.0/go.mod h1:o0xBfgt16RSYxsH+s9/Lu4hOrtYIa/VL/L5NXDJULl8=
 github.com/openshift/api v0.0.0-20250414140316-b7680e188c5e h1:knmBEwTQ//pHhX7KxflegQwvlXfGf50nh5wdpJh9tq8=
 github.com/openshift/api v0.0.0-20250414140316-b7680e188c5e/go.mod h1:yk60tHAmHhtVpJQo3TwVYq2zpuP70iJIFDCmeKMIzPw=
 github.com/openshift/client-go v0.0.0-20250402181141-b3bad3b645f2 h1:bPXR0R8zp1o12nSUphN26hSM+OKYq5pMorbDCpApzDQ=

@@ -6,7 +6,7 @@ toolchain go1.23.9
 
 require (
 	github.com/openshift-pipelines/manual-approval-gate v0.6.0
-	github.com/openshift-pipelines/pipelines-as-code v0.35.0
+	github.com/openshift-pipelines/pipelines-as-code v0.37.0
 	github.com/spf13/cobra v1.9.1
 	github.com/tektoncd/cli v0.41.1
 	github.com/tektoncd/results v0.15.2
@@ -358,7 +358,7 @@ require (
 	gorm.io/gorm v1.26.0 // indirect
 	k8s.io/api v0.32.5 // indirect
 	k8s.io/apiextensions-apiserver v0.32.4 // indirect
-	k8s.io/apimachinery v0.33.0 // indirect
+	k8s.io/apimachinery v0.33.3 // indirect
 	k8s.io/cli-runtime v0.29.15 // indirect
 	k8s.io/client-go v1.5.2 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
