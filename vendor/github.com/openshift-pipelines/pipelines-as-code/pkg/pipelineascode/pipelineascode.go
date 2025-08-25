@@ -14,7 +14,6 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/matcher"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
-	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/clients"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
@@ -177,14 +176,10 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.Pi
 		p.logger.Errorf("Error adding labels/annotations to PipelineRun '%s' in namespace '%s': %v", match.PipelineRun.GetName(), match.Repo.GetNamespace(), err)
 	}
 
-	// if concurrency is defined then start the pipelineRun in pending state and
-	// state as queued
+	// if concurrency is defined then start the pipelineRun in pending state
 	if match.Repo.Spec.ConcurrencyLimit != nil && *match.Repo.Spec.ConcurrencyLimit != 0 {
 		// pending status
 		match.PipelineRun.Spec.Status = tektonv1.PipelineRunSpecStatusPending
-		// pac state as queued
-		match.PipelineRun.Labels[keys.State] = kubeinteraction.StateQueued
-		match.PipelineRun.Annotations[keys.State] = kubeinteraction.StateQueued
 	}
 
 	// Create the actual pipelineRun
@@ -214,8 +209,8 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.Pi
 	}
 
 	// Create status with the log url
-	p.logger.Infof("pipelinerun %s has been created in namespace %s for SHA: %s Target Branch: %s",
-		pr.GetName(), match.Repo.GetNamespace(), p.event.SHA, p.event.BaseBranch)
+	p.logger.Infof("PipelineRun %s has been created in namespace %s with status %s for SHA: %s Target Branch: %s",
+		pr.GetName(), match.Repo.GetNamespace(), pr.Spec.Status, p.event.SHA, p.event.BaseBranch)
 
 	consoleURL := p.run.Clients.ConsoleUI().DetailURL(pr)
 	mt := formatting.MessageTemplate{
@@ -241,12 +236,31 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.Pi
 		OriginalPipelineRunName: pr.GetAnnotations()[keys.OriginalPRName],
 	}
 
+	// Patch the pipelineRun with the appropriate annotations and labels.
+	// Set the state so the watcher will continue with reconciling the pipelineRun
+	// The watcher reconciles only pipelineRuns that has the state annotation.
+	patchAnnotations := map[string]string{}
+	patchLabels := map[string]string{}
+	whatPatching := ""
 	// if pipelineRun is in pending state then report status as queued
+	// The pipelineRun can be pending because of PAC's concurrency limit or because of an external mutatingwebhook
 	if pr.Spec.Status == tektonv1.PipelineRunSpecStatusPending {
 		status.Status = queuedStatus
 		if status.Text, err = mt.MakeTemplate(p.vcx.GetTemplate(provider.QueueingPipelineType)); err != nil {
 			return nil, fmt.Errorf("cannot create message template: %w", err)
 		}
+		whatPatching = "annotations.state and labels.state"
+		patchAnnotations[keys.State] = kubeinteraction.StateQueued
+		patchLabels[keys.State] = kubeinteraction.StateQueued
+	} else {
+		// Mark that the start will be reported to the Git provider
+		patchAnnotations[keys.SCMReportingPLRStarted] = "true"
+		patchAnnotations[keys.State] = kubeinteraction.StateStarted
+		patchLabels[keys.State] = kubeinteraction.StateStarted
+		whatPatching = fmt.Sprintf(
+			"annotation.%s and annotations.state and labels.state",
+			keys.SCMReportingPLRStarted,
+		)
 	}
 
 	if err := p.vcx.CreateStatus(ctx, p.event, status); err != nil {
@@ -257,23 +271,41 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.Pi
 
 	// Patch pipelineRun with logURL annotation, skips for GitHub App as we patch logURL while patching CheckrunID
 	if _, ok := pr.Annotations[keys.InstallationID]; !ok {
-		pr, err = action.PatchPipelineRun(ctx, p.logger, "logURL", p.run.Clients.Tekton, pr, getLogURLMergePatch(p.run.Clients, pr))
+		patchAnnotations[keys.LogURL] = p.run.Clients.ConsoleUI().DetailURL(pr)
+		whatPatching = "annotations.logURL, " + whatPatching
+	}
+
+	if len(patchAnnotations) > 0 || len(patchLabels) > 0 {
+		pr, err = action.PatchPipelineRun(ctx, p.logger, whatPatching, p.run.Clients.Tekton, pr, getMergePatch(patchAnnotations, patchLabels))
 		if err != nil {
 			// we still return the created PR with error, and allow caller to decide what to do with the PR, and avoid
 			// unneeded SIGSEGV's
 			return pr, fmt.Errorf("cannot patch pipelinerun %s: %w", pr.GetGenerateName(), err)
 		}
+		currentReason := ""
+		if len(pr.Status.GetConditions()) > 0 {
+			currentReason = pr.Status.GetConditions()[0].GetReason()
+		}
+
+		p.logger.Infof("PipelineRun %s/%s patched successfully - Spec.Status: %s, State annotation: '%s', SCMReportingPLRStarted annotation: '%s', Status reason: '%s', Git provider status: '%s', Patched: %s",
+			pr.GetNamespace(),
+			pr.GetName(),
+			pr.Spec.Status,
+			pr.GetAnnotations()[keys.State],
+			pr.GetAnnotations()[keys.SCMReportingPLRStarted],
+			currentReason,
+			status.Status,
+			whatPatching)
 	}
 
 	return pr, nil
 }
 
-func getLogURLMergePatch(clients clients.Clients, pr *tektonv1.PipelineRun) map[string]any {
+func getMergePatch(annotations, labels map[string]string) map[string]any {
 	return map[string]any{
 		"metadata": map[string]any{
-			"annotations": map[string]string{
-				keys.LogURL: clients.ConsoleUI().DetailURL(pr),
-			},
+			"annotations": annotations,
+			"labels":      labels,
 		},
 	}
 }

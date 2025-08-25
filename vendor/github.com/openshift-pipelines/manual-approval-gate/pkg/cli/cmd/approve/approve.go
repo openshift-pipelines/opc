@@ -37,7 +37,7 @@ func Command(p cli.Params) *cobra.Command {
 				ns = ""
 			}
 
-			username, err := p.GetUserInfo()
+			username, groups, err := p.GetUserInfo()
 			if err != nil {
 				return err
 			}
@@ -50,6 +50,7 @@ func Command(p cli.Params) *cobra.Command {
 				Input:     "approve",
 				Username:  username,
 				Message:   message,
+				Groups:    groups,
 			}
 
 			if err := actions.Update(taskGroupResource, cs, opts); err != nil {

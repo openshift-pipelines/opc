@@ -88,7 +88,7 @@ func Update(gr schema.GroupVersionResource, c *cli.Clients, opts *cli.Options) e
 		return err
 	}
 
-	if !containsUsername(at.Spec.Approvers, opts.Username) {
+	if !containsUsername(at.Spec.Approvers, opts) {
 		return fmt.Errorf("Approver: %s, is not present in the approvers list", opts.Username)
 	}
 
@@ -101,6 +101,46 @@ func Update(gr schema.GroupVersionResource, c *cli.Clients, opts *cli.Options) e
 
 func update(gvr *schema.GroupVersionResource, dynamic dynamic.Interface, at *v1alpha1.ApprovalTask, opts *cli.Options) error {
 	for i, approver := range at.Spec.Approvers {
+		switch v1alpha1.DefaultedApproverType(approver.Type) {
+		case "User":
+			if approver.Name == opts.Username {
+				// return true
+				at.Spec.Approvers[i].Input = opts.Input
+				if opts.Message != "" {
+					at.Spec.Approvers[i].Message = opts.Message
+				}
+			}
+		case "Group":
+			for _, groupName := range opts.Groups {
+				if approver.Name == groupName {
+					// return true
+					at.Spec.Approvers[i].Input = opts.Input
+					if opts.Message != "" {
+						at.Spec.Approvers[i].Message = opts.Message
+					}
+
+					userExists := false
+
+					for j, existing := range at.Spec.Approvers[i].Users {
+						if existing.Name == opts.Username {
+							userExists = true
+							if existing.Input != opts.Input {
+								at.Spec.Approvers[i].Users[j].Input = opts.Input
+							}
+							break
+						}
+					}
+					if !userExists {
+						newUser := v1alpha1.UserDetails{
+							Name:  opts.Username,
+							Input: opts.Input,
+						}
+						at.Spec.Approvers[i].Users = append(at.Spec.Approvers[i].Users, newUser)
+					}
+				}
+			}
+		}
+
 		if approver.Name == opts.Username {
 			at.Spec.Approvers[i].Input = opts.Input
 			if opts.Message != "" {
@@ -152,10 +192,25 @@ func InitializeAPIGroupRes(discovery discovery.DiscoveryInterface) error {
 	return nil
 }
 
-func containsUsername(approvers []v1alpha1.ApproverDetails, username string) bool {
+func containsUsername(approvers []v1alpha1.ApproverDetails, user *cli.Options) bool {
 	for _, approver := range approvers {
-		if approver.Name == username {
+		if approver.Name == user.Username {
 			return true
+		}
+	}
+
+	for _, approval := range approvers {
+		switch approval.Type {
+		case "User":
+			if approval.Name == user.Username {
+				return true
+			}
+		case "Group":
+			for _, groupName := range user.Groups {
+				if approval.Name == groupName {
+					return true
+				}
+			}
 		}
 	}
 	return false
