@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli/browser"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli/info"
@@ -19,7 +20,13 @@ import (
 func startWebServer(ctx context.Context, opts *bootstrapOpts, run *params.Run, jeez string) error {
 	m := http.NewServeMux()
 	//nolint: gosec
-	s := http.Server{Addr: fmt.Sprintf(":%d", opts.webserverPort), Handler: m}
+	s := http.Server{
+		Addr:              fmt.Sprintf(":%d", opts.webserverPort),
+		Handler:           m,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		IdleTimeout:       30 * time.Second,
+	}
 	codeCh := make(chan string)
 	m.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("code")
@@ -38,7 +45,7 @@ func startWebServer(ctx context.Context, opts *bootstrapOpts, run *params.Run, j
 		url := fmt.Sprintf("http://localhost:%d", opts.webserverPort)
 		fmt.Fprintf(opts.ioStreams.Out, "🌍 Starting a web browser on %s, click on the button to create your GitHub APP\n", url)
 		//nolint:errcheck
-		go browser.OpenWebBrowser(url)
+		go browser.OpenWebBrowser(ctx, url)
 		if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal(err)
 		}

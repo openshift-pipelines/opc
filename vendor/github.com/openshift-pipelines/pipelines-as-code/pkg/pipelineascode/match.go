@@ -9,6 +9,7 @@ import (
 
 	apipac "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
+	pacerrors "github.com/openshift-pipelines/pipelines-as-code/pkg/errors"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/matcher"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/opscomments"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
@@ -20,12 +21,6 @@ import (
 	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/zap"
 )
-
-const validationErrorTemplate = `> [!CAUTION]
-> There are some errors in your PipelineRun template.
-
-| PipelineRun | Error |
-|------|-------|`
 
 func (p *PacRun) matchRepoPR(ctx context.Context) ([]matcher.Match, *v1alpha1.Repository, error) {
 	repo, err := p.verifyRepoAndUser(ctx)
@@ -136,7 +131,7 @@ is that what you want? make sure you use -n when generating the secret, eg: echo
 	// Get the SHA commit info, we want to get the URL and commit title
 	err = p.vcx.GetCommitInfo(ctx, p.event)
 	if err != nil {
-		return repo, err
+		return repo, fmt.Errorf("could not find commit info: %w", err)
 	}
 
 	// Verify whether the sender of the GitOps command (e.g., /test) has the appropriate permissions to
@@ -149,7 +144,7 @@ is that what you want? make sure you use -n when generating the secret, eg: echo
 			DetailsURL:   p.event.URL,
 			AccessDenied: true,
 		}
-		if allowed, err := p.checkAccessOrErrror(ctx, repo, status, "by GitOps comment on push commit"); !allowed {
+		if allowed, err := p.checkAccessOrError(ctx, repo, status, "by GitOps comment on push commit"); !allowed {
 			return nil, err
 		}
 	}
@@ -165,7 +160,7 @@ is that what you want? make sure you use -n when generating the secret, eg: echo
 			DetailsURL:   p.event.URL,
 			AccessDenied: true,
 		}
-		if allowed, err := p.checkAccessOrErrror(ctx, repo, status, "via "+p.event.TriggerTarget.String()); !allowed {
+		if allowed, err := p.checkAccessOrError(ctx, repo, status, "via "+p.event.TriggerTarget.String()); !allowed {
 			return nil, err
 		}
 	}
@@ -186,18 +181,44 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 		reg := regexp.MustCompile(`error unmarshalling yaml file\s([^:]*):\s*(yaml:\s*)?(.*)`)
 		matches := reg.FindStringSubmatch(err.Error())
 		if len(matches) == 4 {
-			p.reportValidationErrors(ctx, repo, map[string]string{matches[1]: matches[3]})
+			p.reportValidationErrors(ctx, repo,
+				[]*pacerrors.PacYamlValidations{
+					{
+						Name:   matches[1],
+						Err:    fmt.Errorf("yaml validation error: %s", matches[3]),
+						Schema: pacerrors.GenericBadYAMLValidation,
+					},
+				},
+			)
 			return nil, nil
 		}
 
 		return nil, err
 	}
-	if err != nil || rawTemplates == "" {
-		msg := fmt.Sprintf("cannot locate templates in %s/ directory for this repository in %s", tektonDir, p.event.HeadBranch)
+
+	if rawTemplates == "" && p.event.EventType == opscomments.OkToTestCommentEventType.String() {
+		err = p.createNeutralStatus(ctx, ".tekton directory not found", tektonDirMissingError)
 		if err != nil {
-			msg += fmt.Sprintf(" err: %s", err.Error())
+			p.eventEmitter.EmitMessage(nil, zap.ErrorLevel, "RepositoryCreateStatus", err.Error())
 		}
-		p.eventEmitter.EmitMessage(nil, zap.InfoLevel, "RepositoryPipelineRunNotFound", msg)
+	}
+
+	// This is for push event error logging because we can't create comment for yaml validation errors on push
+	if err != nil || rawTemplates == "" {
+		msg := ""
+		reason := "RepositoryPipelineRunNotFound"
+		logLevel := zap.InfoLevel
+		if err != nil {
+			reason = "RepositoryInvalidPipelineRunTemplate"
+			logLevel = zap.ErrorLevel
+			if strings.Contains(err.Error(), "error unmarshalling yaml file") {
+				msg = "PipelineRun YAML validation"
+			}
+			msg += fmt.Sprintf(" err: %s", err.Error())
+		} else {
+			msg = fmt.Sprintf("cannot locate templates in %s/ directory for this repository in %s", tektonDir, p.event.HeadBranch)
+		}
+		p.eventEmitter.EmitMessage(nil, logLevel, reason, msg)
 		return nil, nil
 	}
 
@@ -265,10 +286,12 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 			// GitOps command `/ok-to-test` to trigger CI, but no matching pull request is found,
 			// a neutral check-run will be created on the pull request to indicate that no PipelineRun was triggered
 			if p.event.EventType == opscomments.OkToTestCommentEventType.String() && len(matchedPRs) == 0 {
-				err = p.createNeutralStatus(ctx)
+				text := fmt.Sprintf("No matching PipelineRun found for the '%s' event in .tekton/ directory. Please ensure that PipelineRun is configured for '%s' event.", p.event.TriggerTarget.String(), p.event.TriggerTarget.String())
+				err = p.createNeutralStatus(ctx, "No PipelineRun matched", text)
 				if err != nil {
 					p.eventEmitter.EmitMessage(nil, zap.WarnLevel, "RepositoryCreateStatus", err.Error())
 				}
+				p.eventEmitter.EmitMessage(nil, zap.InfoLevel, "RepositoryNoMatch", text)
 			}
 			return nil, nil
 		}
@@ -284,7 +307,7 @@ func (p *PacRun) getPipelineRunsFromRepo(ctx context.Context, repo *v1alpha1.Rep
 			DetailsURL:   p.event.URL,
 			AccessDenied: true,
 		}
-		if allowed, err := p.checkAccessOrErrror(ctx, repo, status, "by GitOps comment on push commit"); !allowed {
+		if allowed, err := p.checkAccessOrError(ctx, repo, status, "by GitOps comment on push commit"); !allowed {
 			return nil, err
 		}
 	}
@@ -412,32 +435,11 @@ func (p *PacRun) checkNeedUpdate(_ string) (string, bool) {
 	return "", false
 }
 
-func (p *PacRun) checkAccessOrErrror(ctx context.Context, repo *v1alpha1.Repository, status provider.StatusOpts, viamsg string) (bool, error) {
-	allowed, err := p.vcx.IsAllowed(ctx, p.event)
-	if err != nil {
-		return false, fmt.Errorf("unable to verify event authorization: %w", err)
-	}
-	if allowed {
-		return true, nil
-	}
-	msg := fmt.Sprintf("User %s is not allowed to trigger CI %s in this repo.", p.event.Sender, viamsg)
-	if p.event.AccountID != "" {
-		msg = fmt.Sprintf("User: %s AccountID: %s is not allowed to trigger CI %s in this repo.", p.event.Sender, p.event.AccountID, viamsg)
-	}
-	p.eventEmitter.EmitMessage(repo, zap.InfoLevel, "RepositoryPermissionDenied", msg)
-	status.Text = msg
-
-	if err := p.vcx.CreateStatus(ctx, p.event, status); err != nil {
-		return false, fmt.Errorf("failed to run create status, user is not allowed to run the CI:: %w", err)
-	}
-	return false, nil
-}
-
-func (p *PacRun) createNeutralStatus(ctx context.Context) error {
+func (p *PacRun) createNeutralStatus(ctx context.Context, title, text string) error {
 	status := provider.StatusOpts{
 		Status:     CompletedStatus,
-		Title:      "No PipelineRun matched",
-		Text:       fmt.Sprintf("No matching PipelineRun found for the '%s' event in Pipelines as Code. Please ensure that PipelineRun is configured for '%s' event.", p.event.TriggerTarget.String(), p.event.TriggerTarget.String()),
+		Title:      title,
+		Text:       text,
 		Conclusion: neutralConclusion,
 		DetailsURL: p.event.URL,
 	}
@@ -446,23 +448,4 @@ func (p *PacRun) createNeutralStatus(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// reportValidationErrors reports validation errors found in PipelineRuns by:
-// 1. Creating error messages for each validation error
-// 2. Emitting error messages to the event system
-// 3. Creating a markdown formatted comment on the repository with all errors.
-func (p *PacRun) reportValidationErrors(ctx context.Context, repo *v1alpha1.Repository, validationErrors map[string]string) {
-	errorRows := make([]string, 0, len(validationErrors))
-	for name, err := range validationErrors {
-		errorRows = append(errorRows, fmt.Sprintf("| %s | `%s` |", name, err))
-		p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "PipelineRunValidationErrors",
-			fmt.Sprintf("cannot read the PipelineRun: %s, error: %s", name, err))
-	}
-	markdownErrMessage := fmt.Sprintf(`%s
-%s`, validationErrorTemplate, strings.Join(errorRows, "\n"))
-	if err := p.vcx.CreateComment(ctx, p.event, markdownErrMessage, validationErrorTemplate); err != nil {
-		p.eventEmitter.EmitMessage(repo, zap.ErrorLevel, "PipelineRunCommentCreationError",
-			fmt.Sprintf("failed to create comment: %s", err.Error()))
-	}
 }
