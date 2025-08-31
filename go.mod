@@ -206,7 +206,7 @@ require (
 	github.com/in-toto/archivista v0.9.1 // indirect
 	github.com/in-toto/attestation v1.1.2 // indirect
 	github.com/in-toto/go-witness v0.8.1 // indirect
-	github.com/in-toto/in-toto-golang v0.9.1-0.20240317085821-8e2966059a09 // indirect
+	github.com/in-toto/in-toto-golang v0.9.1-0.20250802203028-0a34c087cedc // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect

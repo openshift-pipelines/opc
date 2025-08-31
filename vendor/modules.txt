@@ -1031,8 +1031,8 @@ github.com/in-toto/go-witness/cryptoutil
 github.com/in-toto/go-witness/dsse
 github.com/in-toto/go-witness/log
 github.com/in-toto/go-witness/timestamp
-# github.com/in-toto/in-toto-golang v0.9.1-0.20240317085821-8e2966059a09
-## explicit; go 1.20
+# github.com/in-toto/in-toto-golang v0.9.1-0.20250802203028-0a34c087cedc
+## explicit; go 1.24
 github.com/in-toto/in-toto-golang/in_toto
 github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/common
 github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.1

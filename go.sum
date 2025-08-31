@@ -1314,8 +1314,8 @@ github.com/in-toto/attestation v1.1.2 h1:MBFn6lsMq6dptQZJBhalXTcWMb/aJy3V+GX3VYj
 github.com/in-toto/attestation v1.1.2/go.mod h1:gYFddHMZj3DiQ0b62ltNi1Vj5rC879bTmBbrv9CRHpM=
 github.com/in-toto/go-witness v0.8.1 h1:wGTNVZ3lD3ilm8WvYe2YG4Hm5CLXz6joA6CmqMdPdMM=
 github.com/in-toto/go-witness v0.8.1/go.mod h1:fBsmfWMmFC0LiIhFHsHdlc9mAWhe3rD0SjH2XxbA6TM=
-github.com/in-toto/in-toto-golang v0.9.1-0.20240317085821-8e2966059a09 h1:cwCITdi9pF50CF8uh40qDbkJ/VrEVzx5AoaHP7OPdEo=
-github.com/in-toto/in-toto-golang v0.9.1-0.20240317085821-8e2966059a09/go.mod h1:yGCBn2JKF1m26FX8GmkcLSOFVjB6khWRxFsHwWIg7hw=
+github.com/in-toto/in-toto-golang v0.9.1-0.20250802203028-0a34c087cedc h1:iJpiP12XGneXxCDgI0G6tmUiYeMGrTm4yizEVxlKfEQ=
+github.com/in-toto/in-toto-golang v0.9.1-0.20250802203028-0a34c087cedc/go.mod h1:dpk42diO0CR3DrHq+33utlzEmJHAcP+VRGoFg9ILotQ=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=
