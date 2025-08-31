@@ -1087,8 +1087,8 @@ github.com/jcmturner/gokrb5/v8/types
 ## explicit; go 1.13
 github.com/jcmturner/rpc/v2/mstypes
 github.com/jcmturner/rpc/v2/ndr
-# github.com/jedisct1/go-minisign v0.0.0-20230811132847-661be99b8267
-## explicit; go 1.20
+# github.com/jedisct1/go-minisign v0.0.0-20241212093149-d2f9f49435c7
+## explicit; go 1.23.4
 github.com/jedisct1/go-minisign
 # github.com/jellydator/ttlcache/v3 v3.3.0
 ## explicit; go 1.18
