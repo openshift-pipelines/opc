@@ -37,7 +37,6 @@ type Options struct {
 	Username      string
 	Message       string
 	AllNamespaces bool
-	Groups        []string
 }
 
 type Params interface {
@@ -51,7 +50,7 @@ type Params interface {
 	KubeClient() (k8s.Interface, error)
 	Clients(...*rest.Config) (*Clients, error)
 	Namespace() string
-	GetUserInfo() (string, []string, error)
+	GetUserInfo() (string, error)
 }
 
 // ensure that TektonParams complies with cli.Params interface
@@ -69,23 +68,23 @@ func (p *ApprovalTaskParams) Namespace() string {
 	return p.namespace
 }
 
-func (p *ApprovalTaskParams) GetUserInfo() (string, []string, error) {
+func (p *ApprovalTaskParams) GetUserInfo() (string, error) {
 	authV1Client, err := authenticationv1client.NewForConfig(p.clients.Config)
 	if err != nil {
-		return "", []string{}, err
+		return "", err
 	}
 
 	userInterface, err := userv1typedclient.NewForConfig(p.clients.Config)
 	if err != nil {
-		return "", []string{}, err
+		return "", err
 	}
 
 	// Get username
-	username, groups, err := getUserInfo(authV1Client, userInterface)
+	username, err := getUserInfo(authV1Client, userInterface)
 	if err != nil {
-		return "", []string{}, err
+		return "", err
 	}
-	return username, groups, err
+	return username, err
 }
 
 func (p *ApprovalTaskParams) SetNamespace(ns string) {
@@ -203,21 +202,21 @@ func (p *ApprovalTaskParams) Clients(cfg ...*rest.Config) (*Clients, error) {
 	return p.clients, nil
 }
 
-func getUserInfo(authV1Client *authenticationv1client.AuthenticationV1Client, userInterface userv1typedclient.UserV1Interface) (string, []string, error) {
+func getUserInfo(authV1Client *authenticationv1client.AuthenticationV1Client, userInterface userv1typedclient.UserV1Interface) (string, error) {
 	var username string
 	res, err := authV1Client.SelfSubjectReviews().Create(context.TODO(), &v1.SelfSubjectReview{}, metav1.CreateOptions{})
 	if err == nil {
 		username = res.Status.UserInfo.Username
-		return username, res.Status.UserInfo.Groups, nil
+		return username, nil
 	} else {
 		fmt.Errorf("selfsubjectreview request error %v, falling back to user object", err)
 	}
 
 	user, err := userInterface.Users().Get(context.TODO(), "~", metav1.GetOptions{})
 	if err != nil {
-		return "", []string{}, nil
+		return "", nil
 	}
 	username = user.Name
 
-	return username, user.Groups, nil
+	return username, nil
 }

@@ -37,7 +37,7 @@ func Command(p cli.Params) *cobra.Command {
 				ns = ""
 			}
 
-			username, groups, err := p.GetUserInfo()
+			username, err := p.GetUserInfo()
 			if err != nil {
 				return err
 			}
@@ -50,7 +50,6 @@ func Command(p cli.Params) *cobra.Command {
 				Input:     "reject",
 				Username:  username,
 				Message:   message,
-				Groups:    groups,
 			}
 
 			if err := actions.Update(taskGroupResource, cs, opts); err != nil {
@@ -65,7 +64,7 @@ func Command(p cli.Params) *cobra.Command {
 		},
 	}
 
-	c.Flags().StringVarP(&opts.Message, "message", "m", "", "message while rejecting the approvalTask")
+	c.Flags().StringVarP(&opts.Message, "message", "m", "", "message while approving the approvalTask")
 
 	flags.AddOptions(c)
 

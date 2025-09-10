@@ -46,17 +46,10 @@ type ApprovalTaskSpec struct {
 	Description               string            `json:"description,omitempty"`
 }
 
-type UserDetails struct {
-	Name  string `json:"name"`
-	Input string `json:"input"`
-}
-
 type ApproverDetails struct {
-	Name    string        `json:"name"`
-	Input   string        `json:"input"`
-	Message string        `json:"message,omitempty"`
-	Type    string        `json:"type"`
-	Users   []UserDetails `json:"users,omitempty"`
+	Name    string `json:"name"`
+	Input   string `json:"input"`
+	Message string `json:"message,omitempty"`
 }
 
 type ApprovalTaskStatus struct {
@@ -66,33 +59,12 @@ type ApprovalTaskStatus struct {
 	ApproversResponse []ApproverState `json:"approversResponse,omitempty"`
 	// StartTime is the time the build is actually started.
 	StartTime *metav1.Time `json:"startTime,omitempty"`
-	// ApprovalsRequired is the number of approvals required for the task
-	ApprovalsRequired int `json:"approvalsRequired,omitempty"`
-	// ApprovalsReceived is the number of approvals received so far
-	ApprovalsReceived int `json:"approvalsReceived,omitempty"`
-}
-
-type GroupMemberState struct {
-	Name     string `json:"name"`
-	Response string `json:"response"`
-	Message  string `json:"message,omitempty"`
 }
 
 type ApproverState struct {
-	Name         string             `json:"name"`
-	Response     string             `json:"response"`
-	Message      string             `json:"message,omitempty"`
-	Type         string             `json:"type"`
-	GroupMembers []GroupMemberState `json:"groupMembers,omitempty"`
-}
-
-// DefaultedApproverType returns "User" if the type field is empty (for v0.6.0 compatibility),
-// otherwise returns the provided type.
-func DefaultedApproverType(approverType string) string {
-	if approverType == "" {
-		return "User"
-	}
-	return approverType
+	Name     string `json:"name"`
+	Response string `json:"response"`
+	Message  string `json:"message,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

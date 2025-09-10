@@ -24,7 +24,7 @@ var taskTemplate = `📦 Name:            {{ .ApprovalTask.Name }}
 
 👥 Approvers
 {{- range .ApprovalTask.Spec.Approvers }}
-   * {{ .Name }}{{if eq .Type "Group"}} (Group){{end}}
+   * {{ .Name }}
 {{- end }}
 
 
@@ -33,17 +33,10 @@ var taskTemplate = `📦 Name:            {{ .ApprovalTask.Name }}
 👨‍💻 ApproverResponse
 
 Name	ApproverResponse	Message
-{{- range .ApprovalTask.Status.ApproversResponse}}
-{{- if eq .Type "User"}}
-{{.Name}}	{{response .Response}}	{{message .Message}}
-{{- else if eq .Type "Group"}}
-{{- $groupName := .Name}}
-{{- range .GroupMembers}}
-{{$groupName}}: {{.Name}}	{{response .Response}}	{{message .Message}}
-{{- end}}
-{{- end}}
-{{- end}}
-{{- end}}
+{{- range .ApprovalTask.Status.ApproversResponse }}
+{{ .Name }}	{{response .Response }}	{{message .Message }}
+{{- end }}
+{{- end }}
 
 🌡️  Status
 
@@ -56,23 +49,7 @@ var (
 )
 
 func pendingApprovals(at *v1alpha1.ApprovalTask) int {
-	// Count unique users who have responded (approved or rejected)
-	respondedUsers := make(map[string]bool)
-
-	for _, approver := range at.Status.ApproversResponse {
-		if v1alpha1.DefaultedApproverType(approver.Type) == "User" {
-			respondedUsers[approver.Name] = true
-		} else if v1alpha1.DefaultedApproverType(approver.Type) == "Group" {
-			// Count individual group members who have responded
-			for _, member := range approver.GroupMembers {
-				if member.Response == "approved" || member.Response == "rejected" {
-					respondedUsers[member.Name] = true
-				}
-			}
-		}
-	}
-
-	return at.Spec.NumberOfApprovalsRequired - len(respondedUsers)
+	return at.Spec.NumberOfApprovalsRequired - len(at.Status.ApproversResponse)
 }
 
 func pipelineRunRef(at *v1alpha1.ApprovalTask) string {
@@ -147,7 +124,7 @@ func Command(p cli.Params) *cobra.Command {
 				ApprovalTask: at,
 			}
 
-			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 8, 5, ' ', tabwriter.TabIndent)
+			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 5, 3, ' ', tabwriter.TabIndent)
 			t := template.Must(template.New("Describe ApprovalTask").Funcs(funcMap).Parse(taskTemplate))
 
 			if err != nil {
