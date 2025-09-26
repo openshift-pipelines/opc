@@ -1,6 +1,8 @@
 module github.com/openshift-pipelines/opc
 
-go 1.23.6
+go 1.24.0
+
+toolchain go1.24.6
 
 require (
 	github.com/openshift-pipelines/manual-approval-gate v0.6.0
@@ -248,7 +250,7 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
-	github.com/openshift/api v0.0.0-20250414140316-b7680e188c5e // indirect
+	github.com/openshift/api v0.0.0-20250926020921-1517fca97fe3 // indirect
 	github.com/openshift/client-go v0.0.0-20250402181141-b3bad3b645f2 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
@@ -354,9 +356,9 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/gorm v1.26.0 // indirect
-	k8s.io/api v0.32.5 // indirect
+	k8s.io/api v0.33.2 // indirect
 	k8s.io/apiextensions-apiserver v0.32.4 // indirect
-	k8s.io/apimachinery v0.33.0 // indirect
+	k8s.io/apimachinery v0.33.2 // indirect
 	k8s.io/cli-runtime v0.29.15 // indirect
 	k8s.io/client-go v1.5.2 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
