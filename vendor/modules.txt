@@ -1323,12 +1323,12 @@ github.com/openshift-pipelines/pipelines-as-code/pkg/secrets
 github.com/openshift-pipelines/pipelines-as-code/pkg/secrets/types
 github.com/openshift-pipelines/pipelines-as-code/pkg/sort
 github.com/openshift-pipelines/pipelines-as-code/pkg/templates
-# github.com/openshift/api v0.0.0-20250414140316-b7680e188c5e
-## explicit; go 1.23.0
+# github.com/openshift/api v0.0.0-20250922161302-04f99ea228f5
+## explicit; go 1.24.0
 github.com/openshift/api/route/v1
 github.com/openshift/api/user/v1
-# github.com/openshift/client-go v0.0.0-20250402181141-b3bad3b645f2
-## explicit; go 1.23.0
+# github.com/openshift/client-go v0.0.0-20250922201106-dd37bfd2e597
+## explicit; go 1.24.0
 github.com/openshift/client-go/route/applyconfigurations/internal
 github.com/openshift/client-go/route/applyconfigurations/route/v1
 github.com/openshift/client-go/route/clientset/versioned/scheme
@@ -2420,8 +2420,8 @@ gopkg.in/yaml.v3
 ## explicit; go 1.18
 gorm.io/gorm/logger
 gorm.io/gorm/utils
-# k8s.io/api v0.32.5
-## explicit; go 1.23.0
+# k8s.io/api v0.33.2
+## explicit; go 1.24.0
 k8s.io/api/admissionregistration/v1
 k8s.io/api/admissionregistration/v1alpha1
 k8s.io/api/admissionregistration/v1beta1
@@ -2482,7 +2482,7 @@ k8s.io/api/storagemigration/v1alpha1
 ## explicit; go 1.23.0
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
-# k8s.io/apimachinery v0.33.0 => k8s.io/apimachinery v0.32.4
+# k8s.io/apimachinery v0.33.2 => k8s.io/apimachinery v0.32.4
 ## explicit; go 1.23.0
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
