@@ -1683,7 +1683,7 @@ github.com/tektoncd/cli/pkg/triggertemplate
 github.com/tektoncd/cli/pkg/trustedresources
 github.com/tektoncd/cli/pkg/version
 github.com/tektoncd/cli/pkg/workspaces
-# github.com/tektoncd/hub v1.22.2
+# github.com/tektoncd/hub v1.22.4
 ## explicit; go 1.23.0
 github.com/tektoncd/hub/api/pkg/cli/app
 github.com/tektoncd/hub/api/pkg/cli/cmd
