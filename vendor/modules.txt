@@ -1029,8 +1029,8 @@ github.com/imdario/mergo
 ## explicit; go 1.23.0
 github.com/in-toto/archivista/pkg/api
 github.com/in-toto/archivista/pkg/http-client
-# github.com/in-toto/attestation v1.1.1
-## explicit; go 1.20
+# github.com/in-toto/attestation v1.1.2
+## explicit; go 1.22
 github.com/in-toto/attestation/go/v1
 # github.com/in-toto/go-witness v0.8.1
 ## explicit; go 1.22.8
