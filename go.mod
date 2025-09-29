@@ -274,7 +274,7 @@ require (
 	github.com/sigstore/fulcio v1.6.6 // indirect
 	github.com/sigstore/protobuf-specs v0.4.1 // indirect
 	github.com/sigstore/rekor v1.3.10 // indirect
-	github.com/sigstore/sigstore v1.9.4 // indirect
+	github.com/sigstore/sigstore v1.9.5 // indirect
 	github.com/sigstore/sigstore-go v0.7.1 // indirect
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.9.1 // indirect
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.9.1 // indirect
