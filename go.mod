@@ -251,7 +251,7 @@ require (
 	github.com/openshift/api v0.0.0-20250414140316-b7680e188c5e // indirect
 	github.com/openshift/client-go v0.0.0-20250402181141-b3bad3b645f2 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
+	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect

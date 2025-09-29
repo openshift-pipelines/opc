@@ -1342,7 +1342,7 @@ github.com/openshift/client-go/user/clientset/versioned/typed/user/v1
 github.com/opentracing/opentracing-go
 github.com/opentracing/opentracing-go/ext
 github.com/opentracing/opentracing-go/log
-# github.com/pelletier/go-toml/v2 v2.2.3
+# github.com/pelletier/go-toml/v2 v2.2.4
 ## explicit; go 1.21.0
 github.com/pelletier/go-toml/v2
 github.com/pelletier/go-toml/v2/internal/characters
