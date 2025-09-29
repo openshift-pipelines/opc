@@ -86,8 +86,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.36 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.36 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.40.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecrpublic v1.31.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.45.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ecrpublic v1.33.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.7.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.17 // indirect
@@ -98,7 +98,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.34.0 // indirect
 	github.com/aws/smithy-go v1.22.4 // indirect
-	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.9.1 // indirect
+	github.com/awslabs/amazon-ecr-credential-helper/ecr-login v0.10.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/blendle/zapdriver v1.3.1 // indirect
