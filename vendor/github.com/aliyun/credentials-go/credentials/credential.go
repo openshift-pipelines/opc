@@ -25,8 +25,11 @@ var hookParse = func(err error) error {
 
 // Credential is an interface for getting actual credential
 type Credential interface {
+	// Deprecated: GetAccessKeyId is deprecated, use GetCredential instead of.
 	GetAccessKeyId() (*string, error)
+	// Deprecated: GetAccessKeySecret is deprecated, use GetCredential instead of.
 	GetAccessKeySecret() (*string, error)
+	// Deprecated: GetSecurityToken is deprecated, use GetCredential instead of.
 	GetSecurityToken() (*string, error)
 	GetBearerToken() *string
 	GetType() *string
@@ -44,6 +47,8 @@ type Config struct {
 	RoleSessionName       *string  `json:"role_session_name"`
 	PublicKeyId           *string  `json:"public_key_id"`
 	RoleName              *string  `json:"role_name"`
+	EnableIMDSv2          *bool    `json:"enable_imds_v2"`
+	MetadataTokenDuration *int     `json:"metadata_token_duration"`
 	SessionExpiration     *int     `json:"session_expiration"`
 	PrivateKeyFile        *string  `json:"private_key_file"`
 	BearerToken           *string  `json:"bearer_token"`
@@ -100,6 +105,16 @@ func (s *Config) SetPublicKeyId(v string) *Config {
 
 func (s *Config) SetRoleName(v string) *Config {
 	s.RoleName = &v
+	return s
+}
+
+func (s *Config) SetEnableIMDSv2(v bool) *Config {
+	s.EnableIMDSv2 = &v
+	return s
+}
+
+func (s *Config) SetMetadataTokenDuration(v int) *Config {
+	s.MetadataTokenDuration = &v
 	return s
 }
 
@@ -202,28 +217,45 @@ func NewCredential(config *Config) (credential Credential, err error) {
 			ConnectTimeout: tea.IntValue(config.ConnectTimeout),
 			STSEndpoint:    tea.StringValue(config.STSEndpoint),
 		}
-		credential = newOIDCRoleArnCredential(tea.StringValue(config.AccessKeyId), tea.StringValue(config.AccessKeySecret), tea.StringValue(config.RoleArn), tea.StringValue(config.OIDCProviderArn), tea.StringValue(config.OIDCTokenFilePath), tea.StringValue(config.RoleSessionName), tea.StringValue(config.Policy), tea.IntValue(config.RoleSessionExpiration), runtime)
+		credential = newOIDCRoleArnCredential(
+			tea.StringValue(config.AccessKeyId),
+			tea.StringValue(config.AccessKeySecret),
+			tea.StringValue(config.RoleArn),
+			tea.StringValue(config.OIDCProviderArn),
+			tea.StringValue(config.OIDCTokenFilePath),
+			tea.StringValue(config.RoleSessionName),
+			tea.StringValue(config.Policy),
+			tea.IntValue(config.RoleSessionExpiration),
+			runtime)
 	case "access_key":
 		err = checkAccessKey(config)
 		if err != nil {
 			return
 		}
-		credential = newAccessKeyCredential(tea.StringValue(config.AccessKeyId), tea.StringValue(config.AccessKeySecret))
+		credential = newAccessKeyCredential(
+			tea.StringValue(config.AccessKeyId),
+			tea.StringValue(config.AccessKeySecret))
 	case "sts":
 		err = checkSTS(config)
 		if err != nil {
 			return
 		}
-		credential = newStsTokenCredential(tea.StringValue(config.AccessKeyId), tea.StringValue(config.AccessKeySecret), tea.StringValue(config.SecurityToken))
+		credential = newStsTokenCredential(
+			tea.StringValue(config.AccessKeyId),
+			tea.StringValue(config.AccessKeySecret),
+			tea.StringValue(config.SecurityToken))
 	case "ecs_ram_role":
-		checkEcsRAMRole(config)
 		runtime := &utils.Runtime{
 			Host:           tea.StringValue(config.Host),
-			Proxy:          tea.StringValue(config.Proxy),
 			ReadTimeout:    tea.IntValue(config.Timeout),
 			ConnectTimeout: tea.IntValue(config.ConnectTimeout),
 		}
-		credential = newEcsRAMRoleCredential(tea.StringValue(config.RoleName), tea.Float64Value(config.InAdvanceScale), runtime)
+		credential = newEcsRAMRoleCredentialWithEnableIMDSv2(
+			tea.StringValue(config.RoleName),
+			tea.BoolValue(config.EnableIMDSv2),
+			tea.IntValue(config.MetadataTokenDuration),
+			tea.Float64Value(config.InAdvanceScale),
+			runtime)
 	case "ram_role_arn":
 		err = checkRAMRoleArn(config)
 		if err != nil {
@@ -236,9 +268,10 @@ func NewCredential(config *Config) (credential Credential, err error) {
 			ConnectTimeout: tea.IntValue(config.ConnectTimeout),
 			STSEndpoint:    tea.StringValue(config.STSEndpoint),
 		}
-		credential = newRAMRoleArnWithExternalIdCredential(
+		credential = newRAMRoleArnl(
 			tea.StringValue(config.AccessKeyId),
 			tea.StringValue(config.AccessKeySecret),
+			tea.StringValue(config.SecurityToken),
 			tea.StringValue(config.RoleArn),
 			tea.StringValue(config.RoleSessionName),
 			tea.StringValue(config.Policy),
@@ -271,7 +304,11 @@ func NewCredential(config *Config) (credential Credential, err error) {
 			ConnectTimeout: tea.IntValue(config.ConnectTimeout),
 			STSEndpoint:    tea.StringValue(config.STSEndpoint),
 		}
-		credential = newRsaKeyPairCredential(privateKey, tea.StringValue(config.PublicKeyId), tea.IntValue(config.SessionExpiration), runtime)
+		credential = newRsaKeyPairCredential(
+			privateKey,
+			tea.StringValue(config.PublicKeyId),
+			tea.IntValue(config.SessionExpiration),
+			runtime)
 	case "bearer":
 		if tea.StringValue(config.BearerToken) == "" {
 			err = errors.New("BearerToken cannot be empty")
@@ -279,7 +316,7 @@ func NewCredential(config *Config) (credential Credential, err error) {
 		}
 		credential = newBearerTokenCredential(tea.StringValue(config.BearerToken))
 	default:
-		err = errors.New("Invalid type option, support: access_key, sts, ecs_ram_role, ram_role_arn, rsa_key_pair")
+		err = errors.New("invalid type option, support: access_key, sts, ecs_ram_role, ram_role_arn, rsa_key_pair")
 		return
 	}
 	return credential, nil
@@ -310,26 +347,26 @@ func checkoutAssumeRamoidc(config *Config) (err error) {
 }
 
 func checkRAMRoleArn(config *Config) (err error) {
-	if tea.StringValue(config.AccessKeySecret) == "" {
-		err = errors.New("AccessKeySecret cannot be empty")
-		return
-	}
-	if tea.StringValue(config.RoleArn) == "" {
-		err = errors.New("RoleArn cannot be empty")
-		return
-	}
-	if tea.StringValue(config.RoleSessionName) == "" {
-		err = errors.New("RoleSessionName cannot be empty")
-		return
-	}
 	if tea.StringValue(config.AccessKeyId) == "" {
 		err = errors.New("AccessKeyId cannot be empty")
 		return
 	}
-	return
-}
 
-func checkEcsRAMRole(config *Config) (err error) {
+	if tea.StringValue(config.AccessKeySecret) == "" {
+		err = errors.New("AccessKeySecret cannot be empty")
+		return
+	}
+
+	if tea.StringValue(config.RoleArn) == "" {
+		err = errors.New("RoleArn cannot be empty")
+		return
+	}
+
+	if tea.StringValue(config.RoleSessionName) == "" {
+		err = errors.New("RoleSessionName cannot be empty")
+		return
+	}
+
 	return
 }
 
