@@ -27,14 +27,16 @@ build: mkbin generate ## builds binary and updates version in pkg/version
 windows: mkbin generate
 	env GOOS=windows GOARCH=amd64 $(GO) build -mod=vendor $(FLAGS)  -v -o bin/$(BINARYNAME).exe main.go
 
-generate: version-file ## updates version of pipeline-as-code, cli, mag and results in pkg/version file
+generate: version-file ## updates version of pipeline-as-code, cli, mag, assist and results in pkg/version file
 version-file:
-	echo '{"pac": "$(PAC_VERSION)", "tkn": "$(TKN_VERSION)", "results": "$(RESULTS_VERSION)", "manualapprovalgate": "$(MAG_VERSION)", "opc": "$(OPC_VERSION)"}' > pkg/version.json
+	echo '{"pac": "$(PAC_VERSION)", "tkn": "$(TKN_VERSION)", "results": "$(RESULTS_VERSION)", "manualapprovalgate": "$(MAG_VERSION)", "assist": "devel", "opc": "$(OPC_VERSION)"}' > pkg/version.json
 
-version-updates: ## updates pipeline-as-code, cli, mag and results version in go.mod
+version-updates: ## updates pipeline-as-code, cli, mag, assist and results version in go.mod
 	$(GO) get -u github.com/openshift-pipelines/pipelines-as-code
 	$(GO) mod vendor
 	$(GO) get -u github.com/openshift-pipelines/manual-approval-gate
+	$(GO) mod vendor
+	$(GO) get -u github.com/openshift-pipelines/tekton-assist
 	$(GO) mod vendor
 	$(GO) get -u github.com/tektoncd/cli
 	$(GO) mod vendor
