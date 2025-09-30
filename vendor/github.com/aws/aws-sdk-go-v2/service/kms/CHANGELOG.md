@@ -1,3 +1,63 @@
+# v1.44.0 (2025-08-11)
+
+* **Feature**: Add support for configuring per-service Options via callback on global config.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.43.0 (2025-08-04)
+
+* **Feature**: Support configurable auth scheme preferences in service clients via AWS_AUTH_SCHEME_PREFERENCE in the environment, auth_scheme_preference in the config file, and through in-code settings on LoadDefaultConfig and client constructor methods.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.42.1 (2025-07-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.42.0 (2025-07-28)
+
+* **Feature**: Add support for HTTP interceptors.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.41.4 (2025-07-25)
+
+* **Documentation**: Doc only update: fixed grammatical errors.
+
+# v1.41.3 (2025-07-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.41.2 (2025-06-26)
+
+* **Documentation**: This release updates AWS CLI examples for KMS APIs.
+
+# v1.41.1 (2025-06-17)
+
+* **Dependency Update**: Update to smithy-go v1.22.4.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.41.0 (2025-06-12)
+
+* **Feature**: AWS KMS announces the support of ML-DSA key pairs that creates post-quantum safe digital signatures.
+
+# v1.40.1 (2025-06-10)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.40.0 (2025-06-06)
+
+* **Feature**: Remove unpopulated KeyMaterialId from Encrypt Response
+
+# v1.39.0 (2025-06-05)
+
+* **Feature**: AWS KMS announces the support for on-demand rotation of symmetric-encryption KMS keys with imported key material (EXTERNAL origin).
+
+# v1.38.3 (2025-04-10)
+
+* No change notes available for this release.
+
+# v1.38.2 (2025-04-03)
+
+* No change notes available for this release.
+
 # v1.38.1 (2025-03-04.2)
 
 * **Bug Fix**: Add assurance test for operation order.
