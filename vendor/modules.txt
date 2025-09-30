@@ -1138,7 +1138,7 @@ github.com/ktr0731/go-ansisgr
 github.com/ktr0731/go-fuzzyfinder
 github.com/ktr0731/go-fuzzyfinder/matching
 github.com/ktr0731/go-fuzzyfinder/scoring
-# github.com/ktrysmt/go-bitbucket v0.9.85
+# github.com/ktrysmt/go-bitbucket v0.9.87
 ## explicit; go 1.23.0
 github.com/ktrysmt/go-bitbucket
 # github.com/kylelemons/godebug v1.1.0

@@ -1403,8 +1403,8 @@ github.com/ktr0731/go-ansisgr v0.1.0 h1:fbuupput8739hQbEmZn1cEKjqQFwtCCZNznnF6AN
 github.com/ktr0731/go-ansisgr v0.1.0/go.mod h1:G9lxwgBwH0iey0Dw5YQd7n6PmQTwTuTM/X5Sgm/UrzE=
 github.com/ktr0731/go-fuzzyfinder v0.9.0 h1:JV8S118RABzRl3Lh/RsPhXReJWc2q0rbuipzXQH7L4c=
 github.com/ktr0731/go-fuzzyfinder v0.9.0/go.mod h1:uybx+5PZFCgMCSDHJDQ9M3nNKx/vccPmGffsXPn2ad8=
-github.com/ktrysmt/go-bitbucket v0.9.85 h1:WSKYSmpgasEmtnsr+TEhD2UtiZjCZpeTBF5T4f6/d8k=
-github.com/ktrysmt/go-bitbucket v0.9.85/go.mod h1:ZgvxUOaC6eHrNaC/DbjFvJUXaKpKeDYvfhh4U592jcs=
+github.com/ktrysmt/go-bitbucket v0.9.87 h1:eR7E4ndyKpO2+HdBwUlsC5K/40nEDpjMLEWsPLY97oQ=
+github.com/ktrysmt/go-bitbucket v0.9.87/go.mod h1:slSdGm9Vh3L2ZOU1r7Fu2B9rPJvsflYgneRCoPA83eY=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/letsencrypt/boulder v0.0.0-20240620165639-de9c06129bec h1:2tTW6cDth2TSgRbAhD7yjZzTQmcN25sDRPEeinR51yQ=
@@ -1690,8 +1690,8 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.8.3/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
-github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
-github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
+github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
+github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/stvp/go-udp-testing v0.0.0-20201019212854-469649b16807/go.mod h1:7jxmlfBCDBXRzr0eAQJ48XC1hBu1np4CS5+cHEYfwpc=
 github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8=
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
