@@ -28,6 +28,7 @@ type versions struct {
 	Pac                string `json:"pac"`
 	Results            string `json:"results"`
 	ManualApprovalGate string `json:"manualapprovalgate"`
+	Assist             string `json:"assist"`
 }
 
 func getLiveInformations(iostreams *paccli.IOStreams) error {
@@ -94,6 +95,8 @@ func VersionCommand(ioStreams *paccli.IOStreams) *cobra.Command {
 					fmt.Fprintln(ioStreams.Out, v.Results)
 				case "manualapprovalgate":
 					fmt.Fprintln(ioStreams.Out, v.ManualApprovalGate)
+				case "assist":
+					fmt.Fprintln(ioStreams.Out, v.Assist)
 				default:
 					return fmt.Errorf("unknown component: %v", args[1])
 				}
