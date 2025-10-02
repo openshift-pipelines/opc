@@ -1,4 +1,7 @@
-// Copyright 2024 The TCell Authors
+//go:build plan9
+// +build plan9
+
+// Copyright 2025 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -12,26 +15,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build aix || darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris || zos
-// +build aix darwin dragonfly freebsd linux netbsd openbsd solaris zos
-
 package tcell
 
-import (
-	// import the stock terminals
-	_ "github.com/gdamore/tcell/v2/terminfo/base"
-)
+import "os"
 
-// initialize is used at application startup, and sets up the initial values
-// including file descriptors used for terminals and saving the initial state
-// so that it can be restored when the application terminates.
+// initialize on Plan 9: if no TTY was provided, use the Plan 9 TTY.
 func (t *tScreen) initialize() error {
-	var err error
+    if os.Getenv("TERM") == "" {
+        // TERM should be "vt100" in a vt(1) window; color/mouse support will be limited.
+        _ = os.Setenv("TERM", "vt100")
+    }
 	if t.tty == nil {
-		t.tty, err = NewDevTty()
+		tty, err := NewDevTty()
 		if err != nil {
 			return err
 		}
+		t.tty = tty
 	}
 	return nil
 }
