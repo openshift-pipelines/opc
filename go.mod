@@ -1,6 +1,8 @@
 module github.com/openshift-pipelines/opc
 
-go 1.23.6
+go 1.24.0
+
+toolchain go1.24.6
 
 require (
 	github.com/openshift-pipelines/manual-approval-gate v0.6.0
@@ -98,7 +100,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/blendle/zapdriver v1.3.1 // indirect
-	github.com/bradleyfalzon/ghinstallation/v2 v2.15.0 // indirect
+	github.com/bradleyfalzon/ghinstallation/v2 v2.17.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -171,6 +173,7 @@ require (
 	github.com/google/go-github/scrape v0.0.0-20250430122735-c9e1ad0d3b65 // indirect
 	github.com/google/go-github/v55 v55.0.0 // indirect
 	github.com/google/go-github/v71 v71.0.0 // indirect
+	github.com/google/go-github/v75 v75.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
