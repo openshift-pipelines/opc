@@ -562,8 +562,8 @@ github.com/docker/distribution/registry/client/auth/challenge
 # github.com/docker/docker v28.1.1+incompatible
 ## explicit
 github.com/docker/docker/pkg/homedir
-# github.com/docker/docker-credential-helpers v0.8.2
-## explicit; go 1.19
+# github.com/docker/docker-credential-helpers v0.9.4
+## explicit; go 1.21
 github.com/docker/docker-credential-helpers/client
 github.com/docker/docker-credential-helpers/credentials
 # github.com/dustin/go-humanize v1.0.1
