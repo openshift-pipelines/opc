@@ -349,7 +349,7 @@ require (
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/term v0.34.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
-	golang.org/x/time v0.12.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
 	google.golang.org/api v0.247.0 // indirect
