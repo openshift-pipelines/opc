@@ -1317,13 +1317,11 @@ github.com/openshift-pipelines/pipelines-as-code/pkg/secrets
 github.com/openshift-pipelines/pipelines-as-code/pkg/secrets/types
 github.com/openshift-pipelines/pipelines-as-code/pkg/sort
 github.com/openshift-pipelines/pipelines-as-code/pkg/templates
-# github.com/openshift-pipelines/tekton-assist v0.0.0-20251009135139-93084690eb80
+# github.com/openshift-pipelines/tekton-assist v0.0.0-20251014093343-3e6eaaf146b4
 ## explicit; go 1.24.0
 github.com/openshift-pipelines/tekton-assist/pkg/cli
-github.com/openshift-pipelines/tekton-assist/pkg/cli/client
-github.com/openshift-pipelines/tekton-assist/pkg/cli/cmd/pipelinerun
-github.com/openshift-pipelines/tekton-assist/pkg/cli/cmd/taskrun
-github.com/openshift-pipelines/tekton-assist/pkg/cli/common
+github.com/openshift-pipelines/tekton-assist/pkg/cli/pipelinerun
+github.com/openshift-pipelines/tekton-assist/pkg/cli/taskrun
 # github.com/openshift/api v0.0.0-20250414140316-b7680e188c5e
 ## explicit; go 1.23.0
 github.com/openshift/api/user/v1
