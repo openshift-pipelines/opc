@@ -15,71 +15,26 @@
 package cli
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/openshift-pipelines/tekton-assist/pkg/cli/cmd/pipelinerun"
-	"github.com/openshift-pipelines/tekton-assist/pkg/cli/cmd/taskrun"
-	"github.com/openshift-pipelines/tekton-assist/pkg/cli/common"
+	prcmd "github.com/openshift-pipelines/tekton-assist/pkg/cli/pipelinerun"
+	trcmd "github.com/openshift-pipelines/tekton-assist/pkg/cli/taskrun"
 	"github.com/spf13/cobra"
 )
 
-const (
-	// Version information - will be set during build
-	version = "dev"
-)
-
-// RootCommand creates the root command for tkn-assist
+// RootCommand returns the root command for the assist CLI. Consumers (like OPC)
+// can import this package and mount the returned command under their own root.
 func RootCommand() *cobra.Command {
-	// Create common params
-	params := common.NewParams()
-
-	rootCmd := &cobra.Command{
+	root := &cobra.Command{
 		Use:   "tkn-assist",
-		Short: "Tekton Assistant CLI - AI-powered diagnosis for Tekton resources",
-		Long: `tkn-assist is a CLI tool that helps diagnose and troubleshoot Tekton TaskRuns and PipelineRuns.
-It uses AI to analyze failures and provide actionable remediation suggestions.
-
-This tool can be used as a tkn plugin by naming the binary 'tkn-assist'.`,
-		Example: `  # Diagnose a failed TaskRun
-  tkn-assist taskrun diagnose my-failed-taskrun
-
-  # Diagnose a failed PipelineRun
-  tkn-assist pipelinerun diagnose my-failed-pipelinerun
-
-  # Diagnose a TaskRun in a specific namespace
-  tkn-assist taskrun diagnose my-taskrun -n my-namespace`,
+		Short: "AI-assisted diagnosis for Tekton",
+		Long:  `tkn plugin to use AI-assisted diagnosis for Tekton`,
 		Annotations: map[string]string{
 			"commandType": "main",
 		},
 	}
 
-	// Add global flags using common params
-	params.AddFlags(rootCmd)
+	// Add top-level groups
+	root.AddCommand(trcmd.TaskRunCommand())
+	root.AddCommand(prcmd.PipelineRunCommand())
 
-	// Add subcommands
-	rootCmd.AddCommand(taskrun.TaskRunCommand(params))
-	rootCmd.AddCommand(pipelinerun.PipelineRunCommand(params))
-	rootCmd.AddCommand(versionCommand())
-
-	return rootCmd
-}
-
-// versionCommand creates the version command
-func versionCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "Print version information",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("tkn-assist version %s\n", version)
-		},
-	}
-}
-
-// Execute runs the root command
-func Execute() {
-	if err := RootCommand().Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	return root
 }

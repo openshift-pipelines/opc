@@ -15,26 +15,24 @@
 package pipelinerun
 
 import (
-	"github.com/openshift-pipelines/tekton-assist/pkg/cli/common"
 	"github.com/spf13/cobra"
 )
 
-// PipelineRunCommand creates the pipelinerun command
-func PipelineRunCommand(params common.Params) *cobra.Command {
-	pipelineRunCmd := &cobra.Command{
-		Use:   "pipelinerun",
-		Short: "Commands for working with PipelineRuns",
-		Long:  `Commands for diagnosing and analyzing Tekton PipelineRuns.`,
-		Example: `  # Diagnose a failed PipelineRun
-  tkn-assist pipelinerun diagnose my-failed-pipelinerun
-
-  # List available PipelineRuns for diagnosis
-  tkn-assist pipelinerun list`,
+// PipelineRunCommand creates the pipelinerun command group
+func PipelineRunCommand() *cobra.Command {
+	pipelinerunCmd := &cobra.Command{
+		Use:     "pipelinerun",
+		Short:   "Commands for working with PipelineRuns",
+		Long:    `Commands for diagnosing and analyzing Tekton PipelineRuns.`,
+		Example: "  # Diagnose a failed PipelineRun\n  tkn-assist pipelinerun diagnose my-failed-pipelinerun",
 		Aliases: []string{"pr", "pipelineruns"},
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 	}
 
 	// Add subcommands
-	pipelineRunCmd.AddCommand(DiagnoseCommand(params))
+	pipelinerunCmd.AddCommand(DiagnoseCommand())
 
-	return pipelineRunCmd
+	return pipelinerunCmd
 }

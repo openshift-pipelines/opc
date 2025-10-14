@@ -15,26 +15,25 @@
 package taskrun
 
 import (
-	"github.com/openshift-pipelines/tekton-assist/pkg/cli/common"
 	"github.com/spf13/cobra"
 )
 
 // TaskRunCommand creates the taskrun command
-func TaskRunCommand(params common.Params) *cobra.Command {
+func TaskRunCommand() *cobra.Command {
 	taskrunCmd := &cobra.Command{
 		Use:   "taskrun",
 		Short: "Commands for working with TaskRuns",
 		Long:  `Commands for diagnosing and analyzing Tekton TaskRuns.`,
 		Example: `  # Diagnose a failed TaskRun
-  tkn-assist taskrun diagnose my-failed-taskrun
-
-  # List available TaskRuns for diagnosis
-  tkn-assist taskrun list`,
+  tkn-assist taskrun diagnose my-failed-taskrunt`,
 		Aliases: []string{"tr", "taskruns"},
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 	}
 
 	// Add subcommands
-	taskrunCmd.AddCommand(DiagnoseCommand(params))
+	taskrunCmd.AddCommand(DiagnoseCommand())
 
 	return taskrunCmd
 }
