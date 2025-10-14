@@ -2,7 +2,7 @@ module github.com/openshift-pipelines/opc
 
 go 1.24.3
 
-toolchain go1.24.6
+toolchain go1.25.3
 
 require (
 	github.com/openshift-pipelines/manual-approval-gate v0.6.0
