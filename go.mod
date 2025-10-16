@@ -7,7 +7,7 @@ toolchain go1.24.6
 require (
 	github.com/openshift-pipelines/manual-approval-gate v0.7.0
 	github.com/openshift-pipelines/pipelines-as-code v0.37.0
-	github.com/openshift-pipelines/tekton-assist v0.0.0-20251014093343-3e6eaaf146b4
+	github.com/openshift-pipelines/tekton-assist v0.1.1
 	github.com/spf13/cobra v1.10.1
 	github.com/tektoncd/cli v0.42.0
 	github.com/tektoncd/results v0.16.0
