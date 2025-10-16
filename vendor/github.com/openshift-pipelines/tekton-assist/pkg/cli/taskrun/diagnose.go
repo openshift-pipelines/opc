@@ -75,7 +75,8 @@ The command will:
 
   # Diagnose with custom timeout
   tkn-assist taskrun diagnose my-taskrun --timeout 60s`,
-		Args: cobra.ExactArgs(1),
+		Annotations: map[string]string{"commandType": "main"},
+		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.TaskRunName = args[0]
 			return runDiagnose(cmd.Context(), opts)
