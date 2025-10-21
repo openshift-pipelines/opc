@@ -264,8 +264,8 @@ github.com/antlr4-go/antlr/v4
 # github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 ## explicit; go 1.13
 github.com/asaskevich/govalidator
-# github.com/avast/retry-go/v4 v4.6.1
-## explicit; go 1.18
+# github.com/avast/retry-go/v4 v4.7.0
+## explicit; go 1.20
 github.com/avast/retry-go/v4
 # github.com/aws/aws-sdk-go v1.55.7
 ## explicit; go 1.19
