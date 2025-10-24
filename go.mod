@@ -1,6 +1,8 @@
 module github.com/openshift-pipelines/opc
 
-go 1.23.6
+go 1.24.0
+
+toolchain go1.24.6
 
 require (
 	github.com/openshift-pipelines/manual-approval-gate v0.6.0
@@ -331,11 +333,11 @@ require (
 	gocloud.dev/docstore/mongodocstore v0.40.0 // indirect
 	gocloud.dev/pubsub/kafkapubsub v0.40.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0 // indirect
-	golang.org/x/mod v0.24.0 // indirect
+	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
+	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sync v0.14.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
