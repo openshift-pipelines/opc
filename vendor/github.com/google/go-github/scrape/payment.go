@@ -18,12 +18,12 @@ import (
 func (c *Client) OrgPaymentInformation(org string) (PaymentInformation, error) {
 	var info PaymentInformation
 
-	doc, err := c.get("/organizations/%s/settings/billing/payment_information", org)
+	doc, err := c.get("/organizations/%v/settings/billing/payment_information", org)
 	if err != nil {
 		return info, err
 	}
 
-	doc.Find("main h4.mb-1").Each(func(i int, s *goquery.Selection) {
+	doc.Find("main h4.mb-1").Each(func(_ int, s *goquery.Selection) {
 		name := strings.TrimSpace(strings.ToLower(s.Text()))
 		value := strings.Join(strings.Fields(strings.TrimSpace(s.NextFiltered("p").Text())), " ")
 
