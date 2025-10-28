@@ -57,7 +57,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.27.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.53.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.53.0 // indirect
-	github.com/IBM/sarama v1.45.1 // indirect
+	github.com/IBM/sarama v1.46.3 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/PuerkitoBio/goquery v1.10.3 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
@@ -223,7 +223,7 @@ require (
 	github.com/juju/ansiterm v1.0.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/ktr0731/go-ansisgr v0.1.0 // indirect
 	github.com/ktr0731/go-fuzzyfinder v0.9.0 // indirect
 	github.com/ktrysmt/go-bitbucket v0.9.85 // indirect
@@ -268,7 +268,7 @@ require (
 	github.com/prometheus/common v0.65.0 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/prometheus/statsd_exporter v0.28.0 // indirect
-	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
+	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
@@ -340,15 +340,15 @@ require (
 	gocloud.dev v0.40.0 // indirect
 	gocloud.dev/docstore/mongodocstore v0.40.0 // indirect
 	gocloud.dev/pubsub/kafkapubsub v0.40.0 // indirect
-	golang.org/x/crypto v0.41.0 // indirect
+	golang.org/x/crypto v0.43.0 // indirect
 	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0 // indirect
-	golang.org/x/mod v0.26.0 // indirect
-	golang.org/x/net v0.43.0 // indirect
+	golang.org/x/mod v0.28.0 // indirect
+	golang.org/x/net v0.46.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sync v0.16.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/term v0.34.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
+	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/term v0.36.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
