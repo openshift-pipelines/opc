@@ -254,7 +254,7 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
-	github.com/openshift/api v0.0.0-20250414140316-b7680e188c5e // indirect
+	github.com/openshift/api 1b67472a2ba8 // indirect
 	github.com/openshift/client-go v0.0.0-20250402181141-b3bad3b645f2 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
