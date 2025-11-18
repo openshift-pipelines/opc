@@ -1,5 +1,5 @@
 ARG GO_BUILDER=brew.registry.redhat.io/rh-osbs/openshift-golang-builder:v1.24
-ARG RUNTIME=registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:6d5a6576c83816edcc0da7ed62ba69df8f6ad3cbe659adde2891bfbec4dbf187
+ARG RUNTIME=registry.redhat.io/ubi9/ubi-minimal@sha256:61d5ad475048c2e655cd46d0a55dfeaec182cc3faa6348cb85989a7c9e196483
 
 FROM $GO_BUILDER AS builder
 
@@ -11,7 +11,7 @@ ENV GOEXPERIMENT="strictfipsruntime"
 RUN go build -buildvcs=false -mod=vendor -tags disable_gcp,strictfipsruntime  -o /tmp/opc main.go
 
 FROM $RUNTIME
-ARG VERSION=opc-main
+ARG VERSION=opc-1.21
 COPY --from=builder /tmp/opc /usr/bin
 
 RUN microdnf install -y shadow-utils && \
