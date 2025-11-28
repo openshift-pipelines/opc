@@ -33,16 +33,12 @@ version-file:
 
 version-updates: ## updates pipeline-as-code, cli, mag, assist and results version in go.mod
 	$(GO) get -u github.com/openshift-pipelines/pipelines-as-code
-	$(GO) mod vendor
 	$(GO) get -u github.com/openshift-pipelines/manual-approval-gate
-	$(GO) mod vendor
 	$(GO) get -u github.com/openshift-pipelines/tekton-assist
-	$(GO) mod vendor
 	$(GO) get -u github.com/tektoncd/cli
-	$(GO) mod vendor
 	$(GO) get -u github.com/tektoncd/results
-	$(GO) mod vendor
 	$(GO) mod tidy
+	$(GO) mod vendor
 
 tidy:
 	$(GO) mod tidy -compat=$(GOVERSION)
