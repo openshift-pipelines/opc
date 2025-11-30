@@ -12,7 +12,8 @@ import (
 	"strings"
 
 	ghinstallation "github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/google/go-github/v71/github"
+	ogithub "github.com/google/go-github/v72/github"
+	"github.com/google/go-github/v74/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/opscomments"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
@@ -55,7 +56,7 @@ func (v *Provider) GetAppToken(ctx context.Context, kube kubernetes.Interface, g
 	if err != nil {
 		return "", err
 	}
-	itr.InstallationTokenOptions = &github.InstallationTokenOptions{
+	itr.InstallationTokenOptions = &ogithub.InstallationTokenOptions{
 		RepositoryIDs: v.RepositoryIDs,
 	}
 
@@ -345,8 +346,14 @@ func (v *Provider) processEvent(ctx context.Context, event *info.Event, eventInt
 			v.Logger.Warnf("Error getting pull requests associated with the commit in this push event: %v", err)
 		}
 
-		// Only check if the flag is enabled and there are pull requests associated with this commit.
-		if v.pacInfo.SkipPushEventForPRCommits && len(prs) > 0 {
+		isGitTagEvent := strings.HasPrefix(gitEvent.GetRef(), "refs/tags/")
+
+		if v.pacInfo.SkipPushEventForPRCommits && isGitTagEvent {
+			v.Logger.Infof("Processing tag push event for commit %s despite skip-push-events-for-pr-commits being enabled (tag events are excluded from this setting)", sha)
+		}
+
+		// Only check if the flag is enabled, and there are pull requests associated with this commit, and it's not a tag push event.
+		if v.pacInfo.SkipPushEventForPRCommits && len(prs) > 0 && !isGitTagEvent {
 			isPartOfPR, prNumber := v.isCommitPartOfPullRequest(sha, org, repoName, prs)
 
 			// If the commit is part of a PR, skip processing the push event
@@ -494,6 +501,13 @@ func convertPullRequestURLtoNumber(pullRequest string) (int, error) {
 	return prNumber, nil
 }
 
+const (
+	errSHANotProvided        = "a SHA is required in `/ok-to-test` comments, but none was provided"
+	errSHANotProvidedComment = "The `/ok-to-test` needs to be followed by a SHA to verify which commit to test. Try again with:\n\n`/ok-to-test %s`"
+	errSHAPrefixMismatch     = "the SHA provided in the `/ok-to-test` comment (`%s`) is not a prefix of the pull request's HEAD SHA (`%s`)"
+	errSHANotMatch           = "the SHA provided in the `/ok-to-test` comment (`%s`) does not match the pull request's HEAD SHA (`%s`)"
+)
+
 func (v *Provider) handleIssueCommentEvent(ctx context.Context, event *github.IssueCommentEvent) (*info.Event, error) {
 	action := "recheck"
 	runevent := info.NewEvent()
@@ -507,8 +521,9 @@ func (v *Provider) handleIssueCommentEvent(ctx context.Context, event *github.Is
 	}
 	v.userType = event.GetSender().GetType()
 	opscomments.SetEventTypeAndTargetPR(runevent, event.GetComment().GetBody())
+
 	// We are getting the full URL so we have to get the last part to get the PR number,
-	// we don't have to care about URL query string/hash and other stuff because
+	// we don\'t have to care about URL query string/hash and other stuff because
 	// that comes up from the API.
 	var err error
 	runevent.PullRequestNumber, err = convertPullRequestURLtoNumber(event.GetIssue().GetPullRequestLinks().GetHTMLURL())
@@ -517,7 +532,52 @@ func (v *Provider) handleIssueCommentEvent(ctx context.Context, event *github.Is
 	}
 
 	v.Logger.Infof("issue_comment: pipelinerun %s on %s/%s#%d has been requested", action, runevent.Organization, runevent.Repository, runevent.PullRequestNumber)
-	return v.getPullRequest(ctx, runevent)
+	pr, err := v.getPullRequest(ctx, runevent)
+	if err != nil {
+		return nil, err
+	}
+
+	commentBody := event.GetComment().GetBody()
+	if opscomments.IsOkToTestComment(commentBody) && v.pacInfo.RequireOkToTestSHA {
+		shaFromCommentRaw := opscomments.GetSHAFromOkToTestComment(commentBody)
+		if shaFromCommentRaw == "" {
+			v.Logger.Errorf(errSHANotProvided)
+			if err := v.CreateComment(ctx, runevent, fmt.Sprintf(errSHANotProvidedComment, pr.SHA), ""); err != nil {
+				v.Logger.Errorf("failed to create comment: %v", err)
+			}
+			return info.NewEvent(), errors.New(errSHANotProvided)
+		}
+		shaFromComment := strings.ToLower(shaFromCommentRaw)
+		prSHALower := strings.ToLower(pr.SHA)
+		shaLen := len(shaFromCommentRaw)
+
+		// Validate SHA-1 based on length:
+		// - Short SHAs (< 40 chars): must be a prefix of PR HEAD SHA
+		// - Full SHA-1 (40 chars): must match exactly
+		if shaLen < 40 {
+			// Short SHA: verify it's a valid prefix
+			if !strings.HasPrefix(prSHALower, shaFromComment) {
+				msg := fmt.Sprintf(errSHAPrefixMismatch, shaFromCommentRaw, pr.SHA)
+				v.Logger.Errorf(msg)
+				if err := v.CreateComment(ctx, runevent, msg, ""); err != nil {
+					v.Logger.Errorf("failed to create comment: %v", err)
+				}
+				return info.NewEvent(), fmt.Errorf(errSHAPrefixMismatch, shaFromCommentRaw, pr.SHA)
+			}
+		} else if shaLen == 40 {
+			// Full SHA-1: verify exact match
+			if prSHALower != shaFromComment {
+				msg := fmt.Sprintf(errSHANotMatch, shaFromCommentRaw, pr.SHA)
+				v.Logger.Errorf(msg)
+				if err := v.CreateComment(ctx, runevent, msg, ""); err != nil {
+					v.Logger.Errorf("failed to create comment: %v", err)
+				}
+				return info.NewEvent(), fmt.Errorf(errSHANotMatch, shaFromCommentRaw, pr.SHA)
+			}
+		}
+	}
+
+	return pr, nil
 }
 
 func (v *Provider) handleCommitCommentEvent(ctx context.Context, event *github.CommitCommentEvent) (*info.Event, error) {
@@ -543,12 +603,13 @@ func (v *Provider) handleCommitCommentEvent(ctx context.Context, event *github.C
 	var (
 		branchName string
 		prName     string
+		tagName    string
 		err        error
 	)
 
 	// If it is a /test or /retest comment with pipelinerun name figure out the pipelinerun name
 	if provider.IsTestRetestComment(event.GetComment().GetBody()) {
-		prName, branchName, err = provider.GetPipelineRunAndBranchNameFromTestComment(event.GetComment().GetBody())
+		prName, branchName, tagName, err = provider.GetPipelineRunAndBranchOrTagNameFromTestComment(event.GetComment().GetBody())
 		if err != nil {
 			return runevent, err
 		}
@@ -557,12 +618,37 @@ func (v *Provider) handleCommitCommentEvent(ctx context.Context, event *github.C
 	// Check for /cancel comment
 	if provider.IsCancelComment(event.GetComment().GetBody()) {
 		action = "cancellation"
-		prName, branchName, err = provider.GetPipelineRunAndBranchNameFromCancelComment(event.GetComment().GetBody())
+		prName, branchName, tagName, err = provider.GetPipelineRunAndBranchOrTagNameFromCancelComment(event.GetComment().GetBody())
 		if err != nil {
 			return runevent, err
 		}
 		runevent.CancelPipelineRuns = true
 		runevent.TargetCancelPipelineRun = prName
+	}
+
+	if tagName != "" {
+		tagPath := fmt.Sprintf("refs/tags/%s", tagName)
+		// here in GitHub TAG_SHA and the commit which is tagged for a tag are different
+		// so we need to get the ref for the tag and then get the tag object to get the tag SHA
+		ref, _, err := wrapAPI(v, "get_ref", func() (*github.Reference, *github.Response, error) {
+			return v.Client().Git.GetRef(ctx, runevent.Organization, runevent.Repository, tagPath)
+		})
+		if err != nil {
+			return runevent, fmt.Errorf("error getting ref for tag %s: %w", tagName, err)
+		}
+		// get the tag object to get the SHA
+		tag, _, err := wrapAPI(v, "get_tag", func() (*github.Tag, *github.Response, error) {
+			return v.Client().Git.GetTag(ctx, runevent.Organization, runevent.Repository, ref.GetObject().GetSHA())
+		})
+		if err != nil {
+			return runevent, fmt.Errorf("error getting tag %s: %w", tagName, err)
+		}
+		if tag.GetObject().GetSHA() != runevent.SHA {
+			return runevent, fmt.Errorf("provided SHA %s is not the tagged commit for the tag %s", runevent.SHA, tagName)
+		}
+		runevent.HeadBranch = tagPath
+		runevent.BaseBranch = tagPath
+		return runevent, nil
 	}
 
 	// If no branch is specified in GitOps comments, use runevent.HeadBranch
