@@ -55,7 +55,8 @@ type Provider struct {
 	PaginedNumber int
 	userType      string // The type of user i.e bot or not
 	skippedRun
-	triggerEvent string
+	triggerEvent       string
+	cachedChangedFiles *changedfiles.ChangedFiles
 }
 
 type skippedRun struct {
@@ -406,6 +407,7 @@ func (v *Provider) GetCommitInfo(ctx context.Context, runevent *info.Event) erro
 	runevent.SHAURL = commit.GetHTMLURL()
 	runevent.SHATitle = strings.Split(commit.GetMessage(), "\n\n")[0]
 	runevent.SHA = commit.GetSHA()
+	runevent.HasSkipCommand = provider.SkipCI(commit.GetMessage())
 
 	// Populate full commit information for LLM context
 	runevent.SHAMessage = commit.GetMessage()
@@ -517,11 +519,24 @@ func (v *Provider) getPullRequest(ctx context.Context, runevent *info.Event) (*i
 	return runevent, nil
 }
 
-// GetFiles get a files from pull request.
+// GetFiles gets and caches the list of files changed by a given event.
 func (v *Provider) GetFiles(ctx context.Context, runevent *info.Event) (changedfiles.ChangedFiles, error) {
-	if runevent.TriggerTarget == triggertype.PullRequest {
+	if v.cachedChangedFiles == nil {
+		changes, err := v.fetchChangedFiles(ctx, runevent)
+		if err != nil {
+			return changedfiles.ChangedFiles{}, err
+		}
+		v.cachedChangedFiles = &changes
+	}
+	return *v.cachedChangedFiles, nil
+}
+
+func (v *Provider) fetchChangedFiles(ctx context.Context, runevent *info.Event) (changedfiles.ChangedFiles, error) {
+	changedFiles := changedfiles.ChangedFiles{}
+
+	switch runevent.TriggerTarget {
+	case triggertype.PullRequest:
 		opt := &github.ListOptions{PerPage: v.PaginedNumber}
-		changedFiles := changedfiles.ChangedFiles{}
 		for {
 			repoCommit, resp, err := wrapAPI(v, "list_pull_request_files", func() ([]*github.CommitFile, *github.Response, error) {
 				return v.Client().PullRequests.ListFiles(ctx, runevent.Organization, runevent.Repository, runevent.PullRequestNumber, opt)
@@ -549,11 +564,7 @@ func (v *Provider) GetFiles(ctx context.Context, runevent *info.Event) (changedf
 			}
 			opt.Page = resp.NextPage
 		}
-		return changedFiles, nil
-	}
-
-	if runevent.TriggerTarget == "push" {
-		changedFiles := changedfiles.ChangedFiles{}
+	case triggertype.Push:
 		rC, _, err := wrapAPI(v, "get_commit_files", func() (*github.RepositoryCommit, *github.Response, error) {
 			return v.Client().Repositories.GetCommit(ctx, runevent.Organization, runevent.Repository, runevent.SHA, &github.ListOptions{})
 		})
@@ -575,9 +586,10 @@ func (v *Provider) GetFiles(ctx context.Context, runevent *info.Event) (changedf
 				changedFiles.Renamed = append(changedFiles.Renamed, *rC.Files[i].Filename)
 			}
 		}
-		return changedFiles, nil
+	default:
+		// No action necessary
 	}
-	return changedfiles.ChangedFiles{}, nil
+	return changedFiles, nil
 }
 
 // getObject Get an object from a repository.

@@ -13,6 +13,7 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/formatting"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/kubeinteraction"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/matcher"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/opscomments"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
@@ -88,6 +89,15 @@ func (p *PacRun) Run(ctx context.Context) error {
 	}
 	if repo.Spec.ConcurrencyLimit != nil && *repo.Spec.ConcurrencyLimit != 0 {
 		p.manager.Enable()
+	}
+
+	// Defensive skip-CI check: this is a safety net in case events bypass the early check in sinker.
+	// Primary skip detection happens in sinker.processEvent() for performance, but this ensures
+	// nothing slips through (e.g., tests that call Run() directly, or edge cases).
+	// Skip only for non-GitOps events (GitOps commands can override skip-CI).
+	if p.event.HasSkipCommand && !opscomments.IsAnyOpsEventType(p.event.EventType) {
+		p.logger.Infof("CI skipped: commit contains skip command in message (secondary check)")
+		return nil
 	}
 
 	// set params for the console driver, only used for the custom console ones
@@ -300,9 +310,11 @@ func (p *PacRun) startPR(ctx context.Context, match matcher.Match) (*tektonv1.Pi
 	if len(patchAnnotations) > 0 || len(patchLabels) > 0 {
 		pr, err = action.PatchPipelineRun(ctx, p.logger, whatPatching, p.run.Clients.Tekton, pr, getMergePatch(patchAnnotations, patchLabels))
 		if err != nil {
-			// we still return the created PR with error, and allow caller to decide what to do with the PR, and avoid
-			// unneeded SIGSEGV's
-			return pr, fmt.Errorf("cannot patch pipelinerun %s: %w", pr.GetGenerateName(), err)
+			// if PipelineRun patch is failed then do not return error, just log the error
+			// because its a false negative and on startPR return a failed check is being created
+			// due to this.
+			p.logger.Errorf("cannot patch pipelinerun %s: %w", pr.GetGenerateName(), err)
+			return pr, nil
 		}
 		currentReason := ""
 		if len(pr.Status.GetConditions()) > 0 {
