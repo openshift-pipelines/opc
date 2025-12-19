@@ -109,7 +109,7 @@ func (v *Provider) CreateStatus(_ context.Context, event *info.Event, statusopts
 	}
 
 	cso := &bitbucket.CommitStatusOptions{
-		Key:         v.pacInfo.ApplicationName,
+		Key:         provider.GetCheckName(statusopts, v.pacInfo),
 		Url:         detailsURL,
 		State:       statusopts.Conclusion,
 		Description: statusopts.Title,
@@ -262,6 +262,7 @@ func (v *Provider) GetCommitInfo(_ context.Context, event *info.Event) error {
 	}
 	// Note: Bitbucket Cloud API doesn't provide author email or timestamps in the basic commit response
 
+	event.HasSkipCommand = provider.SkipCI(commitinfo.Message)
 	// now to get the default branch from repository.Get
 	repo, err := v.Client().Repositories.Repository.Get(&bitbucket.RepositoryOptions{
 		Owner:    event.Organization,
