@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"time"
 
+	"go.opentelemetry.io/otel/trace"
 	"gocloud.dev/docstore/driver"
 	"gocloud.dev/internal/gcerr"
 )
@@ -38,7 +39,7 @@ func (c *Collection) Query() *Query {
 
 // Where expresses a condition on the query.
 // Valid ops are: "=", ">", "<", ">=", "<=, "in", "not-in".
-// Valid values are strings, integers, floating-point numbers, and time.Time values.
+// Valid values are strings, integers, floating-point numbers, time.Time and boolean (only for "=", "in" and "not-in") values.
 func (q *Query) Where(fp FieldPath, op string, value interface{}) *Query {
 	if q.err != nil {
 		return q
@@ -66,13 +67,23 @@ func (q *Query) Where(fp FieldPath, op string, value interface{}) *Query {
 type valueValidator func(interface{}) bool
 
 var validOp = map[string]valueValidator{
-	"=":      validFilterValue,
+	"=":      validEqualValue,
 	">":      validFilterValue,
 	"<":      validFilterValue,
 	">=":     validFilterValue,
 	"<=":     validFilterValue,
 	"in":     validFilterSlice,
 	"not-in": validFilterSlice,
+}
+
+func validEqualValue(v interface{}) bool {
+	if v == nil {
+		return false
+	}
+	if reflect.TypeOf(v).Kind() == reflect.Bool {
+		return true
+	}
+	return validFilterValue(v)
 }
 
 func validFilterValue(v interface{}) bool {
@@ -102,7 +113,7 @@ func validFilterSlice(v interface{}) bool {
 	}
 	vv := reflect.ValueOf(v)
 	for i := 0; i < vv.Len(); i++ {
-		if !validFilterValue(vv.Index(i).Interface()) {
+		if !validEqualValue(vv.Index(i).Interface()) {
 			return false
 		}
 	}
@@ -194,17 +205,21 @@ func (q *Query) Get(ctx context.Context, fps ...FieldPath) *DocumentIterator {
 	return q.get(ctx, true, fps...)
 }
 
-// get implements Get, with optional OpenCensus tracing so it can be used internally.
-func (q *Query) get(ctx context.Context, oc bool, fps ...FieldPath) *DocumentIterator {
+// get implements Get, with optional OpenTelemetry tracing so it can be used internally.
+func (q *Query) get(ctx context.Context, withTracing bool, fps ...FieldPath) *DocumentIterator {
 	dcoll := q.coll.driver
 	if err := q.initGet(fps); err != nil {
 		return &DocumentIterator{err: wrapError(dcoll, err)}
 	}
 
 	var err error
-	if oc {
-		ctx = q.coll.tracer.Start(ctx, "Query.Get")
-		defer func() { q.coll.tracer.End(ctx, err) }()
+
+	if withTracing {
+		var span trace.Span
+		ctx, span = q.coll.tracer.Start(ctx, "Query.Get")
+		defer func() {
+			q.coll.tracer.End(ctx, span, err)
+		}()
 	}
 	it, err := dcoll.RunGetQuery(ctx, q.dq)
 	return &DocumentIterator{iter: it, coll: q.coll, err: wrapError(dcoll, err)}

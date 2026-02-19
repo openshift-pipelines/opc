@@ -136,7 +136,9 @@ const Scheme = "kafka"
 // URLOpener opens Kafka URLs like "kafka://mytopic" for topics and
 // "kafka://group?topic=mytopic" for subscriptions.
 //
-// For topics, the URL's host+path is used as the topic name.
+// For topics, the URL's host+path is used as the topic name,
+// and the "key_name" query parameter is used to extract the routing key
+// from metadata.
 //
 // For subscriptions, the URL's host+path is used as the group name,
 // and the "topic" query parameter(s) are used as the set of topics to
@@ -159,9 +161,19 @@ type URLOpener struct {
 
 // OpenTopicURL opens a pubsub.Topic based on u.
 func (o *URLOpener) OpenTopicURL(ctx context.Context, u *url.URL) (*pubsub.Topic, error) {
-	for param := range u.Query() {
-		return nil, fmt.Errorf("open topic %v: invalid query parameter %q", u, param)
+	for param, value := range u.Query() {
+		switch param {
+		case "key_name":
+			if len(value) != 1 || len(value[0]) == 0 {
+				return nil, fmt.Errorf("open topic %v: invalid query parameter %q", u, param)
+			}
+
+			o.TopicOptions.KeyName = value[0]
+		default:
+			return nil, fmt.Errorf("open topic %v: invalid query parameter %q", u, param)
+		}
 	}
+
 	topicName := path.Join(u.Host, u.Path)
 	return OpenTopic(o.Brokers, o.Config, topicName, &o.TopicOptions)
 }
@@ -274,7 +286,7 @@ func (t *topic) SendBatch(ctx context.Context, dms []*driver.Message) error {
 			Headers: headers,
 		}
 		if dm.BeforeSend != nil {
-			asFunc := func(i interface{}) bool {
+			asFunc := func(i any) bool {
 				if p, ok := i.(**sarama.ProducerMessage); ok {
 					*p = pm
 					return true
@@ -294,7 +306,7 @@ func (t *topic) SendBatch(ctx context.Context, dms []*driver.Message) error {
 	}
 	for _, dm := range dms {
 		if dm.AfterSend != nil {
-			asFunc := func(i interface{}) bool { return false }
+			asFunc := func(i any) bool { return false }
 			if err := dm.AfterSend(asFunc); err != nil {
 				return err
 			}
@@ -314,7 +326,7 @@ func (t *topic) IsRetryable(error) bool {
 }
 
 // As implements driver.Topic.As.
-func (t *topic) As(i interface{}) bool {
+func (t *topic) As(i any) bool {
 	if p, ok := i.(*sarama.SyncProducer); ok {
 		*p = t.producer
 		return true
@@ -323,7 +335,7 @@ func (t *topic) As(i interface{}) bool {
 }
 
 // ErrorAs implements driver.Topic.ErrorAs.
-func (t *topic) ErrorAs(err error, i interface{}) bool {
+func (t *topic) ErrorAs(err error, i any) bool {
 	return errorAs(err, i)
 }
 
@@ -569,7 +581,7 @@ func (s *subscription) ReceiveBatch(ctx context.Context, maxMessages int) ([]*dr
 			Body:       msg.Value,
 			Metadata:   md,
 			AckID:      ack,
-			AsFunc: func(i interface{}) bool {
+			AsFunc: func(i any) bool {
 				if p, ok := i.(**sarama.ConsumerMessage); ok {
 					*p = msg
 					return true
@@ -634,7 +646,7 @@ func (*subscription) IsRetryable(error) bool {
 }
 
 // As implements driver.Subscription.As.
-func (s *subscription) As(i interface{}) bool {
+func (s *subscription) As(i any) bool {
 	if p, ok := i.(*sarama.ConsumerGroup); ok {
 		*p = s.consumerGroup
 		return true
@@ -649,7 +661,7 @@ func (s *subscription) As(i interface{}) bool {
 }
 
 // ErrorAs implements driver.Subscription.ErrorAs.
-func (s *subscription) ErrorAs(err error, i interface{}) bool {
+func (s *subscription) ErrorAs(err error, i any) bool {
 	return errorAs(err, i)
 }
 
@@ -658,7 +670,7 @@ func (*subscription) ErrorCode(err error) gcerrors.ErrorCode {
 	return errorCode(err)
 }
 
-func errorAs(err error, i interface{}) bool {
+func errorAs(err error, i any) bool {
 	switch terr := err.(type) {
 	case sarama.ConsumerError:
 		if p, ok := i.(*sarama.ConsumerError); ok {

@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -80,7 +81,7 @@ func (dd *debugDoer) Do(req *http.Request) (*http.Response, error) {
 
 	respb, err := io.ReadAll(resp.Body)
 	if err != nil {
-		respb = []byte(fmt.Sprintf("!!failed to read response: %s", err))
+		respb = fmt.Appendf(nil, "!!failed to read response: %s", err)
 	}
 	resp.Body = io.NopCloser(bytes.NewBuffer(respb))
 
@@ -100,7 +101,7 @@ func (dd *debugDoer) Fprint(w io.Writer) {
 		return
 	}
 	buf := &bytes.Buffer{}
-	buf.WriteString(fmt.Sprintf("> %s %s", dd.Request.Method, dd.Request.URL.String())) // nolint: errcheck
+	fmt.Fprintf(buf, "> %s %s", dd.Request.Method, dd.Request.URL.String())
 
 	keys := make([]string, len(dd.Request.Header))
 	i := 0
@@ -110,7 +111,7 @@ func (dd *debugDoer) Fprint(w io.Writer) {
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		buf.WriteString(fmt.Sprintf("\n> %s: %s", k, strings.Join(dd.Request.Header[k], ", "))) // nolint: errcheck
+		fmt.Fprintf(buf, "\n> %s: %s", k, strings.Join(dd.Request.Header[k], ", ")) // nolint: errcheck
 	}
 
 	b, _ := io.ReadAll(dd.Request.Body)
@@ -124,7 +125,7 @@ func (dd *debugDoer) Fprint(w io.Writer) {
 		w.Write(buf.Bytes()) // nolint: errcheck
 		return
 	}
-	buf.WriteString(fmt.Sprintf("\n< %s", dd.Response.Status))
+	fmt.Fprintf(buf, "\n< %s", dd.Response.Status)
 
 	keys = make([]string, len(dd.Response.Header))
 	i = 0
@@ -134,7 +135,7 @@ func (dd *debugDoer) Fprint(w io.Writer) {
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		buf.WriteString(fmt.Sprintf("\n< %s: %s", k, strings.Join(dd.Response.Header[k], ", "))) // nolint: errcheck
+		fmt.Fprintf(buf, "\n< %s: %s", k, strings.Join(dd.Response.Header[k], ", ")) // nolint: errcheck
 	}
 
 	rb, _ := io.ReadAll(dd.Response.Body) // this is reading from a memory buffer so safe to ignore errors
@@ -216,7 +217,8 @@ func ErrInvalidResponse(svc, m string, code int, body string) error {
 func ErrRequestError(svc, m string, err error) error {
 	temporary := false
 	timeout := false
-	if nerr, ok := err.(net.Error); ok {
+	var nerr net.Error
+	if errors.As(err, &nerr) {
 		timeout = nerr.Timeout()
 	}
 	return &ClientError{Name: "request_error", Message: err.Error(), Service: svc, Method: m,
