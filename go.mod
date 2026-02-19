@@ -14,7 +14,7 @@ replace (
 	k8s.io/api => k8s.io/api v0.30.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.30.0
 	k8s.io/client-go => k8s.io/client-go v0.30.0
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20250627000000-e9823e99808e
 )
 
 require (
