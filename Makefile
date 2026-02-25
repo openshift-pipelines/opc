@@ -5,7 +5,7 @@ MAG_VERSION := $(shell sed -n '/[ ]*github.com\/openshift-pipelines\/manual-appr
 
 GO := go
 GOVERSION := 1.22
-OPC_VERSION := devel
+OPC_VERSION := 1.15.4
 BINARYNAME := opc
 GOLANGCI_LINT := golangci-lint
 
