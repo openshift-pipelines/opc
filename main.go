@@ -104,6 +104,7 @@ func main() {
 		}
 
 		// if we have found the plugin then sysexec it by replacing current process.
+		// #nosec G702 -- exCmd is validated by plugins.FindPlugin before use
 		if err := syscall.Exec(exCmd, append([]string{exCmd}, os.Args[2:]...), os.Environ()); err != nil {
 			fmt.Fprintf(os.Stderr, "Command finished with error: %v", err)
 			os.Exit(127)

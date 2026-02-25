@@ -11,16 +11,16 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
-      == "main" &&
+      == "release-v1.22.x" &&
       ("***".pathChanged() ||
       ".konflux/dockerfiles/opc.Dockerfile".pathChanged() ||
-      ".tekton/opc-1-20-opc-pull-request.yaml".pathChanged())
+      ".tekton/opc-1-22-opc-pull-request.yaml".pathChanged())
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: openshift-pipelines-cli-1-20
-    appstudio.openshift.io/component: opc-1-20-opc
+    appstudio.openshift.io/application: openshift-pipelines-cli-1-22
+    appstudio.openshift.io/component: opc-1-22-opc
     pipelines.appstudio.openshift.io/type: build
-  name: opc-1-20-opc-on-pull-request
+  name: opc-1-22-opc-on-pull-request
   namespace: tekton-ecosystem-tenant
 spec:
   params:
@@ -29,7 +29,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/1-20/opc-rhel9:on-pr-{{revision}}
+    value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/1-22/opc-rhel9:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
   - name: dockerfile
@@ -43,7 +43,7 @@ spec:
   pipelineRef:
     name: docker-build-ta
   taskRunTemplate:
-    serviceAccountName: build-pipeline-opc-1-20-opc
+    serviceAccountName: build-pipeline-opc-1-22-opc
   workspaces:
   - name: git-auth
     secret:
