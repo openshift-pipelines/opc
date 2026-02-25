@@ -2,6 +2,7 @@ package settings
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -18,8 +19,6 @@ const (
 	HubURLKey                          = "hub-url"
 	HubCatalogNameKey                  = "hub-catalog-name"
 	HubCatalogTypeKey                  = "hub-catalog-type"
-	TektonHubURLDefaultValue           = "https://api.hub.tekton.dev/v1"
-	TektonHubCatalogNameDefaultValue   = "tekton"
 	ArtifactHubCatalogNameDefaultValue = "artifacthub"
 	ArtifactHubURLDefaultValue         = "https://artifacthub.io/api/v1"
 
@@ -114,8 +113,8 @@ func DefaultValidators() map[string]func(string) error {
 	}
 }
 
-func SyncConfig(logger *zap.SugaredLogger, setting *Settings, config map[string]string, validators map[string]func(string) error) error {
-	setting.HubCatalogs = getHubCatalogs(logger, setting.HubCatalogs, config)
+func SyncConfig(logger *zap.SugaredLogger, setting *Settings, config map[string]string, validators map[string]func(string) error, httpClient *http.Client) error {
+	setting.HubCatalogs = getHubCatalogs(logger, setting.HubCatalogs, config, httpClient)
 
 	err := configutil.ValidateAndAssignValues(logger, config, setting, validators, true)
 	if err != nil {

@@ -89,7 +89,7 @@ func Update(gr schema.GroupVersionResource, c *cli.Clients, opts *cli.Options) e
 	}
 
 	if !containsUsername(at.Spec.Approvers, opts) {
-		return fmt.Errorf("Approver: %s, is not present in the approvers list", opts.Username)
+		return fmt.Errorf("approver: %s, is not present in the approvers list", opts.Username)
 	}
 
 	if err := update(gvr, c.Dynamic, at, opts); err != nil {
@@ -100,51 +100,57 @@ func Update(gr schema.GroupVersionResource, c *cli.Clients, opts *cli.Options) e
 }
 
 func update(gvr *schema.GroupVersionResource, dynamic dynamic.Interface, at *v1alpha1.ApprovalTask, opts *cli.Options) error {
+	// Track if user has been processed as individual User type to avoid duplicate processing
+	userProcessedAsIndividual := false
+
+	// First pass: Process all User type approvers to ensure User type takes precedence
 	for i, approver := range at.Spec.Approvers {
-		switch v1alpha1.DefaultedApproverType(approver.Type) {
-		case "User":
-			if approver.Name == opts.Username {
-				// return true
-				at.Spec.Approvers[i].Input = opts.Input
-				if opts.Message != "" {
-					at.Spec.Approvers[i].Message = opts.Message
-				}
+		if v1alpha1.DefaultedApproverType(approver.Type) == "User" && approver.Name == opts.Username {
+			at.Spec.Approvers[i].Input = opts.Input
+			if opts.Message != "" {
+				at.Spec.Approvers[i].Message = opts.Message
 			}
-		case "Group":
+			userProcessedAsIndividual = true
+		}
+	}
+
+	// Second pass: Process Group type approvers, but only add user to group if not already processed as individual
+	for i, approver := range at.Spec.Approvers {
+		if v1alpha1.DefaultedApproverType(approver.Type) == "Group" {
 			for _, groupName := range opts.Groups {
 				if approver.Name == groupName {
-					// return true
 					at.Spec.Approvers[i].Input = opts.Input
 					if opts.Message != "" {
 						at.Spec.Approvers[i].Message = opts.Message
 					}
 
-					userExists := false
+					// Only add user to group members if they haven't been processed as individual User
+					// This prevents duplicate entries when user is both individual approver and group member
+					if !userProcessedAsIndividual {
+						userExists := false
 
-					for j, existing := range at.Spec.Approvers[i].Users {
-						if existing.Name == opts.Username {
-							userExists = true
-							if existing.Input != opts.Input {
-								at.Spec.Approvers[i].Users[j].Input = opts.Input
+						for j, existing := range at.Spec.Approvers[i].Users {
+							if existing.Name == opts.Username {
+								userExists = true
+								if existing.Input != opts.Input {
+									at.Spec.Approvers[i].Users[j].Input = opts.Input
+								}
+								if existing.Message != opts.Message {
+									at.Spec.Approvers[i].Users[j].Message = opts.Message
+								}
+								break
 							}
-							break
 						}
-					}
-					if !userExists {
-						newUser := v1alpha1.UserDetails{
-							Name:  opts.Username,
-							Input: opts.Input,
+						if !userExists {
+							newUser := v1alpha1.UserDetails{
+								Name:  opts.Username,
+								Input: opts.Input,
+								Message: opts.Message,
+							}
+							at.Spec.Approvers[i].Users = append(at.Spec.Approvers[i].Users, newUser)
 						}
-						at.Spec.Approvers[i].Users = append(at.Spec.Approvers[i].Users, newUser)
 					}
 				}
-			}
-		}
-
-		if approver.Name == opts.Username {
-			at.Spec.Approvers[i].Input = opts.Input
-			if opts.Message != "" {
-				at.Spec.Approvers[i].Message = opts.Message
 			}
 		}
 	}

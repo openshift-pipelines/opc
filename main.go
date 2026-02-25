@@ -11,7 +11,7 @@ import (
 	opccli "github.com/openshift-pipelines/opc/pkg"
 	paccli "github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac"
-	pacversion "github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac/version"
+	pacversion "github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac/versioncmd"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	assistcli "github.com/openshift-pipelines/tekton-assist/pkg/cli"
 	"github.com/spf13/cobra"
