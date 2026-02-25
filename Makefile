@@ -5,8 +5,8 @@ MAG_VERSION := $(shell sed -n '/[ ]*github.com\/openshift-pipelines\/manual-appr
 ASSIST_VERSION := $(shell sed -n '/[ ]*github.com\/openshift-pipelines\/tekton-assist v[0-9]*\.[0-9]*\.[0-9]*/ { s/.* v//;p ;}' go.mod)
 
 GO := go
-GOVERSION := 1.24
-OPC_VERSION := devel
+GOVERSION := 1.25
+OPC_VERSION := 1.22.0
 BINARYNAME := opc
 GOLANGCI_LINT := golangci-lint
 

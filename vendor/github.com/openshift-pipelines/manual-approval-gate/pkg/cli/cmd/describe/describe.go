@@ -33,14 +33,13 @@ var taskTemplate = `📦 Name:            {{ .ApprovalTask.Name }}
 👨‍💻 ApproverResponse
 
 Name	ApproverResponse	Message
+{{- $userGroups := userGroups .ApprovalTask.Status.ApproversResponse}}
+{{- range $user, $groups := $userGroups}}
+{{$user}}{{if gt (len $groups.Groups) 0}}({{$groups.GroupsStr}}){{end}}	{{response $groups.Response}}	{{message $groups.Message}}
+{{- end}}
 {{- range .ApprovalTask.Status.ApproversResponse}}
 {{- if eq .Type "User"}}
 {{.Name}}	{{response .Response}}	{{message .Message}}
-{{- else if eq .Type "Group"}}
-{{- $groupName := .Name}}
-{{- range .GroupMembers}}
-{{$groupName}}: {{.Name}}	{{response .Response}}	{{message .Message}}
-{{- end}}
 {{- end}}
 {{- end}}
 {{- end}}
@@ -100,6 +99,54 @@ func response(response string) string {
 	return "❌"
 }
 
+// UserGroupInfo holds information about a user's group memberships and responses
+type UserGroupInfo struct {
+	Groups    []string
+	GroupsStr string
+	Response  string
+	Message   string
+}
+
+// userGroups processes ApproversResponse to group users by name across multiple groups
+func userGroups(approversResponse []v1alpha1.ApproverState) map[string]UserGroupInfo {
+	userMap := make(map[string]UserGroupInfo)
+	
+	// Process group members
+	for _, approver := range approversResponse {
+		if approver.Type == "Group" {
+			for _, member := range approver.GroupMembers {
+				if existing, exists := userMap[member.Name]; exists {
+					// User already exists, add this group to their list
+					existing.Groups = append(existing.Groups, approver.Name)
+					userMap[member.Name] = existing
+				} else {
+					// New user, create entry
+					userMap[member.Name] = UserGroupInfo{
+						Groups:   []string{approver.Name},
+						Response: member.Response,
+						Message:  member.Message,
+					}
+				}
+			}
+		}
+	}
+	
+	// Create comma-separated group strings
+	for userName, info := range userMap {
+		groupsStr := ""
+		for i, group := range info.Groups {
+			if i > 0 {
+				groupsStr += ", "
+			}
+			groupsStr += group
+		}
+		info.GroupsStr = groupsStr
+		userMap[userName] = info
+	}
+	
+	return userMap
+}
+
 func Command(p cli.Params) *cobra.Command {
 	opts := &cli.Options{}
 
@@ -109,6 +156,7 @@ func Command(p cli.Params) *cobra.Command {
 		"message":          message,
 		"response":         response,
 		"state":            formatter.State,
+		"userGroups":       userGroups,
 	}
 
 	c := &cobra.Command{
