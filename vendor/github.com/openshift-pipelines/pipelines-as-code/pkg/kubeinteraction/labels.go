@@ -10,7 +10,7 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/formatting"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
-	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/version"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/versiondata"
 	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 )
 
@@ -32,7 +32,7 @@ func AddLabelsAndAnnotations(event *info.Event, pipelineRun *tektonv1.PipelineRu
 		// These keys are used in LabelSelector query, so we are keeping in Labels as it is.
 		// But adding same keys to Annotations so UI/CLI can fetch the actual value instead of modified value
 		"app.kubernetes.io/managed-by": pipelinesascode.GroupName,
-		"app.kubernetes.io/version":    formatting.CleanValueKubernetes(version.Version),
+		"app.kubernetes.io/version":    formatting.CleanValueKubernetes(versiondata.Version),
 		keys.URLOrg:                    formatting.CleanValueKubernetes(event.Organization),
 		keys.URLRepository:             formatting.CleanValueKubernetes(event.Repository),
 		keys.SHA:                       formatting.CleanValueKubernetes(event.SHA),
@@ -76,10 +76,10 @@ func AddLabelsAndAnnotations(event *info.Event, pipelineRun *tektonv1.PipelineRu
 
 	// GitLab
 	if event.SourceProjectID != 0 {
-		annotations[keys.SourceProjectID] = strconv.Itoa(event.SourceProjectID)
+		annotations[keys.SourceProjectID] = strconv.Itoa(int(event.SourceProjectID))
 	}
 	if event.TargetProjectID != 0 {
-		annotations[keys.TargetProjectID] = strconv.Itoa(event.TargetProjectID)
+		annotations[keys.TargetProjectID] = strconv.Itoa(int(event.TargetProjectID))
 	}
 
 	if value, ok := pipelineRun.GetObjectMeta().GetAnnotations()[keys.CancelInProgress]; ok {

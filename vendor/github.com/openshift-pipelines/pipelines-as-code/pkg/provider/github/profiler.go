@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/go-github/v74/github"
-	providerMetrics "github.com/openshift-pipelines/pipelines-as-code/pkg/provider/metrics"
+	"github.com/google/go-github/v81/github"
+	providerMetrics "github.com/openshift-pipelines/pipelines-as-code/pkg/provider/providermetrics"
 )
 
 const (
