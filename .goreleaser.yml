@@ -35,7 +35,12 @@ checksum:
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
-  skip: true
+  sort: asc
+  use: github
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
 
 brews:
   - name: opc
