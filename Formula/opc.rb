@@ -5,12 +5,12 @@
 class Opc < Formula
   desc "A CLI for OpenShift Pipeline"
   homepage "https://github.com/openshift-pipelines/opc"
-  version "1.20.3"
+  version "1.21.0"
 
   on_macos do
     if Hardware::CPU.intel?
-      url "https://github.com/openshift-pipelines/opc/releases/download/v1.20.3/opc_1.20.3_darwin_x86_64.tar.gz"
-      sha256 "436d0a1fd984be81f0036333278da5a74e44f4b78577b317c76f1b7a826bf121"
+      url "https://github.com/openshift-pipelines/opc/releases/download/v1.21.0/opc_1.21.0_darwin_x86_64.tar.gz"
+      sha256 "1d94bca4d2589acb4332cf7edb6036ed475b986aeb2d6573b469722937ea3cdc"
 
       define_method(:install) do
         bin.install "opc" => "opc"
@@ -22,8 +22,8 @@ class Opc < Formula
       end
     end
     if Hardware::CPU.arm?
-      url "https://github.com/openshift-pipelines/opc/releases/download/v1.20.3/opc_1.20.3_darwin_arm64.tar.gz"
-      sha256 "4579805e1d517d79ef885481af34ea72b71e347680955926f0aa1a2cee4e05a6"
+      url "https://github.com/openshift-pipelines/opc/releases/download/v1.21.0/opc_1.21.0_darwin_arm64.tar.gz"
+      sha256 "34832411a17fcedae0c3b3ad323c2facec08a5e9ed2fccd917f60491840401d2"
 
       define_method(:install) do
         bin.install "opc" => "opc"
@@ -38,8 +38,8 @@ class Opc < Formula
 
   on_linux do
     if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
-      url "https://github.com/openshift-pipelines/opc/releases/download/v1.20.3/opc_1.20.3_linux_x86_64.tar.gz"
-      sha256 "657285f3ea0a1ca4c8a8eb678366e4a1aa14091480251bd3515123f5998b229f"
+      url "https://github.com/openshift-pipelines/opc/releases/download/v1.21.0/opc_1.21.0_linux_x86_64.tar.gz"
+      sha256 "f784e8b625bb3d2a554f9c1fb7268547bc99f83ac8a55a33a307c9ce898f39f9"
       define_method(:install) do
         bin.install "opc" => "opc"
         output = Utils.popen_read("SHELL=bash #{bin}/opc completion bash")
@@ -50,8 +50,8 @@ class Opc < Formula
       end
     end
     if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
-      url "https://github.com/openshift-pipelines/opc/releases/download/v1.20.3/opc_1.20.3_linux_arm64.tar.gz"
-      sha256 "a8a4ce29e27c77538eb791a4337e50b5285573c55f33a2bfce9cc2a9c8dc98be"
+      url "https://github.com/openshift-pipelines/opc/releases/download/v1.21.0/opc_1.21.0_linux_arm64.tar.gz"
+      sha256 "0a5bc7a97403d20f54281c8cd3e18d46c487d1e8be6765146185c876676006c5"
       define_method(:install) do
         bin.install "opc" => "opc"
         output = Utils.popen_read("SHELL=bash #{bin}/opc completion bash")
