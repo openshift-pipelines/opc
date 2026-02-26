@@ -27,9 +27,6 @@ archives:
     {{- .Os }}_
     {{- if eq .Arch "amd64" }}x86_64
     {{- else if eq .Arch "386" }}i386
-    {{- else if eq .Arch "darwin" }}MacOS
-    {{- else if eq .Arch "linux" }}Linux
-    {{- else if eq .Arch "windows" }}Windows
     {{- else }}{{ .Arch }}{{ end }}
     {{- if .Arm }}v{{ .Arm }}{{ end -}}
     {{- if .Mips }}_{{ .Mips }}{{ end -}}
@@ -38,12 +35,7 @@ checksum:
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
-  sort: asc
-  use: github
-  filters:
-    exclude:
-    - '^docs:'
-    - '^test:'
+  skip: true
 
 brews:
   - name: opc
