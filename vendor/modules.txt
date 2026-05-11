@@ -192,6 +192,9 @@ github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapp
 # github.com/IBM/sarama v1.45.2
 ## explicit; go 1.23.0
 github.com/IBM/sarama
+# github.com/Masterminds/semver/v3 v3.4.0
+## explicit; go 1.21
+github.com/Masterminds/semver/v3
 # github.com/Microsoft/go-winio v0.6.2
 ## explicit; go 1.21
 github.com/Microsoft/go-winio
@@ -1686,8 +1689,8 @@ github.com/tektoncd/cli/pkg/triggertemplate
 github.com/tektoncd/cli/pkg/trustedresources
 github.com/tektoncd/cli/pkg/version
 github.com/tektoncd/cli/pkg/workspaces
-# github.com/tektoncd/hub v1.22.2
-## explicit; go 1.23.0
+# github.com/tektoncd/hub v1.22.12 => github.com/openshift-pipelines/hub v1.22.12
+## explicit; go 1.24.0
 github.com/tektoncd/hub/api/pkg/cli/app
 github.com/tektoncd/hub/api/pkg/cli/cmd
 github.com/tektoncd/hub/api/pkg/cli/cmd/check_upgrade
@@ -3019,6 +3022,7 @@ sigs.k8s.io/yaml/goyaml.v2
 # github.com/go-jose/go-jose/v4 => github.com/go-jose/go-jose/v4 v4.0.5
 # github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.9
 # github.com/imdario/mergo => github.com/imdario/mergo v0.3.16
+# github.com/tektoncd/hub => github.com/openshift-pipelines/hub v1.22.12
 # google.golang.org/grpc/stats/opentelemetry => google.golang.org/grpc v1.70.0
 # k8s.io/api => k8s.io/api v0.32.4
 # k8s.io/apimachinery => k8s.io/apimachinery v0.32.4
