@@ -8,6 +8,7 @@ GOVERSION := 1.22
 OPC_VERSION := 1.20.3
 BINARYNAME := opc
 GOLANGCI_LINT := golangci-lint
+export GOTOOLCHAIN=auto
 
 FLAGS := -ldflags "-X github.com/tektoncd/cli/pkg/cmd/version.clientVersion=$(TKN_VERSION) \
 		   -X github.com/openshift-pipelines/pipelines-as-code/pkg/params/version.Version=$(PAC_VERSION) \
