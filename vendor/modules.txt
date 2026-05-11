@@ -1637,8 +1637,8 @@ github.com/tektoncd/chains/pkg/chains/storage/tekton
 github.com/tektoncd/chains/pkg/config
 github.com/tektoncd/chains/pkg/metrics
 github.com/tektoncd/chains/pkg/patch
-# github.com/tektoncd/cli v0.42.1
-## explicit; go 1.25.5
+# github.com/tektoncd/cli v0.42.2
+## explicit; go 1.25.9
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/bundle
 github.com/tektoncd/cli/pkg/chain
