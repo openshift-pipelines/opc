@@ -832,6 +832,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
+github.com/openshift-pipelines/hub v1.23.10 h1:mOVwjKWtZcULtiywYJqAxbRQcAcAkU1fr9g+gYbUoiw=
+github.com/openshift-pipelines/hub v1.23.10/go.mod h1:bJPacGvzQQm4FQUaImoO55Y1El69axoOFsKdn7LL++Q=
 github.com/openshift-pipelines/manual-approval-gate v0.8.0 h1:GCRa2dxqw3nJveAhByBknz9jajAx/cz7+mPmRW/9Y64=
 github.com/openshift-pipelines/manual-approval-gate v0.8.0/go.mod h1:2Qp7sSrb3d9SDC8n9b43KrHw2T7RD/BGpm3TQlfIwOI=
 github.com/openshift-pipelines/pipelines-as-code v0.42.0 h1:2VmvFso+tA+301Uxv0guoYTDv4KJ/FedY2dwSvdJFBU=
@@ -993,8 +995,6 @@ github.com/tektoncd/chains v0.26.2 h1:Y1D79P14EXKRzF1zzR5jDQPm2QvwjtowzdrqW7kgps
 github.com/tektoncd/chains v0.26.2/go.mod h1:W/XPUAuxOI3pm++wKgXI7MW+NB5NSATal0GkuMSkKL0=
 github.com/tektoncd/cli v0.44.1 h1:UMI2xFt7MLTJdLuopzjAUTon8b1Ni4qbyboi2b4KWmQ=
 github.com/tektoncd/cli v0.44.1/go.mod h1:q8IZV/HuGh/D4kbID0YVTfqkbV7dMX+T687I/hPIBL8=
-github.com/tektoncd/hub v1.23.6 h1:cduhbCJkwNDjAeiZf5iXyM8HpPsS18bJtjrc829+xrw=
-github.com/tektoncd/hub v1.23.6/go.mod h1:avuMaqxKD3ihAOT6ttocG6DvHC3HxSWSalBm7p1dXKc=
 github.com/tektoncd/pipeline v1.9.2 h1:uKEt6CGLmkeKLdKIZnel0gn8lfQ1P7+398yystdBuHU=
 github.com/tektoncd/pipeline v1.9.2/go.mod h1:PTlIZ4Mhr8HZDx404O7spJtafiynetTMedCsXStjtHk=
 github.com/tektoncd/results v0.18.0 h1:H6Vgdob7NhrRG3j/y4kXZWrvVgBcKdXi0Nfj3TBfoSo=

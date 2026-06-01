@@ -1,6 +1,6 @@
 module github.com/openshift-pipelines/opc
 
-go 1.25.6
+go 1.25.8
 
 require (
 	github.com/openshift-pipelines/manual-approval-gate v0.8.0
@@ -15,6 +15,7 @@ replace (
 	github.com/go-jose/go-jose/v4 => github.com/go-jose/go-jose/v4 v4.0.5
 	github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.9
 	github.com/imdario/mergo => github.com/imdario/mergo v0.3.16
+	github.com/tektoncd/hub => github.com/openshift-pipelines/hub v1.23.10
 	gocloud.dev => gocloud.dev v0.40.0
 	gocloud.dev/docstore/mongodocstore => gocloud.dev/docstore/mongodocstore v0.40.0
 	gocloud.dev/pubsub/kafkapubsub => gocloud.dev/pubsub/kafkapubsub v0.40.0
