@@ -834,8 +834,8 @@ github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJw
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
 github.com/openshift-pipelines/manual-approval-gate v0.8.0 h1:GCRa2dxqw3nJveAhByBknz9jajAx/cz7+mPmRW/9Y64=
 github.com/openshift-pipelines/manual-approval-gate v0.8.0/go.mod h1:2Qp7sSrb3d9SDC8n9b43KrHw2T7RD/BGpm3TQlfIwOI=
-github.com/openshift-pipelines/pipelines-as-code v0.42.1 h1:+6o86XxHppiWQ6I8eqpTo2AEKPztf/PGHlExA9ArlpA=
-github.com/openshift-pipelines/pipelines-as-code v0.42.1/go.mod h1:jc0edr8Ha0qAmFMmpfGknmasVkNVY1oteV/RtGY/w8E=
+github.com/openshift-pipelines/pipelines-as-code v0.42.2 h1:jKI9WVUEJVsRxiGZhCcDZzlZBM9ZfAmO0ZnYNDDS+a4=
+github.com/openshift-pipelines/pipelines-as-code v0.42.2/go.mod h1:+k1bnyV9qwL67n6XerumQImlPsFU2aj24tBFv8XZoyA=
 github.com/openshift-pipelines/tekton-assist v0.1.1 h1:v7UGX2irYFYq+crm1TF+HeBUhOT9s9j0TgebKBCEJ8s=
 github.com/openshift-pipelines/tekton-assist v0.1.1/go.mod h1:nfEwTUlswnXh0bKGriSJBisoh9cHk119diAQExJatyU=
 github.com/openshift/api v0.0.0-20250414140316-b7680e188c5e h1:knmBEwTQ//pHhX7KxflegQwvlXfGf50nh5wdpJh9tq8=
