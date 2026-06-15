@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/go-github/v81/github"
+	"github.com/google/go-github/v85/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider/bitbucketcloud/types"
@@ -558,8 +558,40 @@ func (p *BitbucketDataCenterParser) PopulateEvent(event *info.Event, parsedEvent
 
 type GiteaParser struct{}
 
+func populateGiteaPullRequestFields(event *info.Event, pr *forgejostructs.PullRequest) {
+	if pr == nil {
+		return
+	}
+
+	event.PullRequestTitle = pr.Title
+	if pr.Head != nil {
+		event.SHA = pr.Head.Sha
+		if pr.HTMLURL != "" && pr.Head.Sha != "" {
+			event.SHAURL = fmt.Sprintf("%s/commit/%s", pr.HTMLURL, pr.Head.Sha)
+		}
+		event.HeadBranch = pr.Head.Ref
+		if pr.Head.Repository != nil {
+			event.HeadURL = pr.Head.Repository.HTMLURL
+		}
+	}
+	if pr.Base != nil {
+		event.BaseBranch = pr.Base.Ref
+		if pr.Base.Repository != nil {
+			event.BaseURL = pr.Base.Repository.HTMLURL
+		}
+	}
+}
+
 func (p *GiteaParser) GetEventTypeHeader() string {
 	return "X-Gitea-Event-Type"
+}
+
+type ForgejoParser struct {
+	GiteaParser
+}
+
+func (p *ForgejoParser) GetEventTypeHeader() string {
+	return "X-Forgejo-Event-Type"
 }
 
 func (p *GiteaParser) ParsePayload(eventType string, body []byte) (any, error) {
@@ -598,24 +630,8 @@ func (p *GiteaParser) PopulateEvent(event *info.Event, parsedEvent any) error {
 			event.Sender = gitEvent.Sender.UserName
 		}
 		if gitEvent.PullRequest != nil {
-			if gitEvent.PullRequest.Head != nil {
-				event.SHA = gitEvent.PullRequest.Head.Sha
-				if gitEvent.PullRequest.HTMLURL != "" && gitEvent.PullRequest.Head.Sha != "" {
-					event.SHAURL = fmt.Sprintf("%s/commit/%s", gitEvent.PullRequest.HTMLURL, gitEvent.PullRequest.Head.Sha)
-				}
-				event.HeadBranch = gitEvent.PullRequest.Head.Ref
-				if gitEvent.PullRequest.Head.Repository != nil {
-					event.HeadURL = gitEvent.PullRequest.Head.Repository.HTMLURL
-				}
-			}
-			if gitEvent.PullRequest.Base != nil {
-				event.BaseBranch = gitEvent.PullRequest.Base.Ref
-				if gitEvent.PullRequest.Base.Repository != nil {
-					event.BaseURL = gitEvent.PullRequest.Base.Repository.HTMLURL
-				}
-			}
+			populateGiteaPullRequestFields(event, gitEvent.PullRequest)
 			event.PullRequestNumber = int(gitEvent.Index)
-			event.PullRequestTitle = gitEvent.PullRequest.Title
 			for _, label := range gitEvent.PullRequest.Labels {
 				if label != nil {
 					event.PullRequestLabel = append(event.PullRequestLabel, label.Name)
@@ -674,6 +690,10 @@ func (p *GiteaParser) PopulateEvent(event *info.Event, parsedEvent any) error {
 			event.TriggerComment = gitEvent.Comment.Body
 		}
 		event.PullRequestNumber = extractPullRequestNumber(issue.URL)
+		populateGiteaPullRequestFields(event, gitEvent.PullRequest)
+		if event.PullRequestNumber == 0 && gitEvent.PullRequest != nil {
+			event.PullRequestNumber = int(gitEvent.PullRequest.Index)
+		}
 	default:
 		return fmt.Errorf("unsupported Gitea event type: %T", gitEvent)
 	}

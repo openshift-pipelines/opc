@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	"github.com/google/go-github/scrape"
-	"github.com/google/go-github/v81/github"
+	githubv84 "github.com/google/go-github/v84/github"
+	"github.com/google/go-github/v85/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
 )
 
@@ -26,13 +27,13 @@ func generateManifest(opts *bootstrapOpts) ([]byte, error) {
 			triggertype.PullRequest.String(),
 			"push",
 		},
-		DefaultPermissions: &github.InstallationPermissions{
-			Checks:       github.Ptr("write"),
-			Contents:     github.Ptr("write"),
-			Issues:       github.Ptr("write"),
-			Members:      github.Ptr("read"),
-			Metadata:     github.Ptr("read"),
-			PullRequests: github.Ptr("write"),
+		DefaultPermissions: &githubv84.InstallationPermissions{
+			Checks:       githubv84.Ptr("write"),
+			Contents:     githubv84.Ptr("write"),
+			Issues:       githubv84.Ptr("write"),
+			Members:      githubv84.Ptr("read"),
+			Metadata:     githubv84.Ptr("read"),
+			PullRequests: githubv84.Ptr("write"),
 		},
 	}
 	return json.Marshal(sc)

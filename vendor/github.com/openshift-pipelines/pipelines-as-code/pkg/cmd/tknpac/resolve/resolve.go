@@ -211,7 +211,7 @@ func resolveFilenames(ctx context.Context, cs *params.Run, filenames []string, p
 	if err != nil {
 		return "", err
 	}
-	prun, err := resolve.Resolve(ctx, cs, cs.Clients.Log, providerintf, types, event, ropt)
+	prun, _, err := resolve.Resolve(ctx, cs, cs.Clients.Log, providerintf, types, event, ropt)
 	if err != nil {
 		return "", err
 	}

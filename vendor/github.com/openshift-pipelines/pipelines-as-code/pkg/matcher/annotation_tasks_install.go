@@ -10,6 +10,7 @@ import (
 
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/hub"
+	hubtypes "github.com/openshift-pipelines/pipelines-as-code/pkg/hub/vars"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
@@ -26,14 +27,15 @@ const (
 )
 
 type RemoteTasks struct {
-	Run               *params.Run
-	ProviderInterface provider.Interface
-	Event             *info.Event
-	Logger            *zap.SugaredLogger
+	Run                    *params.Run
+	ProviderInterface      provider.Interface
+	Event                  *info.Event
+	Logger                 *zap.SugaredLogger
+	DeprecatedHubResources []string // tracks resources resolved from deprecated tektonhub catalogs
 }
 
 // nolint: dupl
-func (rt RemoteTasks) convertToPipeline(ctx context.Context, uri, data string) (*tektonv1.Pipeline, error) {
+func (rt *RemoteTasks) convertToPipeline(ctx context.Context, uri, data string) (*tektonv1.Pipeline, error) {
 	decoder := k8scheme.Codecs.UniversalDeserializer()
 	obj, _, err := decoder.Decode([]byte(data), nil, nil)
 	if err != nil {
@@ -68,7 +70,7 @@ func (rt RemoteTasks) convertToPipeline(ctx context.Context, uri, data string) (
 // nolint: dupl
 // golint has decided that this is a duplication with convertToPipeline but I swear it isn't - these two are different functions
 // and not even sure this is possible to do with generic complexity.
-func (rt RemoteTasks) convertTotask(ctx context.Context, uri, data string) (*tektonv1.Task, error) {
+func (rt *RemoteTasks) convertTotask(ctx context.Context, uri, data string) (*tektonv1.Task, error) {
 	decoder := k8scheme.Codecs.UniversalDeserializer()
 	obj, _, err := decoder.Decode([]byte(data), nil, nil)
 	if err != nil {
@@ -97,7 +99,7 @@ func (rt RemoteTasks) convertTotask(ctx context.Context, uri, data string) (*tek
 	return task, nil
 }
 
-func (rt RemoteTasks) getRemote(ctx context.Context, uri string, fromHub bool, kind string) (string, error) {
+func (rt *RemoteTasks) getRemote(ctx context.Context, uri string, fromHub bool, kind string) (string, error) {
 	rt.Logger.Debugf("getRemote: uri=%s kind=%s fromHub=%t", uri, kind, fromHub)
 	if fetchedFromURIFromProvider, task, err := rt.ProviderInterface.GetTaskURI(ctx, rt.Event, uri); fetchedFromURIFromProvider {
 		rt.Logger.Debugf("getRemote: fetched %s via provider hook for uri=%s", kind, uri)
@@ -132,6 +134,10 @@ func (rt RemoteTasks) getRemote(ctx context.Context, uri string, fromHub bool, k
 			return "", fmt.Errorf("could not get details for catalog name: %s", catalogID)
 		}
 		rt.Logger.Infof("successfully fetched %s %s from custom catalog Hub %s on URL %s", kind, uri, catalogID, catalogValue.URL)
+		if catalogValue.Type == hubtypes.TektonHubType {
+			rt.Logger.Warnf("Tekton Hub integration is deprecated and will be removed in a future release. Resource %s %s was fetched from Tekton Hub catalog %s. Please migrate to Artifact Hub or fetch tasks from a git repository. See https://pipelinesascode.com/docs/guides/pipeline-resolution/", kind, uri, catalogID)
+			rt.DeprecatedHubResources = append(rt.DeprecatedHubResources, fmt.Sprintf("%s %s (catalog: %s)", kind, uri, catalogID))
+		}
 		return data, nil
 	case strings.Contains(uri, "/"): // if it contains a slash, it is a file inside a repository
 		rt.Logger.Debugf("getRemote: fetching %s from repository path", kind)
@@ -166,6 +172,10 @@ func (rt RemoteTasks) getRemote(ctx context.Context, uri string, fromHub bool, k
 			return "", fmt.Errorf("could not get details for catalog name: %s", "default")
 		}
 		rt.Logger.Infof("successfully fetched %s %s from default configured catalog Hub on URL %s", uri, kind, catalogValue.URL)
+		if catalogValue.Type == hubtypes.TektonHubType {
+			rt.Logger.Warnf("Tekton Hub integration is deprecated and will be removed in a future release. Resource %s %s was fetched from the default Tekton Hub catalog. Please migrate to Artifact Hub or fetch tasks from a git repository. See https://pipelinesascode.com/docs/guides/pipeline-resolution/", kind, uri)
+			rt.DeprecatedHubResources = append(rt.DeprecatedHubResources, fmt.Sprintf("%s %s (default catalog)", kind, uri))
+		}
 		return data, nil
 	}
 	return "", fmt.Errorf(`cannot find "%s" anywhere`, uri)
@@ -205,7 +215,7 @@ func GrabPipelineFromAnnotations(annotations map[string]string) (string, error) 
 	return pipelinesAnnotation[0], nil
 }
 
-func (rt RemoteTasks) GetTaskFromAnnotationName(ctx context.Context, name string) (*tektonv1.Task, error) {
+func (rt *RemoteTasks) GetTaskFromAnnotationName(ctx context.Context, name string) (*tektonv1.Task, error) {
 	rt.Logger.Debugf("GetTaskFromAnnotationName: name=%s", name)
 	data, err := rt.getRemote(ctx, name, true, "task")
 	if err != nil {
@@ -222,7 +232,7 @@ func (rt RemoteTasks) GetTaskFromAnnotationName(ctx context.Context, name string
 	return task, nil
 }
 
-func (rt RemoteTasks) GetPipelineFromAnnotationName(ctx context.Context, name string) (*tektonv1.Pipeline, error) {
+func (rt *RemoteTasks) GetPipelineFromAnnotationName(ctx context.Context, name string) (*tektonv1.Pipeline, error) {
 	rt.Logger.Debugf("GetPipelineFromAnnotationName: name=%s", name)
 	data, err := rt.getRemote(ctx, name, true, "pipeline")
 	if err != nil {

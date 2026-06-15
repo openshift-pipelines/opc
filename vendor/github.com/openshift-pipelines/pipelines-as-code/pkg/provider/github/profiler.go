@@ -6,12 +6,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/go-github/v81/github"
+	"github.com/google/go-github/v85/github"
 	providerMetrics "github.com/openshift-pipelines/pipelines-as-code/pkg/provider/providermetrics"
+	"go.uber.org/zap"
 )
 
 const (
 	// Rate limit warning thresholds.
+	rateLimitExceeded = 0   // Error when remaining calls are 0
 	rateLimitCritical = 50  // Warn when remaining calls < 50
 	rateLimitWarning  = 100 // Warn when remaining calls < 100
 	rateLimitInfo     = 500 // Info when remaining calls < 500
@@ -69,6 +71,13 @@ func (v *Provider) checkRateLimit(resp *github.Response) (remaining string) {
 		"reset", reset,
 	}
 	switch {
+	case remainingCount == rateLimitExceeded:
+		v.Logger.Errorw("GitHub API rate limit exceeded", logFields...)
+		if v.eventEmitter != nil {
+			v.eventEmitter.EmitMessage(
+				v.repo, zap.ErrorLevel, "GitHubRateLimitExceeded",
+				fmt.Sprintf("GitHub API rate limit exceeded, limit: %s, resets at: %s", limit, reset))
+		}
 	case remainingCount < rateLimitCritical:
 		v.Logger.Errorw("GitHub API rate limit critically low", logFields...)
 	case remainingCount < rateLimitWarning:
@@ -117,6 +126,7 @@ func (v *Provider) logAPICall(operation string, duration time.Duration, resp *gi
 		logFields = append(logFields,
 			"url_path", resp.Request.URL.Path,
 			"rate_limit_remaining", remaining,
+			"github_request_id", resp.Header.Get("X-GitHub-Request-Id"),
 		)
 		if resp.StatusCode > 0 {
 			logFields = append(logFields, "status_code", resp.StatusCode)
