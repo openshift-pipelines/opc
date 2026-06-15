@@ -33,11 +33,14 @@ func assembleTaskFQDNs(pipelineURL string, tasks []string) ([]string, error) {
 		return tasks, nil // no pipeline URL, return tasks as is
 	}
 
-	// Only HTTP(S) URLs can serve as base for relative task resolution.
+	// Only HTTP(S) URLs and repository file paths can serve as base for relative task resolution.
 	// Hub catalog references (e.g., "catalog://resource:version") use a
 	// different scheme where relative paths are meaningless.
 	lowered := strings.ToLower(pipelineURL)
-	if !strings.HasPrefix(lowered, "http://") && !strings.HasPrefix(lowered, "https://") {
+	isHTTP := strings.HasPrefix(lowered, "http://") || strings.HasPrefix(lowered, "https://")
+	isRepoPath := strings.Contains(lowered, "/") && !strings.Contains(lowered, "://")
+
+	if !isHTTP && !isRepoPath {
 		return tasks, nil
 	}
 
@@ -119,8 +122,8 @@ func resolveRemoteResources(ctx context.Context, rt *matcher.RemoteTasks, types 
 				// making sure that the pipeline with same annotation name is not fetched
 				if alreadyFetchedResource(fetchedResourcesForEvent.Pipelines, remotePipeline) {
 					rt.Logger.Debugf("skipping already fetched pipeline %s in annotations on pipelinerun %s", remotePipeline, pipelinerun.GetName())
-					// already fetched, then just get the pipeline to add to run specific Resources
-					pipeline = fetchedResourcesForEvent.Pipelines[remotePipeline]
+					// already fetched, deep-copy so inlining for this run doesn't mutate the cached original
+					pipeline = fetchedResourcesForEvent.Pipelines[remotePipeline].DeepCopy()
 				} else {
 					// seems like a new pipeline, fetch it based on name in annotation
 					pipeline, err = rt.GetPipelineFromAnnotationName(ctx, remotePipeline)
@@ -129,9 +132,9 @@ func resolveRemoteResources(ctx context.Context, rt *matcher.RemoteTasks, types 
 					}
 					// add the pipeline to the Resources fetched for the Event
 					fetchedResourcesForEvent.Pipelines[remotePipeline] = pipeline
-					// add the pipeline URL to the run specific Resources
-					fetchedResourcesForPipelineRun.PipelineURL = remotePipeline
 				}
+				// set the pipeline URL for relative task path resolution (used by both cached and newly fetched)
+				fetchedResourcesForPipelineRun.PipelineURL = remotePipeline
 			}
 		}
 		pipelineTasks := []string{}
@@ -178,7 +181,7 @@ func resolveRemoteResources(ctx context.Context, rt *matcher.RemoteTasks, types 
 				// if task is already fetched in the event, then just copy the task
 				if alreadyFetchedResource(fetchedResourcesForEvent.Tasks, remoteTask) {
 					rt.Logger.Debugf("skipping already fetched task %s in annotations on pipelinerun %s", remoteTask, pipelinerun.GetName())
-					task = fetchedResourcesForEvent.Tasks[remoteTask]
+					task = fetchedResourcesForEvent.Tasks[remoteTask].DeepCopy()
 				} else {
 					// get the task from annotation name
 					task, err = rt.GetTaskFromAnnotationName(ctx, remoteTask)
@@ -210,7 +213,7 @@ func resolveRemoteResources(ctx context.Context, rt *matcher.RemoteTasks, types 
 
 		// if PipelineRef is used then, first resolve pipeline and replace all taskRef{Finally/Task} of Pipeline, then put inlinePipeline in PipelineRun
 		if pipelinerun.Spec.PipelineRef != nil && pipelinerun.Spec.PipelineRef.Resolver == "" {
-			pipelineResolved := fetchedResourcesForPipelineRun.Pipeline
+			pipelineResolved := fetchedResourcesForPipelineRun.Pipeline.DeepCopy()
 			turns, err := inlineTasks(pipelineResolved.Spec.Tasks, ropt, fetchedResourcesForPipelineRun)
 			if err != nil {
 				return nil, err

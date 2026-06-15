@@ -124,3 +124,28 @@ type Comment struct {
 type Comments struct {
 	Values []Comment
 }
+
+type Status struct {
+	Key         string     `json:"key"`
+	Type        string     `json:"type"`
+	State       string     `json:"state"`
+	Name        string     `json:"name"`
+	RefName     string     `json:"refname"`
+	Commit      Commit     `json:"commit"`
+	URL         string     `json:"url"`
+	Repository  Repository `json:"repository"`
+	Description string     `json:"description"`
+	Links       Links      `json:"links"`
+}
+
+type CommitStatusState string
+
+// See: https://api.bitbucket.org/swagger.json attribute:
+// "definitions.commitStatus.allOf[1].properties.state.enum" for
+// specification.
+const (
+	StateStopped    CommitStatusState = "STOPPED"
+	StateFailed     CommitStatusState = "FAILED"
+	StateInProgress CommitStatusState = "INPROGRESS"
+	StateSuccessful CommitStatusState = "SUCCESSFUL"
+)
