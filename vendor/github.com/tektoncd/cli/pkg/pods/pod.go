@@ -119,7 +119,7 @@ func (p *Pod) watcher(stopC chan struct{}, result *podResult, mu *sync.Mutex) {
 	informer := factory.Core().V1().Pods().Informer()
 	// Set a custom watch error handler that ignores context.Canceled errors
 	// to prevent "Failed to watch" log messages when the informer is stopped intentionally
-	informer.SetWatchErrorHandler(watchErrorHandler)
+	_ = informer.SetWatchErrorHandler(watchErrorHandler)
 
 	_, err := informer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{

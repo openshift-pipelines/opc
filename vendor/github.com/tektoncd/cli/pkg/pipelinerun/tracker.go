@@ -72,7 +72,7 @@ func (t *Tracker) Monitor(allowed []string) <-chan []taskrunpkg.Run {
 
 	// Set a custom watch error handler that ignores context.Canceled errors
 	// to prevent "Failed to watch" log messages when the informer is stopped intentionally
-	informer.SetWatchErrorHandler(watchErrorHandler)
+	_ = informer.SetWatchErrorHandler(watchErrorHandler)
 
 	mu := &sync.Mutex{}
 	stopC := make(chan struct{})
