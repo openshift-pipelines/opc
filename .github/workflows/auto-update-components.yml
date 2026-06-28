@@ -1,0 +1,119 @@
+name: Auto-update component versions
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # daily at 6 AM UTC
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Update a single branch (leave empty for all)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    strategy:
+      matrix:
+        include:
+          - branch: main
+            update_mode: latest
+          - branch: release-v1.15.x
+            update_mode: patch
+          - branch: release-v1.20.x
+            update_mode: patch
+          - branch: release-v1.21.x
+            update_mode: patch
+          - branch: release-v1.22.x
+            update_mode: patch
+          - branch: release-v1.23.x
+            update_mode: patch
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if branch exists
+        id: check-branch
+        if: ${{ !inputs.branch || inputs.branch == matrix.branch }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MATRIX_BRANCH: ${{ matrix.branch }}
+        run: |
+          if gh api "repos/${{ github.repository }}/branches/${MATRIX_BRANCH}" --silent 2>/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Branch ${MATRIX_BRANCH} does not exist, skipping"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch update script
+        if: steps.check-branch.outputs.exists == 'true'
+        run: |
+          gh api "repos/${{ github.repository }}/contents/.github/scripts/update-patch-versions.sh?ref=${{ github.ref_name }}" \
+            --jq '.content' | base64 -d > /tmp/update-patch-versions.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Checkout
+        if: steps.check-branch.outputs.exists == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+
+      - name: Set up Go
+        if: steps.check-branch.outputs.exists == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Check for updates
+        if: steps.check-branch.outputs.exists == 'true'
+        id: update
+        run: bash /tmp/update-patch-versions.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPDATE_MODE: ${{ matrix.update_mode }}
+          TARGET_BRANCH: ${{ matrix.branch }}
+
+      - name: Create or update pull request
+        if: steps.update.outputs.has_updates == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MATRIX_BRANCH: ${{ matrix.branch }}
+          UPDATE_SUMMARY: ${{ steps.update.outputs.summary }}
+        run: |
+          PR_BRANCH="auto-update/component-versions/${MATRIX_BRANCH}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -B "${PR_BRANCH}"
+          git add -A
+          git commit -m "Update component versions for ${MATRIX_BRANCH}"
+          git push -f origin "${PR_BRANCH}"
+
+          EXISTING_PR=$(gh pr list \
+            --base "${MATRIX_BRANCH}" \
+            --head "${PR_BRANCH}" \
+            --json number \
+            --jq '.[0].number' 2>/dev/null) || true
+
+          if [[ -n "$EXISTING_PR" ]]; then
+            echo "PR #${EXISTING_PR} updated via force push"
+          else
+            gh pr create \
+              --base "${MATRIX_BRANCH}" \
+              --head "${PR_BRANCH}" \
+              --title "[${MATRIX_BRANCH}] Update component versions" \
+              --body "$(cat <<EOF
+          ## Component version updates
+
+          ${UPDATE_SUMMARY}
+
+          ---
+          *This PR was automatically created by the [auto-update workflow](https://github.com/${{ github.repository }}/actions/workflows/auto-update-components.yml).*
+          EOF
+          )"
+          fi
