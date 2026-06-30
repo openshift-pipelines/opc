@@ -21,7 +21,7 @@ import (
 // on April 10, 2024, the key will automatically rotate, as scheduled, on April 14,
 // 2024 and every 730 days thereafter.
 //
-// You can perform on-demand key rotation a maximum of 10 times per KMS key. You
+// You can perform on-demand key rotation a maximum of 25 times per KMS key. You
 // can use the KMS console to view the number of remaining on-demand rotations
 // available for a KMS key.
 //
@@ -170,7 +170,7 @@ func (c *Client) addOperationRotateKeyOnDemandMiddlewares(stack *middleware.Stac
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetry(stack, options, c); err != nil {
 		return err
 	}
 	if err = addRawResponseToMetadata(stack); err != nil {
@@ -192,9 +192,6 @@ func (c *Client) addOperationRotateKeyOnDemandMiddlewares(stack *middleware.Stac
 		return err
 	}
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
 		return err
 	}
 	if err = addUserAgentRetryMode(stack, options); err != nil {
