@@ -1,0 +1,117 @@
+name: Auto-update component versions
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # daily at 6 AM UTC
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Update a single branch (leave empty for all)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    strategy:
+      matrix:
+        include:
+          - branch: main
+            update_mode: latest
+          - branch: release-v1.15.x
+            update_mode: patch
+          - branch: release-v1.20.x
+            update_mode: patch
+          - branch: release-v1.21.x
+            update_mode: patch
+          - branch: release-v1.22.x
+            update_mode: patch
+          - branch: release-v1.23.x
+            update_mode: patch
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip if filtering to a different branch
+        if: ${{ inputs.branch && inputs.branch != matrix.branch }}
+        run: |
+          echo "Skipping ${{ matrix.branch }} (requested: ${{ inputs.branch }})"
+          exit 0
+
+      - name: Check if branch exists
+        id: check-branch
+        if: ${{ !inputs.branch || inputs.branch == matrix.branch }}
+        run: |
+          if gh api "repos/${{ github.repository }}/branches/${{ matrix.branch }}" --silent 2>/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Branch ${{ matrix.branch }} does not exist, skipping"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Checkout
+        if: steps.check-branch.outputs.exists == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        if: steps.check-branch.outputs.exists == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Check for updates
+        if: steps.check-branch.outputs.exists == 'true'
+        id: update
+        run: |
+          chmod +x .github/scripts/update-patch-versions.sh
+          .github/scripts/update-patch-versions.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPDATE_MODE: ${{ matrix.update_mode }}
+          TARGET_BRANCH: ${{ matrix.branch }}
+
+      - name: Create or update pull request
+        if: steps.update.outputs.has_updates == 'true'
+        run: |
+          PR_BRANCH="auto-update/component-versions/${{ matrix.branch }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -B "${PR_BRANCH}"
+          git add -A
+          git commit -m "Update component versions for ${{ matrix.branch }}"
+          git push -f origin "${PR_BRANCH}"
+
+          EXISTING_PR=$(gh pr list \
+            --base "${{ matrix.branch }}" \
+            --head "${PR_BRANCH}" \
+            --json number \
+            --jq '.[0].number' 2>/dev/null) || true
+
+          if [[ -n "$EXISTING_PR" ]]; then
+            echo "PR #${EXISTING_PR} updated via force push"
+          else
+            gh pr create \
+              --base "${{ matrix.branch }}" \
+              --head "${PR_BRANCH}" \
+              --title "[${{ matrix.branch }}] Update component versions" \
+              --body "$(cat <<EOF
+          ## Component version updates
+
+          ${{ steps.update.outputs.summary }}
+
+          ---
+          *This PR was automatically created by the [auto-update workflow](https://github.com/${{ github.repository }}/actions/workflows/auto-update-components.yml).*
+          EOF
+          )"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
