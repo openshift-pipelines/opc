@@ -15,7 +15,8 @@ import (
 	"time"
 
 	"github.com/gobwas/glob"
-	"github.com/google/go-github/v81/github"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/go-github/v85/github"
 	"github.com/jonboulle/clockwork"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
@@ -40,33 +41,52 @@ const (
 	publicRawURLHost = "raw.githubusercontent.com"
 
 	defaultPaginedNumber = 100
+	// maxCommentPages caps the number of pages fetched when scanning PR
+	// comments (e.g. for /ok-to-test). With defaultPaginedNumber=100 this
+	// allows up to 1000 comments, which is generous for legitimate use while
+	// preventing rate-limit exhaustion from comment flooding.
+	maxCommentPages = 10
 )
 
 var _ provider.Interface = (*Provider)(nil)
 
 type Provider struct {
-	ghClient      *github.Client
-	Logger        *zap.SugaredLogger
-	Run           *params.Run
-	pacInfo       *info.PacOpts
-	Token, APIURL *string
-	ApplicationID *int64
-	providerName  string
-	provenance    string
-	RepositoryIDs []int64
-	repo          *v1alpha1.Repository
-	eventEmitter  *events.EventEmitter
-	PaginedNumber int
-	userType      string // The type of user i.e bot or not
+	ghClient        *github.Client
+	Logger          *zap.SugaredLogger
+	Run             *params.Run
+	pacInfo         *info.PacOpts
+	Token, APIURL   *string
+	ApplicationID   *int64
+	providerName    string
+	provenance      string
+	RepositoryIDs   []int64
+	RepositoryNames []string
+	repo            *v1alpha1.Repository
+	eventEmitter    *events.EventEmitter
+	PaginedNumber   int
+	userType        string // The type of user i.e bot or not
 	skippedRun
 	triggerEvent       string
 	cachedChangedFiles *changedfiles.ChangedFiles
 	commitInfo         *github.Commit
+	cachedPullRequest  *github.PullRequest
+	pacUserLogin       string // user/bot login used by PAC
+	clock              clockwork.Clock
+	graphQLClient      *graphQLClient
+	checkRunsCache     checkRunsCache
 }
 
 type skippedRun struct {
 	mutex      *sync.Mutex
 	checkRunID int64
+}
+
+type checkRunsCache struct {
+	mu        sync.Mutex
+	runs      []*github.CheckRun
+	loading   bool
+	done      chan struct{}
+	populated bool
 }
 
 func New() *Provider {
@@ -76,7 +96,16 @@ func New() *Provider {
 		skippedRun: skippedRun{
 			mutex: &sync.Mutex{},
 		},
+		clock:          clockwork.NewRealClock(),
+		checkRunsCache: checkRunsCache{},
 	}
+}
+
+func (v *Provider) getClock() clockwork.Clock {
+	if v.clock == nil {
+		return clockwork.NewRealClock()
+	}
+	return v.clock
 }
 
 func (v *Provider) Client() *github.Client {
@@ -325,7 +354,34 @@ func (v *Provider) SetClient(ctx context.Context, run *params.Run, event *info.E
 		}
 	}
 
+	// Handle GitHub App token scoping for both global and repo-level configuration
+	if event.InstallationID > 0 {
+		v.Logger.Debugf("setupAuthenticatedClient: scoping github app token")
+		token, err := ScopeTokenToListOfRepos(ctx, v, v.pacInfo, repo, run, event, v.eventEmitter, v.Logger)
+		if err != nil {
+			return fmt.Errorf("failed to scope token: %w", err)
+		}
+		switch {
+		case token != "":
+			event.Provider.Token = token
+		case len(v.RepositoryIDs) > 0 || len(v.RepositoryNames) > 0:
+			// Defer scoping until after ScopeTokenToListOfRepos so CreateToken can
+			// look up extra repos from the configmap first.  When no additional repos
+			// are configured, scope the token to only the triggering repo.
+			ns := info.GetNS(ctx)
+			scopedToken, err := v.GetAppToken(ctx, run.Clients.Kube, event.Provider.URL, event.InstallationID, ns)
+			if err != nil {
+				return fmt.Errorf("failed to scope token to triggering repository: %w", err)
+			}
+			event.Provider.Token = scopedToken
+		}
+	}
+
 	return nil
+}
+
+func (v *Provider) GetCommitStatuses(_ context.Context, _ *info.Event) ([]provider.CommitStatusInfo, error) {
+	return nil, nil
 }
 
 // GetTektonDir retrieves all YAML files from the .tekton directory and returns them as a single concatenated multi-document YAML file.
@@ -336,8 +392,17 @@ func (v *Provider) GetTektonDir(ctx context.Context, runevent *info.Event, path,
 	// default set provenance from the SHA
 	revision := runevent.SHA
 	if provenance == "default_branch" {
-		revision = runevent.DefaultBranch
 		v.Logger.Infof("Using PipelineRun definition from default_branch: %s", runevent.DefaultBranch)
+		branch, _, err := wrapAPI(v, "get_default_branch", func() (*github.Branch, *github.Response, error) {
+			return v.Client().Repositories.GetBranch(ctx, runevent.Organization, runevent.Repository, runevent.DefaultBranch, 1)
+		})
+		if err != nil {
+			return "", err
+		}
+		revision = branch.GetCommit().GetSHA()
+		if revision == "" {
+			return "", fmt.Errorf("default_branch %s did not resolve to a commit SHA", runevent.DefaultBranch)
+		}
 	} else {
 		prInfo := ""
 		if runevent.TriggerTarget == triggertype.PullRequest {
@@ -377,7 +442,7 @@ func (v *Provider) GetTektonDir(ctx context.Context, runevent *info.Event, path,
 	if err != nil {
 		return "", err
 	}
-	return v.concatAllYamlFiles(ctx, tektonDirObjects.Entries, runevent)
+	return v.concatAllYamlFiles(ctx, tektonDirObjects.Entries, runevent, path, revision)
 }
 
 // GetCommitInfo get info (url and title) on a commit in runevent, this needs to
@@ -437,6 +502,21 @@ func (v *Provider) GetCommitInfo(ctx context.Context, runevent *info.Event) erro
 		}
 	}
 
+	// For incoming webhooks, DefaultBranch is not populated from the event
+	// payload (since there is no webhook payload to parse). Fetch it from the
+	// GitHub API so that pipelinerun_provenance: default_branch works correctly.
+	// For other event types (push, pull_request), DefaultBranch is already set
+	// by ParsePayload from the webhook payload's repository.default_branch field.
+	if runevent.DefaultBranch == "" && runevent.EventType == "incoming" {
+		ghRepo, _, err := wrapAPI(v, "get_repo", func() (*github.Repository, *github.Response, error) {
+			return v.Client().Repositories.Get(ctx, runevent.Organization, runevent.Repository)
+		})
+		if err != nil {
+			return err
+		}
+		runevent.DefaultBranch = ghRepo.GetDefaultBranch()
+	}
+
 	return nil
 }
 
@@ -446,7 +526,7 @@ func (v *Provider) GetCommitInfo(ctx context.Context, runevent *info.Event) erro
 func (v *Provider) GetFileInsideRepo(ctx context.Context, runevent *info.Event, path, target string) (string, error) {
 	ref := runevent.SHA
 	if target != "" {
-		ref = runevent.BaseBranch
+		ref = target
 	} else if v.provenance == "default_branch" {
 		ref = runevent.DefaultBranch
 	}
@@ -471,36 +551,74 @@ func (v *Provider) GetFileInsideRepo(ctx context.Context, runevent *info.Event, 
 }
 
 // concatAllYamlFiles concat all yaml files from a directory as one big multi document yaml string.
-func (v *Provider) concatAllYamlFiles(ctx context.Context, objects []*github.TreeEntry, runevent *info.Event) (string, error) {
-	var allTemplates string
-
+func (v *Provider) concatAllYamlFiles(ctx context.Context, objects []*github.TreeEntry, runevent *info.Event, tektonDirPath, ref string) (string, error) {
+	var yamlFiles []string
 	for _, value := range objects {
 		if strings.HasSuffix(value.GetPath(), ".yaml") ||
 			strings.HasSuffix(value.GetPath(), ".yml") {
-			data, err := v.getObject(ctx, value.GetSHA(), runevent)
-			if err != nil {
-				return "", err
-			}
-			if err := provider.ValidateYaml(data, value.GetPath()); err != nil {
-				return "", err
-			}
-			if allTemplates != "" && !strings.HasPrefix(string(data), "---") {
-				allTemplates += "---"
-			}
-			allTemplates += "\n" + string(data) + "\n"
+			fullPath := tektonDirPath + "/" + value.GetPath()
+			yamlFiles = append(yamlFiles, fullPath)
 		}
 	}
-	return allTemplates, nil
+
+	if len(yamlFiles) == 0 {
+		return "", nil
+	}
+
+	if v.graphQLClient == nil {
+		var err error
+		v.graphQLClient, err = newGraphQLClient(v)
+		if err != nil {
+			return "", fmt.Errorf("failed to create GraphQL client: %w", err)
+		}
+	}
+
+	graphQLResults, err := v.graphQLClient.fetchFiles(ctx, runevent.Organization, runevent.Repository, ref, yamlFiles)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch .tekton files via GraphQL: %w", err)
+	}
+
+	var buf strings.Builder
+	for _, path := range yamlFiles {
+		content, ok := graphQLResults[path]
+		if !ok {
+			return "", fmt.Errorf("file %s not found in GraphQL response", path)
+		}
+
+		// it used to be like that (stripped prefix) before we moved to GraphQL so
+		// let's keep it that way.
+		relativePath := strings.TrimPrefix(path, tektonDirPath+"/")
+		if err := provider.ValidateYaml(content, relativePath); err != nil {
+			return "", err
+		}
+		if buf.Len() > 0 && !strings.HasPrefix(string(content), "---") {
+			buf.WriteString("---")
+		}
+		buf.WriteString("\n")
+		buf.Write(content)
+		buf.WriteString("\n")
+	}
+
+	return buf.String(), nil
 }
 
-// getPullRequest get a pull request details.
+// getPullRequest get a pull request details, caching the result for the lifetime of the event.
 func (v *Provider) getPullRequest(ctx context.Context, runevent *info.Event) (*info.Event, error) {
+	if v.cachedPullRequest != nil {
+		return runevent, nil
+	}
 	pr, _, err := wrapAPI(v, "get_pull_request", func() (*github.PullRequest, *github.Response, error) {
 		return v.Client().PullRequests.Get(ctx, runevent.Organization, runevent.Repository, runevent.PullRequestNumber)
 	})
 	if err != nil {
 		return runevent, err
 	}
+	v.cachedPullRequest = pr
+
+	return v.populateRunEventFromPullRequest(runevent, pr), nil
+}
+
+func (v *Provider) populateRunEventFromPullRequest(runevent *info.Event, pr *github.PullRequest) *info.Event {
 	// Make sure to use the Base for Default BaseBranch or there would be a potential hijack
 	runevent.DefaultBranch = pr.GetBase().GetRepo().GetDefaultBranch()
 	runevent.URL = pr.GetBase().GetRepo().GetHTMLURL()
@@ -527,7 +645,7 @@ func (v *Provider) getPullRequest(ctx context.Context, runevent *info.Event) (*i
 	v.RepositoryIDs = []int64{
 		pr.GetBase().GetRepo().GetID(),
 	}
-	return runevent, nil
+	return runevent
 }
 
 // GetFiles gets and caches the list of files changed by a given event.
@@ -659,6 +777,12 @@ func (v *Provider) CreateToken(ctx context.Context, repository []string, event *
 		}
 
 		split := strings.Split(r, "/")
+		// Validate the URLs do not include additional path segments (like https://github.com/org/repo/extra).
+		// This validation is not required for glob as a pattern like "org/*/*" would not be matched.
+		if len(split) > 2 {
+			return "", fmt.Errorf("github repository URL must follow org/repo format without subgroups (found %d path segments, expected 2): %s", len(split), r)
+		}
+
 		infoData, _, err := wrapAPI(v, "get_repository", func() (*github.Repository, *github.Response, error) {
 			return v.Client().Repositories.Get(ctx, split[0], split[1])
 		})
@@ -806,6 +930,18 @@ func responseStatusCode(resp *github.Response) int {
 	return resp.StatusCode
 }
 
+func githubRequestID(resp *github.Response) string {
+	if resp == nil || resp.Response == nil {
+		return ""
+	}
+	return resp.Header.Get("X-GitHub-Request-Id")
+}
+
+func bodyHash(body string) string {
+	sum := sha256.Sum256([]byte(body))
+	return hex.EncodeToString(sum[:4])
+}
+
 func eventID(event *info.Event) string {
 	if event == nil || event.Request == nil {
 		return "unknown"
@@ -850,7 +986,8 @@ func (v *Provider) debugCommentPhase(event *info.Event, trace commentTraceLogCon
 		pr = event.PullRequestNumber
 	}
 
-	baseFields := []any{
+	baseFields := make([]any, 0, 18+len(kv))
+	baseFields = append(baseFields,
 		"phase", phase,
 		"organization", org,
 		"repository", repo,
@@ -860,7 +997,7 @@ func (v *Provider) debugCommentPhase(event *info.Event, trace commentTraceLogCon
 		"marker_hash", trace.markerHash,
 		"marker_len", trace.markerLen,
 		"controller_label", trace.controllerLabel,
-	}
+	)
 	v.Logger.Debugw("github comment dedup flow", append(baseFields, kv...)...)
 }
 
@@ -874,7 +1011,7 @@ func (v *Provider) listCommentsByMarker(
 		return v.Client().Issues.ListComments(ctx, event.Organization, event.Repository, event.PullRequestNumber, &github.IssueListCommentsOptions{
 			ListOptions: github.ListOptions{
 				Page:    1,
-				PerPage: 100,
+				PerPage: v.PaginedNumber,
 			},
 		})
 	})
@@ -886,8 +1023,25 @@ func (v *Provider) listCommentsByMarker(
 	matchedComments := make([]*github.IssueComment, 0, len(comments))
 	for _, comment := range comments {
 		if re.MatchString(comment.GetBody()) {
+			if err = v.getUserLogin(ctx, event); err != nil {
+				return nil, fmt.Errorf("unable to fetch user info: %w", err)
+			}
+			// Only edit comments created by this PAC installation's credentials.
+			// Prevents accidentally modifying comments from other users/bots.
+			if comment.GetUser().GetLogin() != v.pacUserLogin {
+				v.Logger.Debugf("This comment was not created by PAC, skipping comment edit :%d, created by user %s, PAC user: %s",
+					comment.GetID(), comment.GetUser().GetLogin(), v.pacUserLogin)
+				continue
+			}
 			matchedComments = append(matchedComments, comment)
 		}
+	}
+
+	if len(comments) == v.PaginedNumber {
+		v.debugCommentPhase(event, trace, phase+"_pagination_warning",
+			"fetched_count", len(comments),
+			"note", "response returned exactly PerPage comments; marker matches beyond page 1 may be missed",
+		)
 	}
 
 	v.debugCommentPhase(event, trace, phase,
@@ -899,75 +1053,11 @@ func (v *Provider) listCommentsByMarker(
 	return matchedComments, nil
 }
 
-func (v *Provider) ensureSingleMarkerComment(
-	ctx context.Context,
-	event *info.Event,
-	comments []*github.IssueComment,
-	commit string,
-	trace commentTraceLogContext,
-) error {
-	if len(comments) == 0 {
-		return nil
-	}
-
-	if len(comments) > 1 {
-		v.debugCommentPhase(event, trace, "duplicate_detected", "matched_count", len(comments))
-	}
-
-	primaryComment := comments[0]
-	for _, comment := range comments {
-		if comment.GetBody() == commit {
-			primaryComment = comment
-			break
-		}
-	}
-
-	v.debugCommentPhase(event, trace, "dedup_select_primary",
-		"matched_count", len(comments),
-		"primary_comment_id", primaryComment.GetID(),
-	)
-
-	if primaryComment.GetBody() != commit {
-		if _, _, err := wrapAPI(v, "edit_comment", func() (*github.IssueComment, *github.Response, error) {
-			return v.Client().Issues.EditComment(ctx, event.Organization, event.Repository, primaryComment.GetID(), &github.IssueComment{
-				Body: github.Ptr(commit),
-			})
-		}); err != nil {
-			return err
-		}
-	}
-
-	// Best-effort cleanup to collapse duplicates into a single canonical marker comment.
-	for _, comment := range comments {
-		if comment.GetID() == primaryComment.GetID() {
-			continue
-		}
-
-		v.debugCommentPhase(event, trace, "dedup_delete_attempt", "delete_comment_id", comment.GetID())
-		_, resp, err := wrapAPI(v, "delete_comment", func() (struct{}, *github.Response, error) {
-			resp, err := v.Client().Issues.DeleteComment(ctx, event.Organization, event.Repository, comment.GetID())
-			return struct{}{}, resp, err
-		})
-		v.debugCommentPhase(event, trace, "dedup_delete_done",
-			"delete_comment_id", comment.GetID(),
-			"status_code", responseStatusCode(resp),
-			"delete_error", err != nil,
-		)
-		if err != nil && v.Logger != nil {
-			v.Logger.Warnf("failed to delete duplicate comment %d on %s/%s#%d: %v",
-				comment.GetID(), event.Organization, event.Repository, event.PullRequestNumber, err)
-		}
-	}
-	v.debugCommentPhase(event, trace, "dedup_complete", "final_expected_count", 1)
-	return nil
-}
-
 // CreateComment creates a comment on a Pull Request.
 func (v *Provider) CreateComment(ctx context.Context, event *info.Event, commit, updateMarker string) error {
 	if v.ghClient == nil {
 		return fmt.Errorf("no github client has been initialized")
 	}
-
 	if event.PullRequestNumber == 0 {
 		return fmt.Errorf("create comment only works on pull requests")
 	}
@@ -981,41 +1071,39 @@ func (v *Provider) CreateComment(ctx context.Context, event *info.Event, commit,
 		}
 
 		if len(existingComments) > 1 {
-			v.debugCommentPhase(event, trace, "duplicate_detected", "matched_count", len(existingComments))
+			v.debugCommentPhase(event, trace, "duplicate_detected",
+				"matched_count", len(existingComments),
+				"matched_comments", compactCommentIDs(existingComments),
+			)
 		}
 
 		if len(existingComments) > 0 {
-			return v.ensureSingleMarkerComment(ctx, event, existingComments, commit, trace)
+			comment := existingComments[0]
+			if comment.GetBody() == commit {
+				v.debugCommentPhase(event, trace, "no_edit_needed",
+					"comment_id", comment.GetID(),
+					"body_hash", bodyHash(commit))
+				return nil
+			}
+			v.debugCommentPhase(event, trace, "edit_comment",
+				"comment_id", comment.GetID(),
+				"body_hash", bodyHash(commit))
+			if _, _, err := wrapAPI(v, "edit_comment", func() (*github.IssueComment, *github.Response, error) {
+				return v.Client().Issues.EditComment(ctx, event.Organization, event.Repository, comment.GetID(), &github.IssueComment{
+					Body: github.Ptr(commit),
+				})
+			}); err != nil {
+				return err
+			}
+			return nil
 		}
-
-		//nolint:gosec // No need for crypto/rand here, just reducing timing window
-		jitter := time.Duration(rand.Intn(500)) * time.Millisecond
-		v.debugCommentPhase(event, trace, "jitter_wait", "jitter_ms", jitter.Milliseconds())
-		timer := time.NewTimer(jitter)
-		defer timer.Stop()
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-timer.C:
-		}
-
-		// Re-check after jitter in case another processor already created the marker comment.
-		existingComments, err = v.listCommentsByMarker(ctx, event, updateMarker, "post_jitter_list", trace)
-		if err != nil {
-			return err
-		}
-		if len(existingComments) > 1 {
-			v.debugCommentPhase(event, trace, "duplicate_detected", "matched_count", len(existingComments))
-		}
-		if len(existingComments) > 0 {
-			return v.ensureSingleMarkerComment(ctx, event, existingComments, commit, trace)
-		}
-
-		v.debugCommentPhase(event, trace, "pre_create_race_window", "matched_count", len(existingComments))
+	} else {
+		v.debugCommentPhase(event, trace, "no_marker",
+			"body_hash", bodyHash(commit))
 	}
 
-	v.debugCommentPhase(event, trace, "create_comment_start")
+	v.debugCommentPhase(event, trace, "create_comment_start",
+		"body_hash", bodyHash(commit))
 	createdComment, createResp, err := wrapAPI(v, "create_comment", func() (*github.IssueComment, *github.Response, error) {
 		return v.Client().Issues.CreateComment(ctx, event.Organization, event.Repository, event.PullRequestNumber, &github.IssueComment{
 			Body: github.Ptr(commit),
@@ -1024,27 +1112,90 @@ func (v *Provider) CreateComment(ctx context.Context, event *info.Event, commit,
 	if err != nil {
 		v.debugCommentPhase(event, trace, "create_comment_done",
 			"status_code", responseStatusCode(createResp),
+			"github_request_id", githubRequestID(createResp),
 			"create_error", err.Error(),
 		)
 		return err
 	}
 	v.debugCommentPhase(event, trace, "create_comment_done",
 		"status_code", responseStatusCode(createResp),
+		"github_request_id", githubRequestID(createResp),
 		"created_comment_id", createdComment.GetID(),
 	)
+	return nil
+}
 
-	if updateMarker == "" {
+func (v *Provider) getUserLogin(ctx context.Context, event *info.Event) error {
+	if v.pacUserLogin != "" {
 		return nil
 	}
 
-	// Best-effort post-create reconciliation to collapse duplicates created by
-	// concurrent processors handling the same event.
-	matchedComments, listErr := v.listCommentsByMarker(ctx, event, updateMarker, "post_create_list", trace)
-	if listErr != nil {
-		return nil
+	// Get the PAC user/bot login.
+	if event.InstallationID > 0 {
+		// For Apps, get the app slug.
+		slug, err := v.fetchAppSlug(ctx, event.Provider.URL)
+		if err != nil {
+			return fmt.Errorf("failed to fetch app slug: %w", err)
+		}
+
+		v.pacUserLogin = fmt.Sprintf("%s[bot]", slug)
+	} else {
+		// For PATs, get the authenticated user.
+		pacUser, _, err := v.Client().Users.Get(ctx, "")
+		if err != nil {
+			return fmt.Errorf("unable to fetch user info: %w", err)
+		}
+		v.pacUserLogin = pacUser.GetLogin()
 	}
-	if len(matchedComments) > 1 {
-		v.debugCommentPhase(event, trace, "duplicate_detected", "matched_count", len(matchedComments))
+
+	return nil
+}
+
+// GenerateJWT generates a JWT token for GitHub App.
+// It retrieves the application ID and private key, sets the claims, and signs the token.
+func (v *Provider) GenerateJWT(ctx context.Context, ns string, kube kubernetes.Interface) (string, error) {
+	applicationID, privateKey, err := v.GetAppIDAndPrivateKey(ctx, ns, kube)
+	if err != nil {
+		return "", err
 	}
-	return v.ensureSingleMarkerComment(ctx, event, matchedComments, commit, trace)
+
+	parsedPK, err := jwt.ParseRSAPrivateKeyFromPEM(privateKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	// The expirationTime claim identifies the expiration time on or after which the JWT MUST NOT be accepted for processing.
+	// Maximum allowed duration is 10 minutes, we use 5 minutes for safety.
+	// See https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-json-web-token-jwt-for-a-github-app
+	now := time.Now()
+	claims := &jwt.RegisteredClaims{
+		Issuer:    fmt.Sprintf("%d", applicationID),
+		IssuedAt:  jwt.NewNumericDate(now),
+		ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	tokenString, err := token.SignedString(parsedPK)
+	if err != nil {
+		return "", fmt.Errorf("failed to sign private key: %w", err)
+	}
+
+	return tokenString, nil
+}
+
+// Fetch the app slug used for identifying the application.
+func (v *Provider) fetchAppSlug(ctx context.Context, apiURL string) (string, error) {
+	ns := info.GetNS(ctx)
+	tokenString, err := v.GenerateJWT(ctx, ns, v.Run.Clients.Kube)
+	if err != nil {
+		return "", err
+	}
+
+	client, _, _ := MakeClient(ctx, apiURL, tokenString)
+	app, _, err := client.Apps.Get(ctx, "")
+	if err != nil {
+		return "", fmt.Errorf("failed to get app info: %w", err)
+	}
+
+	return app.GetSlug(), nil
 }

@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -8,7 +10,9 @@ import (
 
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/formatting"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/opscomments"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
+	providerstatus "github.com/openshift-pipelines/pipelines-as-code/pkg/provider/status"
 	"gopkg.in/yaml.v2"
 )
 
@@ -104,19 +108,36 @@ func getNameFromComment(typeOfComment, comment string) string {
 	splitTest := strings.Split(comment, typeOfComment)
 	// now get the first line
 	getFirstLine := strings.Split(splitTest[1], "\n")
-	// trim spaces
-	return strings.TrimSpace(getFirstLine[0])
-}
 
-func GetPipelineRunAndBranchOrTagNameFromTestComment(comment string) (string, string, string, error) {
-	if strings.Contains(comment, testComment) {
-		return getPipelineRunAndBranchOrTagNameFromComment(testComment, comment)
+	// and the first argument
+	firstArg := strings.Split(getFirstLine[0], " ")
+	if len(firstArg) < 2 {
+		return ""
 	}
-	return getPipelineRunAndBranchOrTagNameFromComment(retestComment, comment)
+
+	name := strings.TrimSpace(firstArg[1])
+	if strings.Contains(name, "=") {
+		return ""
+	}
+	return name
 }
 
-func GetPipelineRunAndBranchOrTagNameFromCancelComment(comment string) (string, string, string, error) {
-	return getPipelineRunAndBranchOrTagNameFromComment(cancelComment, comment)
+func GetPipelineRunAndBranchOrTagNameFromTestComment(comment, prefix string) (string, string, string, error) {
+	commentType := opscomments.CommentEventType(comment, prefix)
+	typeOfComment := ""
+	if commentType == opscomments.TestSingleCommentEventType || commentType == opscomments.TestAllCommentEventType {
+		typeOfComment = prefix + "test"
+	} else {
+		// if type of comment is not test single, it is retest single because we've checked the type before
+		// calling this function.
+		typeOfComment = prefix + "retest"
+	}
+	return getPipelineRunAndBranchOrTagNameFromComment(typeOfComment, comment)
+}
+
+func GetPipelineRunAndBranchOrTagNameFromCancelComment(comment, prefix string) (string, string, string, error) {
+	typeOfComment := prefix + "cancel"
+	return getPipelineRunAndBranchOrTagNameFromComment(typeOfComment, comment)
 }
 
 // getPipelineRunAndBranchOrTagNameFromComment function will take GitOps comment and split the comment
@@ -138,7 +159,7 @@ func getPipelineRunAndBranchOrTagNameFromComment(typeOfComment, comment string) 
 			return prName, branchName, tagName, fmt.Errorf("the GitOps comment `%s` does not contain a branch or tag word", comment)
 		}
 
-		if strings.Contains(splitText[1], "tag") {
+		if strings.Contains(splitText[1], "tag:") {
 			tagName = getBranchOrTagNameFromComment(splitText[1], "tag")
 		} else {
 			branchName = getBranchOrTagNameFromComment(splitText[1], "branch")
@@ -148,6 +169,9 @@ func getPipelineRunAndBranchOrTagNameFromComment(typeOfComment, comment string) 
 		prData := strings.Split(strings.TrimSpace(branchData[0]), " ")
 		if len(prData) > 1 {
 			prName = strings.TrimSpace(prData[0])
+			if strings.Contains(prName, "=") {
+				prName = ""
+			}
 		}
 	} else {
 		// get the second part of the typeOfComment (/test, /retest or /cancel)
@@ -157,6 +181,9 @@ func getPipelineRunAndBranchOrTagNameFromComment(typeOfComment, comment string) 
 		// trim spaces
 		// adapt for the comment contains the key=value pair
 		prName = strings.Split(strings.TrimSpace(getFirstLine[0]), " ")[0]
+		if strings.Contains(prName, "=") {
+			prName = ""
+		}
 	}
 	return prName, branchName, tagName, nil
 }
@@ -202,7 +229,7 @@ func ValidateYaml(content []byte, filename string) error {
 // Otherwise, the OriginalPipelineRunName will be used.
 // If the OriginalPipelineRunName is not set, an empty string will be returned.
 // The check name will be in the format "ApplicationName / OriginalPipelineRunName".
-func GetCheckName(status StatusOpts, pacopts *info.PacOpts) string {
+func GetCheckName(status providerstatus.StatusOpts, pacopts *info.PacOpts) string {
 	if pacopts.ApplicationName != "" {
 		if status.OriginalPipelineRunName == "" {
 			return pacopts.ApplicationName
@@ -210,6 +237,42 @@ func GetCheckName(status StatusOpts, pacopts *info.PacOpts) string {
 		return fmt.Sprintf("%s / %s", pacopts.ApplicationName, status.OriginalPipelineRunName)
 	}
 	return status.OriginalPipelineRunName
+}
+
+// GetBBCloudStatusKey returns a unique key for Bitbucket Cloud build commit status.
+// Bitbucket Cloud limits the key to 40 characters. When both ApplicationName and
+// OriginalPipelineRunName are set and their combined form ("{appName} / {prName}")
+// fits within 40 chars, that combined form is used. Otherwise, the
+// OriginalPipelineRunName alone is used. If the name exceeds 40 chars, it is
+// truncated to 33 chars with a 6-char hash suffix for uniqueness. If only
+// ApplicationName is set, it is returned truncated to 40 chars.
+func GetBBCloudStatusKey(status providerstatus.StatusOpts, pacopts *info.PacOpts) string {
+	if pacopts.ApplicationName != "" {
+		if status.OriginalPipelineRunName == "" {
+			if len(pacopts.ApplicationName) > 40 {
+				return pacopts.ApplicationName[:40]
+			}
+			return pacopts.ApplicationName
+		}
+		key := fmt.Sprintf("%s / %s", pacopts.ApplicationName, status.OriginalPipelineRunName)
+		// if application name and pipeline run name combined are less than 40 characters, return the key
+		// otherwise, skip it here and let the only pipeline run being returned.
+		if len(key) <= 40 {
+			return key
+		}
+	}
+
+	if len(status.OriginalPipelineRunName) > 40 {
+		hash := getNameHash(status.OriginalPipelineRunName)
+		return fmt.Sprintf("%s-%s", status.OriginalPipelineRunName[:33], hash)
+	}
+
+	return status.OriginalPipelineRunName
+}
+
+func getNameHash(input string) string {
+	hash := sha256.Sum256([]byte(input))
+	return hex.EncodeToString(hash[:])[:6]
 }
 
 func IsZeroSHA(sha string) bool {
@@ -241,12 +304,22 @@ const (
 func IsCommentStrategyUpdate(repo *v1alpha1.Repository) bool {
 	var commentStrategy string
 	if repo != nil && repo.Spec.Settings != nil {
-		if repo.Spec.Settings.Gitlab != nil {
+		switch {
+		case repo.Spec.Settings.Gitlab != nil:
 			commentStrategy = repo.Spec.Settings.Gitlab.CommentStrategy
-		} else if repo.Spec.Settings.Github != nil {
+		case repo.Spec.Settings.Github != nil:
 			commentStrategy = repo.Spec.Settings.Github.CommentStrategy
+		case repo.Spec.Settings.Forgejo != nil:
+			commentStrategy = repo.Spec.Settings.Forgejo.CommentStrategy
 		}
 	}
 
 	return commentStrategy == UpdateCommentStrategy
+}
+
+func GetGitOpsCommentPrefix(repo *v1alpha1.Repository) string {
+	if repo.Spec.Settings != nil && repo.Spec.Settings.GitOpsCommandPrefix != "" {
+		return fmt.Sprintf(`/%s `, regexp.QuoteMeta(repo.Spec.Settings.GitOpsCommandPrefix))
+	}
+	return "/"
 }
