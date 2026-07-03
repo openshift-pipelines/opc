@@ -20,7 +20,6 @@ The following commands help you understand and effectively use the OpenShift Pip
 - `opc hub`: search and install from Tekton Hub
 - `opc pac`: add and manage git repositories (pipelines as code)
 - `opc results` : interact with results api
-- `opc clustertask`: manage ClusterTasks
 - `opc pipeline`: manage Pipelines
 - `opc pipelinerun`: manage PipelineRuns
 - `opc task`: manage Tasks
