@@ -66,8 +66,10 @@ type repository interface {
 	DeleteDefaultReviewer(opt RepositoryDefaultReviewerOptions) (interface{}, error)
 	UpdatePipelineConfig(opt RepositoryPipelineOptions) (*Pipeline, error)
 	ListPipelineVariables(opt RepositoryPipelineVariablesOptions) (*PipelineVariables, error)
+	GetPipelineVariable(opt RepositoryPipelineVariableOptions) (*PipelineVariable, error)
 	AddPipelineVariable(opt RepositoryPipelineVariableOptions) (*PipelineVariable, error)
 	DeletePipelineVariable(opt RepositoryPipelineVariableDeleteOptions) (interface{}, error)
+	UpdatePipelineVariable(opt RepositoryPipelineVariableOptions) (*PipelineVariable, error)
 	AddPipelineKeyPair(opt RepositoryPipelineKeyPairOptions) (*PipelineKeyPair, error)
 	UpdatePipelineBuildNumber(opt RepositoryPipelineBuildNumberOptions) (*PipelineBuildNumber, error)
 	ListFiles(opt RepositoryFilesOptions) (*[]RepositoryFile, error)
@@ -297,25 +299,37 @@ type RepositoryTagTarget struct {
 	Hash string `json:"hash"`
 }
 
+type PullRequestsMergeStrategy string
+
+const (
+	MergeCommit       PullRequestsMergeStrategy = "merge_commit"
+	Squash            PullRequestsMergeStrategy = "squash"
+	FastForward       PullRequestsMergeStrategy = "fast_forward"
+	SquashFastForward PullRequestsMergeStrategy = "squash_fast_forward"
+	RebaseFastForward PullRequestsMergeStrategy = "rebase_fast_forward"
+	RebaseMerge       PullRequestsMergeStrategy = "rebase_merge"
+)
+
 type PullRequestsOptions struct {
-	ID                string   `json:"id"`
-	CommentID         string   `json:"comment_id"`
-	Owner             string   `json:"owner"`
-	RepoSlug          string   `json:"repo_slug"`
-	Title             string   `json:"title"`
-	Description       string   `json:"description"`
-	CloseSourceBranch bool     `json:"close_source_branch"`
-	SourceBranch      string   `json:"source_branch"`
-	SourceRepository  string   `json:"source_repository"`
-	DestinationBranch string   `json:"destination_branch"`
-	DestinationCommit string   `json:"destination_repository"`
-	Message           string   `json:"message"`
-	Reviewers         []string `json:"reviewers"`
-	States            []string `json:"states"`
-	Query             string   `json:"query"`
-	Sort              string   `json:"sort"`
-	Draft             bool     `json:"draft"`
-	Commit            string   `json:"commit"`
+	ID                string                    `json:"id"`
+	CommentID         string                    `json:"comment_id"`
+	Owner             string                    `json:"owner"`
+	RepoSlug          string                    `json:"repo_slug"`
+	Title             string                    `json:"title"`
+	Description       string                    `json:"description"`
+	CloseSourceBranch bool                      `json:"close_source_branch"`
+	SourceBranch      string                    `json:"source_branch"`
+	SourceRepository  string                    `json:"source_repository"`
+	DestinationBranch string                    `json:"destination_branch"`
+	DestinationCommit string                    `json:"destination_repository"`
+	MergeStrategy     PullRequestsMergeStrategy `json:"merge_strategy"`
+	Message           string                    `json:"message"`
+	Reviewers         []string                  `json:"reviewers"`
+	States            []string                  `json:"states"`
+	Query             string                    `json:"query"`
+	Sort              string                    `json:"sort"`
+	Draft             bool                      `json:"draft"`
+	Commit            string                    `json:"commit"`
 	ctx               context.Context
 }
 
