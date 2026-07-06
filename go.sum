@@ -987,8 +987,8 @@ github.com/tektoncd/chains v0.26.0 h1:TV4AyuMBb2/7TasVNePwLZLoZ8qKeju+j9RWpaPqkb
 github.com/tektoncd/chains v0.26.0/go.mod h1:0CmzkSfql6cltpKiiu6NHizPT+NPxHeGXHA+gV9Td9k=
 github.com/tektoncd/cli v0.42.2 h1:85iMeyDInHg5WQSn0aq8z2GGx0oCzgkqmCvEXSyBvHg=
 github.com/tektoncd/cli v0.42.2/go.mod h1:T86PpPlg+dSMczDf2CkLE6/qXuWt8icEz8iL/S9dNh8=
-github.com/tektoncd/pipeline v1.3.3 h1:ZYWQ4Jtw0rnMfoK/F37wSvwg6SL75G7QsjWcAzDrXEo=
-github.com/tektoncd/pipeline v1.3.3/go.mod h1:924mFZJC0FXYruna4kDisnfFnRowJQgRgLpJuGbjNPQ=
+github.com/tektoncd/pipeline v1.3.4 h1:Y8XpHn9NQC7Xj4i6rritZAZ8X4MImhbhVBCVKE/5WxY=
+github.com/tektoncd/pipeline v1.3.4/go.mod h1:W/lKN8J8skBVG7319wU56HJxnXcXunw9TMQr/u55bS4=
 github.com/tektoncd/results v0.16.0 h1:pdWhydx1U5fhJegIXIIFrf7Xa+vLmHUHhKLPpAqsjAI=
 github.com/tektoncd/results v0.16.0/go.mod h1:tWSOvufgTVlIDIhVjTOOtHF8GDYTeKzleLS+VFDcGIo=
 github.com/tektoncd/triggers v0.33.0 h1:pG2Kz/2FHjysGG4GGhiGp9hHdwA8BLZI3H7m9U9sj4M=
