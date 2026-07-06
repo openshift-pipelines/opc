@@ -75,7 +75,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           UPDATE_MODE: ${{ matrix.update_mode }}
-          TARGET_BRANCH: ${{ matrix.branch }}
 
       - name: Create or update pull request
         if: steps.update.outputs.has_updates == 'true'

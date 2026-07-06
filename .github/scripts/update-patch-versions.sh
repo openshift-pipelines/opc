@@ -68,38 +68,6 @@ for entry in "${COMPONENTS[@]}"; do
   fi
 done
 
-TARGET_BRANCH="${TARGET_BRANCH:-}"
-OPC_REPO="openshift-pipelines/opc"
-
-if [[ -n "$TARGET_BRANCH" ]]; then
-  current_opc=$(grep -E '^OPC_VERSION\s*:=' Makefile | sed 's/.*:= *//')
-
-  echo ""
-  echo "Checking opc version: current ${current_opc} [branch=${TARGET_BRANCH}]"
-
-  opc_tags=$(gh api "repos/${OPC_REPO}/tags" --paginate --jq '.[].name' 2>/dev/null) || true
-
-  if [[ "$TARGET_BRANCH" =~ ^release-v([0-9]+\.[0-9]+)\.x$ ]]; then
-    branch_minor="${BASH_REMATCH[1]}"
-    branch_minor_re="${branch_minor//./\\.}"
-    target_opc=$(echo "$opc_tags" \
-      | grep -E "^v${branch_minor_re}\.[0-9]+$" \
-      | sed 's/^v//' \
-      | sort -V \
-      | tail -1) || true
-  elif [[ "$TARGET_BRANCH" == "main" ]]; then
-    echo "  Skipping opc version update on main (using devel)"
-  fi
-
-  if [[ -n "${target_opc:-}" && "$target_opc" != "$current_opc" ]]; then
-    echo "  Update available: ${current_opc} -> ${target_opc}"
-    sed -i "s/^OPC_VERSION := .*/OPC_VERSION := ${target_opc}/" Makefile
-    UPDATES+=("opc: v${current_opc} -> v${target_opc}")
-  else
-    echo "  Already up to date"
-  fi
-fi
-
 if [[ ${#UPDATES[@]} -eq 0 ]]; then
   echo ""
   echo "No updates found."
