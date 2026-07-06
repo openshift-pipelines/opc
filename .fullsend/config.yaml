@@ -16,3 +16,6 @@ create_issues:
         repos:
             - openshift-pipelines/opc
             - fullsend-ai/fullsend
+allowed_remote_resources:
+    - https://raw.githubusercontent.com/fullsend-ai/fullsend/
+    - https://raw.githubusercontent.com/fullsend-ai/agents/
