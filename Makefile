@@ -7,7 +7,7 @@ ASSIST_VERSION := $(shell sed -n '/[ ]*github.com\/openshift-pipelines\/tekton-a
 
 GO := go
 GOVERSION := 1.25.6
-OPC_VERSION := 1.21.1
+OPC_VERSION := 1.21.0
 BINARYNAME := opc
 GOLANGCI_LINT := golangci-lint
 
