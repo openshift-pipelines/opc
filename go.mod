@@ -4,7 +4,7 @@ go 1.25.9
 
 require (
 	github.com/openshift-pipelines/manual-approval-gate v0.6.0
-	github.com/openshift-pipelines/pipelines-as-code v0.37.7
+	github.com/openshift-pipelines/pipelines-as-code v0.37.8
 	github.com/spf13/cobra v1.10.2
 	github.com/tektoncd/cli v0.42.2
 	github.com/tektoncd/results v0.16.0
@@ -142,7 +142,7 @@ require (
 	github.com/gdamore/tcell/v2 v2.9.0 // indirect
 	github.com/go-chi/chi/v5 v5.2.3 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/analysis v0.24.1 // indirect
