@@ -4,7 +4,7 @@ go 1.26.1
 
 require (
 	github.com/openshift-pipelines/manual-approval-gate v0.9.0
-	github.com/openshift-pipelines/pipelines-as-code v0.48.0
+	github.com/openshift-pipelines/pipelines-as-code v0.48.1
 	github.com/openshift-pipelines/tekton-assist v0.1.1
 	github.com/spf13/cobra v1.10.2
 	github.com/tektoncd/cli v0.45.0
