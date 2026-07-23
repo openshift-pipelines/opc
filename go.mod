@@ -15,11 +15,10 @@ replace (
 	github.com/go-jose/go-jose/v4 => github.com/go-jose/go-jose/v4 v4.0.5
 	github.com/imdario/mergo => github.com/imdario/mergo v0.3.16
 	github.com/openshift-pipelines/pipelines-as-code => github.com/tektoncd/pipelines-as-code v0.48.0
-	github.com/tektoncd/hub => github.com/openshift-pipelines/hub v1.24.1
+	github.com/tektoncd/hub => github.com/openshift-pipelines/hub v1.24.2
 	gocloud.dev => gocloud.dev v0.40.0
 	gocloud.dev/docstore/mongodocstore => gocloud.dev/docstore/mongodocstore v0.40.0
 	gocloud.dev/pubsub/kafkapubsub => gocloud.dev/pubsub/kafkapubsub v0.40.0
-	google.golang.org/grpc/stats/opentelemetry => google.golang.org/grpc v1.70.0
 	k8s.io/api => k8s.io/api v0.35.4
 	k8s.io/apimachinery => k8s.io/apimachinery v0.35.4
 	k8s.io/client-go => k8s.io/client-go v0.35.4

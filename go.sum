@@ -428,8 +428,8 @@ github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsI
 github.com/jackc/pgpassfile v1.0.0/go.mod h1:CEx0iS5ambNFdcRtxPj5JhEz+xB6uRky5eyVu/W2HEg=
 github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 h1:iCEnooe7UlwOQYpKFhBabPMi4aNAfoODPEFNiAnClxo=
 github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761/go.mod h1:5TJZWKEWniPve33vlWYSoGYefn3gLQRzjfDlhSJ9ZKM=
-github.com/jackc/pgx/v5 v5.9.2 h1:3ZhOzMWnR4yJ+RW1XImIPsD1aNSz4T4fyP7zlQb56hw=
-github.com/jackc/pgx/v5 v5.9.2/go.mod h1:mal1tBGAFfLHvZzaYh77YS/eC6IX9OWbRV1QIIM0Jn4=
+github.com/jackc/pgx/v5 v5.10.0 h1:VhSvgU2jSli8o3AqIEOTJr7rZwAEUVo4E4XhR94Zfr0=
+github.com/jackc/pgx/v5 v5.10.0/go.mod h1:mal1tBGAFfLHvZzaYh77YS/eC6IX9OWbRV1QIIM0Jn4=
 github.com/jackc/puddle/v2 v2.2.2 h1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo=
 github.com/jackc/puddle/v2 v2.2.2/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
 github.com/jedisct1/go-minisign v0.0.0-20230811132847-661be99b8267 h1:TMtDYDHKYY15rFihtRfck/bfFqNfvcabqvXAFQfAUpY=
@@ -547,8 +547,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
-github.com/openshift-pipelines/hub v1.24.1 h1:HskWEBy/27/4+a3Vul/ZtJJInCZMyUswvvOaFAHm3xk=
-github.com/openshift-pipelines/hub v1.24.1/go.mod h1:yjfR+KhIpZBaQBxlauVA4dHE/YNcfG3PhgT5oqwQC4A=
+github.com/openshift-pipelines/hub v1.24.2 h1:tTG4+jDjfFSRDP3Khcdvwr12mw1zZoE6DJkTzIZKkCA=
+github.com/openshift-pipelines/hub v1.24.2/go.mod h1:/Hx9gYmBPam/vKFJd4Yr1XFU7jJYVQ/cxET1UoliTIc=
 github.com/openshift-pipelines/manual-approval-gate v0.9.0 h1:B70VuvqzZ2gTAOKvux6f0l4O83SN52o/FNqtJ/gm1Vw=
 github.com/openshift-pipelines/manual-approval-gate v0.9.0/go.mod h1:HpG469xU2wfpaNqgwwJ9BPIGdkyVtf1tVbgGaIcqr4E=
 github.com/openshift-pipelines/tekton-assist v0.1.1 h1:v7UGX2irYFYq+crm1TF+HeBUhOT9s9j0TgebKBCEJ8s=
