@@ -24,7 +24,7 @@ jobs:
 
     - uses: actions/setup-go@v5
       with:
-        go-version: '1.25.6'
+        go-version-file: go.mod
 
     - uses: goreleaser/goreleaser-action@v7.2.3
       with:
