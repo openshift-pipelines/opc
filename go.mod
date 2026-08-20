@@ -13,6 +13,7 @@ require (
 
 replace (
 	github.com/go-jose/go-jose/v4 => github.com/go-jose/go-jose/v4 v4.0.5
+	github.com/google/cel-go => github.com/google/cel-go v0.29.2
 	github.com/google/gnostic-models => github.com/google/gnostic-models v0.7.1
 	github.com/imdario/mergo => github.com/imdario/mergo v0.3.16
 	github.com/tektoncd/hub => github.com/openshift-pipelines/hub v1.24.1
