@@ -1,1 +1,8 @@
-{"pac": "0.50.0", "tkn": "0.46.0", "results": "0.20.0", "manualapprovalgate": "0.9.0", "assist": "0.1.1", "opc": "1.24.0"}
+{
+  "pac": "0.50.0",
+  "tkn": "0.46.0",
+  "results": "0.20.0",
+  "manualapprovalgate": "0.9.0",
+  "assist": "0.1.1",
+  "opc": "1.24.0"
+}
