@@ -23,13 +23,13 @@ jobs:
             update_mode: latest
           - branch: release-v1.15.x
             update_mode: patch
-          - branch: release-v1.20.x
-            update_mode: patch
           - branch: release-v1.21.x
             update_mode: patch
           - branch: release-v1.22.x
             update_mode: patch
           - branch: release-v1.23.x
+            update_mode: patch
+          - branch: release-v1.24.x
             update_mode: patch
       fail-fast: false
     runs-on: ubuntu-latest
