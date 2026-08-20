@@ -30,7 +30,14 @@ windows: mkbin generate
 
 generate: version-file ## updates version of pipeline-as-code, cli, mag, assist and results in pkg/version file
 version-file:
-	echo '{"pac": "$(PAC_VERSION)", "tkn": "$(TKN_VERSION)", "results": "$(RESULTS_VERSION)", "manualapprovalgate": "$(MAG_VERSION)", "assist": "$(ASSIST_VERSION)", "opc": "$(OPC_VERSION)"}' > pkg/version.json
+	@echo '{' > pkg/version.json
+	@echo '  "pac": "$(PAC_VERSION)",' >> pkg/version.json
+	@echo '  "tkn": "$(TKN_VERSION)",' >> pkg/version.json
+	@echo '  "results": "$(RESULTS_VERSION)",' >> pkg/version.json
+	@echo '  "manualapprovalgate": "$(MAG_VERSION)",' >> pkg/version.json
+	@echo '  "assist": "$(ASSIST_VERSION)",' >> pkg/version.json
+	@echo '  "opc": "$(OPC_VERSION)"' >> pkg/version.json
+	@echo '}' >> pkg/version.json
 
 version-updates: ## updates pipeline-as-code, cli, mag, assist and results version in go.mod
 	$(GO) get -u github.com/openshift-pipelines/pipelines-as-code
