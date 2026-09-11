@@ -3,8 +3,8 @@ module github.com/openshift-pipelines/opc
 go 1.26.4
 
 require (
-	github.com/openshift-pipelines/manual-approval-gate v0.8.0
-	github.com/openshift-pipelines/pipelines-as-code v0.42.3
+	github.com/openshift-pipelines/manual-approval-gate v0.8.1
+	github.com/openshift-pipelines/pipelines-as-code v0.42.4
 	github.com/openshift-pipelines/tekton-assist v0.1.1
 	github.com/spf13/cobra v1.10.2
 	github.com/tektoncd/cli v0.44.2
