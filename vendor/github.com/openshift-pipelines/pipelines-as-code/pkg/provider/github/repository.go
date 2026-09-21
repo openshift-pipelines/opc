@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/google/go-github/v85/github"
+	"github.com/google/go-github/v91/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/formatting"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
@@ -75,15 +75,15 @@ func createRepository(ctx context.Context, nsTemplate, repoTemplate string, clie
 			Name: repoNsName,
 		},
 	}
-	repoNs, err = clients.Kube.CoreV1().Namespaces().Create(ctx, repoNs, metav1.CreateOptions{})
+	_, err = clients.Kube.CoreV1().Namespaces().Create(ctx, repoNs, metav1.CreateOptions{})
 	if err != nil && !errors.IsAlreadyExists(err) {
-		return fmt.Errorf("failed to create namespace %v: %w", repoNs.Name, err)
+		return fmt.Errorf("failed to create namespace %v: %w", repoNsName, err)
 	}
 
 	if errors.IsAlreadyExists(err) {
 		logger.Infof("github: namespace %v already exists, creating repository", repoNsName)
 	} else {
-		logger.Info("github: created repository namespace: ", repoNs.Name)
+		logger.Info("github: created repository namespace: ", repoNsName)
 	}
 
 	// create repository
