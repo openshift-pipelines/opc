@@ -16,7 +16,7 @@ import (
 
 	"github.com/gobwas/glob"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/google/go-github/v85/github"
+	"github.com/google/go-github/v91/github"
 	"github.com/jonboulle/clockwork"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
@@ -26,6 +26,7 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider/retryhttp"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"k8s.io/client-go/kubernetes"
@@ -74,6 +75,10 @@ type Provider struct {
 	clock              clockwork.Clock
 	graphQLClient      *graphQLClient
 	checkRunsCache     checkRunsCache
+	// clientFromCaller records that the client was built by the caller from a
+	// credential the caller owns, which exempts it from the trusted hostname
+	// gate in SetClient. See UsePreauthenticatedClient.
+	clientFromCaller bool
 }
 
 type skippedRun struct {
@@ -91,7 +96,7 @@ type checkRunsCache struct {
 
 func New() *Provider {
 	return &Provider{
-		APIURL:        github.Ptr(keys.PublicGithubAPIURL),
+		APIURL:        new(keys.PublicGithubAPIURL),
 		PaginedNumber: defaultPaginedNumber,
 		skippedRun: skippedRun{
 			mutex: &sync.Mutex{},
@@ -116,8 +121,37 @@ func (v *Provider) SetGithubClient(client *github.Client) {
 	v.ghClient = client
 }
 
+// UsePreauthenticatedClient installs a client the caller built itself and opts
+// the provider out of the trusted hostname gate in SetClient.
+//
+// The gate exists to stop a credential the controller owns from being sent to a
+// host that a payload, or a Repository CR sharing a token from another
+// namespace, asked for. It is the origin of the host that matters: a caller that
+// picked the URL itself, the end to end harness taking it from its own
+// configuration, has already made that decision and there is nothing left here
+// to protect, whether the token is its own or one it minted from the App. It
+// follows that the URL must never come from a payload. Nothing in the controller
+// may use this.
+func (v *Provider) UsePreauthenticatedClient(client *github.Client) {
+	v.ghClient = client
+	v.clientFromCaller = true
+}
+
 func (v *Provider) SetPacInfo(pacInfo *info.PacOpts) {
 	v.pacInfo = pacInfo
+}
+
+// retryOptions returns retry transport options built from the pac settings,
+// or nil when API retries are disabled (the default).
+func (v *Provider) retryOptions() *retryhttp.Options {
+	if v.pacInfo == nil || !v.pacInfo.EnableAPIRetry {
+		return nil
+	}
+	return &retryhttp.Options{
+		MaxAttempts: v.pacInfo.APIRetryMaxAttempts,
+		MaxWait:     time.Duration(v.pacInfo.APIRetryMaxWaitSeconds) * time.Second,
+		Logger:      v.Logger,
+	}
 }
 
 // detectGHERawURL Detect if we have a raw URL in GHE.
@@ -235,13 +269,16 @@ func (v *Provider) GetConfig() *info.ProviderConfig {
 	}
 }
 
-func MakeClient(ctx context.Context, apiURL, token string) (*github.Client, string, *string) {
+func MakeClient(ctx context.Context, apiURL, token string, retryOpts ...*retryhttp.Options) (*github.Client, string, *string, error) {
 	var client *github.Client
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
 	)
 
 	tc := oauth2.NewClient(ctx, ts)
+	if len(retryOpts) > 0 && retryOpts[0] != nil {
+		tc.Transport = retryhttp.Wrap(tc.Transport, *retryOpts[0])
+	}
 	if apiURL != "" {
 		if !strings.HasPrefix(apiURL, "https") && !strings.HasPrefix(apiURL, "http") {
 			apiURL = "https://" + apiURL
@@ -249,16 +286,32 @@ func MakeClient(ctx context.Context, apiURL, token string) (*github.Client, stri
 	}
 
 	providerName := "github"
-	if apiURL != "" && apiURL != apiPublicURL {
+	var err error
+	// keys.PublicGithubAPIURL carries no trailing slash while apiPublicURL does,
+	// and both reach here: comparing them literally would build an enterprise
+	// client for the public instance and append /api/v3 to api.github.com.
+	if apiURL != "" && strings.TrimSuffix(apiURL, "/") != strings.TrimSuffix(apiPublicURL, "/") {
 		providerName = "github-enterprise"
-		uploadURL := apiURL + "/api/uploads"
-		client, _ = github.NewClient(tc).WithEnterpriseURLs(apiURL, uploadURL)
+		uploadBaseURL := strings.TrimSuffix(strings.TrimSuffix(apiURL, "/"), "/api/v3")
+		uploadURL := uploadBaseURL + "/api/uploads"
+		client, err = github.NewClient(github.WithHTTPClient(tc), github.WithEnterpriseURLs(apiURL, uploadURL))
+		if err != nil {
+			return nil, "", nil, fmt.Errorf("failed to configure GitHub Enterprise client: %w", err)
+		}
 	} else {
-		client = github.NewClient(tc)
-		apiURL = client.BaseURL.String()
+		client, err = github.NewClient(github.WithHTTPClient(tc))
+		if err != nil {
+			return nil, providerName, nil, fmt.Errorf("failed to create github client: %w", err)
+		}
+		apiURL = client.BaseURL()
 	}
 
-	return client, providerName, github.Ptr(apiURL)
+	return client, providerName, new(apiURL), nil
+}
+
+// MakeClient creates a GitHub API client using the provider retry settings.
+func (v *Provider) MakeClient(ctx context.Context, apiURL, token string) (*github.Client, string, *string, error) {
+	return MakeClient(ctx, apiURL, token, v.retryOptions())
 }
 
 func parseTS(headerTS string) (time.Time, error) {
@@ -322,7 +375,50 @@ func (v *Provider) checkWebhookSecretValidity(ctx context.Context, cw clockwork.
 }
 
 func (v *Provider) SetClient(ctx context.Context, run *params.Run, event *info.Event, repo *v1alpha1.Repository, eventsEmitter *events.EventEmitter) error {
-	client, providerName, apiURL := MakeClient(ctx, event.Provider.URL, event.Provider.Token)
+	if event.InstallationID <= 0 && event.EventType != "incoming" && event.Request != nil &&
+		event.Request.Header.Get("X-GitHub-Enterprise-Host") != "" {
+		if err := v.Validate(ctx, run, event); err != nil {
+			return err
+		}
+		endpoint, err := trustedGitHubEndpointFromPayload(
+			ctx,
+			run,
+			event.Request.Header.Get("X-GitHub-Enterprise-Host"),
+			string(event.Request.Payload),
+		)
+		if err != nil {
+			return err
+		}
+		event.Provider.URL = endpoint.BaseURL
+		event.GHEURL = endpoint.BaseURL
+	} else if v.ghClient == nil && !v.clientFromCaller {
+		// event.Provider.URL comes from the Repository CR, which is not enough
+		// to trust it: with a global Repository sharing a token from the
+		// controller namespace, the CR and the credential do not have the same
+		// owner, so a tenant could point an administrator's token at a host of
+		// their choosing. Resolve it through the allowlist and rebuild the
+		// endpoint from the hostname the allowlist approved.
+		//
+		// An empty URL is gated too: it means github.com, which an authoritative
+		// allowlist is entitled to refuse.
+		//
+		// The gate applies exactly when the client built below is the one that
+		// will carry the token. A client that is already installed, which is how
+		// the unit tests inject their fake, is left alone: the URL then reaches
+		// nothing. A caller that installed its own client through
+		// UsePreauthenticatedClient is skipped for a different reason: it owns
+		// the credential, so there is nothing here to protect.
+		endpoint, err := trustedAPIEndpointForProviderURL(ctx, run, event.Provider.URL)
+		if err != nil {
+			return err
+		}
+		event.Provider.URL = endpoint.BaseURL
+	}
+
+	client, providerName, apiURL, err := v.MakeClient(ctx, event.Provider.URL, event.Provider.Token)
+	if err != nil {
+		return err
+	}
 	v.providerName = providerName
 	v.Run = run
 	v.repo = repo
@@ -343,7 +439,7 @@ func (v *Provider) SetClient(ctx context.Context, run *params.Run, event *info.E
 	if event.InstallationID != 0 {
 		integration = "github-app"
 	}
-	run.Clients.Log.Infof(integration+": initialized OAuth2 client for providerName=%s providerURL=%s", v.providerName, event.Provider.URL)
+	v.Logger.Infof(integration+": initialized OAuth2 client for providerName=%s providerURL=%s", v.providerName, event.Provider.URL)
 
 	v.APIURL = apiURL
 
@@ -369,7 +465,7 @@ func (v *Provider) SetClient(ctx context.Context, run *params.Run, event *info.E
 			// look up extra repos from the configmap first.  When no additional repos
 			// are configured, scope the token to only the triggering repo.
 			ns := info.GetNS(ctx)
-			scopedToken, err := v.GetAppToken(ctx, run.Clients.Kube, event.Provider.URL, event.InstallationID, ns)
+			scopedToken, err := v.GetAppToken(ctx, run.Clients.Kube, event.GHEURL, event.InstallationID, ns)
 			if err != nil {
 				return fmt.Errorf("failed to scope token to triggering repository: %w", err)
 			}
@@ -380,8 +476,51 @@ func (v *Provider) SetClient(ctx context.Context, run *params.Run, event *info.E
 	return nil
 }
 
-func (v *Provider) GetCommitStatuses(_ context.Context, _ *info.Event) ([]provider.CommitStatusInfo, error) {
-	return nil, nil
+func (v *Provider) GetCommitStatuses(ctx context.Context, event *info.Event) ([]provider.CommitStatusInfo, error) {
+	if v.ghClient == nil {
+		return nil, fmt.Errorf("no github client has been initialized")
+	}
+
+	var result []provider.CommitStatusInfo
+
+	if event.InstallationID > 0 {
+		checkRuns, err := v.fetchAllCheckRunPagesWithRetry(ctx, event)
+		if err != nil {
+			return nil, err
+		}
+		for _, cr := range checkRuns {
+			status := cr.GetStatus()
+			if status == "completed" {
+				status = cr.GetConclusion()
+			}
+			result = append(result, provider.CommitStatusInfo{
+				Name:   cr.GetName(),
+				Status: status,
+			})
+		}
+	} else {
+		opt := &github.ListOptions{PerPage: v.PaginedNumber}
+		for {
+			statuses, resp, err := wrapAPI(v, "list_statuses", func() ([]*github.RepoStatus, *github.Response, error) {
+				return v.Client().Repositories.ListStatuses(ctx, event.Organization, event.Repository, event.SHA, opt)
+			})
+			if err != nil {
+				return nil, err
+			}
+			for _, s := range statuses {
+				result = append(result, provider.CommitStatusInfo{
+					Name:   s.GetContext(),
+					Status: s.GetState(),
+				})
+			}
+			if resp == nil || resp.NextPage == 0 {
+				break
+			}
+			opt.Page = resp.NextPage
+		}
+	}
+
+	return result, nil
 }
 
 // GetTektonDir retrieves all YAML files from the .tekton directory and returns them as a single concatenated multi-document YAML file.
@@ -688,7 +827,7 @@ func (v *Provider) fetchChangedFiles(ctx context.Context, runevent *info.Event) 
 					changedFiles.Renamed = append(changedFiles.Renamed, *repoCommit[j].Filename)
 				}
 			}
-			if resp.NextPage == 0 {
+			if resp == nil || resp.NextPage == 0 {
 				break
 			}
 			opt.Page = resp.NextPage
@@ -756,7 +895,7 @@ func ListRepos(ctx context.Context, v *Provider) ([]string, error) {
 		for i := range repoList.Repositories {
 			repoURLs = append(repoURLs, *repoList.Repositories[i].HTMLURL)
 		}
-		if resp.NextPage == 0 {
+		if resp == nil || resp.NextPage == 0 {
 			break
 		}
 		opt.Page = resp.NextPage
@@ -793,7 +932,7 @@ func (v *Provider) CreateToken(ctx context.Context, repository []string, event *
 		v.RepositoryIDs = uniqueRepositoryID(v.RepositoryIDs, infoData.GetID())
 	}
 	ns := info.GetNS(ctx)
-	token, err := v.GetAppToken(ctx, v.Run.Clients.Kube, event.Provider.URL, event.InstallationID, ns)
+	token, err := v.GetAppToken(ctx, v.Run.Clients.Kube, event.GHEURL, event.InstallationID, ns)
 	if err != nil {
 		return "", err
 	}
@@ -801,9 +940,10 @@ func (v *Provider) CreateToken(ctx context.Context, repository []string, event *
 }
 
 func (v *Provider) expandGlobAndAddRepoIDs(ctx context.Context, repoPattern string, cache *[]*github.Repository) error {
-	// We can skip error check here as all the glob compilation has been checked
-	// before this method is called.
-	reposToScope, _ := glob.Compile(repoPattern)
+	reposToScope, err := glob.Compile(repoPattern)
+	if err != nil {
+		return fmt.Errorf("invalid repo glob pattern %q: %w", repoPattern, err)
+	}
 
 	if *cache == nil {
 		repos, err := v.listAppRepos(ctx)
@@ -837,7 +977,7 @@ func (v *Provider) listAppRepos(ctx context.Context) ([]*github.Repository, erro
 
 		allRepos = append(allRepos, repoList.Repositories...)
 
-		if resp.NextPage == 0 {
+		if resp == nil || resp.NextPage == 0 {
 			break
 		}
 		opt.Page = resp.NextPage
@@ -973,10 +1113,6 @@ func (v *Provider) newCommentTraceLogContext(ctx context.Context, event *info.Ev
 }
 
 func (v *Provider) debugCommentPhase(event *info.Event, trace commentTraceLogContext, phase string, kv ...any) {
-	if v.Logger == nil {
-		return
-	}
-
 	org := "unknown"
 	repo := "unknown"
 	pr := 0
@@ -1093,8 +1229,8 @@ func (v *Provider) CreateComment(ctx context.Context, event *info.Event, commit,
 				"comment_id", comment.GetID(),
 				"body_hash", bodyHash(commit))
 			if _, _, err := wrapAPI(v, "edit_comment", func() (*github.IssueComment, *github.Response, error) {
-				return v.Client().Issues.EditComment(ctx, event.Organization, event.Repository, comment.GetID(), &github.IssueComment{
-					Body: github.Ptr(commit),
+				return v.Client().Issues.UpdateComment(ctx, event.Organization, event.Repository, comment.GetID(), github.IssueCommentRequest{
+					Body: commit,
 				})
 			}); err != nil {
 				return err
@@ -1109,8 +1245,8 @@ func (v *Provider) CreateComment(ctx context.Context, event *info.Event, commit,
 	v.debugCommentPhase(event, trace, "create_comment_start",
 		"body_hash", bodyHash(commit))
 	createdComment, createResp, err := wrapAPI(v, "create_comment", func() (*github.IssueComment, *github.Response, error) {
-		return v.Client().Issues.CreateComment(ctx, event.Organization, event.Repository, event.PullRequestNumber, &github.IssueComment{
-			Body: github.Ptr(commit),
+		return v.Client().Issues.CreateComment(ctx, event.Organization, event.Repository, event.PullRequestNumber, github.IssueCommentRequest{
+			Body: commit,
 		})
 	})
 	if err != nil {
@@ -1192,12 +1328,24 @@ func (v *Provider) GenerateJWT(ctx context.Context, ns string, kube kubernetes.I
 // Fetch the app slug used for identifying the application.
 func (v *Provider) fetchAppSlug(ctx context.Context, apiURL string) (string, error) {
 	ns := info.GetNS(ctx)
+	// apiURL is whatever SetClient settled on, which is an API URL rather than a
+	// bare hostname on a self hosted instance, so it needs the URL aware gate.
+	endpoint, err := trustedAPIEndpointForProviderURL(ctx, v.Run, apiURL)
+	if err != nil {
+		return "", err
+	}
+	trustedAPIURL, err := endpoint.BaseURLForClient()
+	if err != nil {
+		return "", err
+	}
 	tokenString, err := v.GenerateJWT(ctx, ns, v.Run.Clients.Kube)
 	if err != nil {
 		return "", err
 	}
-
-	client, _, _ := MakeClient(ctx, apiURL, tokenString)
+	client, _, _, err := v.MakeClient(ctx, trustedAPIURL, tokenString)
+	if err != nil {
+		return "", err
+	}
 	app, _, err := client.Apps.Get(ctx, "")
 	if err != nil {
 		return "", fmt.Errorf("failed to get app info: %w", err)
