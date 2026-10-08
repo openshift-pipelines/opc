@@ -1,10 +1,10 @@
 module github.com/openshift-pipelines/opc
 
-go 1.25.12
+go 1.25.13
 
 require (
 	github.com/openshift-pipelines/manual-approval-gate v0.2.2
-	github.com/openshift-pipelines/pipelines-as-code v0.27.3
+	github.com/openshift-pipelines/pipelines-as-code v0.27.2
 	github.com/spf13/cobra v1.10.2
 	github.com/tektoncd/cli v0.37.7
 	github.com/tektoncd/results v0.10.0
@@ -12,7 +12,7 @@ require (
 
 replace (
 	github.com/google/gnostic-models => github.com/google/gnostic-models v0.7.1
-	github.com/tektoncd/hub => github.com/openshift-pipelines/hub v1.17.7
+	github.com/tektoncd/hub => github.com/openshift-pipelines/hub v1.17.9
 	k8s.io/api => k8s.io/api v0.30.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.30.0
 	k8s.io/client-go => k8s.io/client-go v0.30.0
