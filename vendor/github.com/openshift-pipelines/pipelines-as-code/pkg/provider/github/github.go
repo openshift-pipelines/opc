@@ -41,18 +41,19 @@ const (
 var _ provider.Interface = (*Provider)(nil)
 
 type Provider struct {
-	Client        *github.Client
-	Logger        *zap.SugaredLogger
-	Run           *params.Run
-	pacInfo       *info.PacOpts
-	Token, APIURL *string
-	ApplicationID *int64
-	providerName  string
-	provenance    string
-	RepositoryIDs []int64
-	repo          *v1alpha1.Repository
-	eventEmitter  *events.EventEmitter
-	PaginedNumber int
+	Client          *github.Client
+	Logger          *zap.SugaredLogger
+	Run             *params.Run
+	pacInfo         *info.PacOpts
+	Token, APIURL   *string
+	ApplicationID   *int64
+	providerName    string
+	provenance      string
+	RepositoryIDs   []int64
+	RepositoryNames []string
+	repo            *v1alpha1.Repository
+	eventEmitter    *events.EventEmitter
+	PaginedNumber   int
 	skippedRun
 }
 
@@ -257,7 +258,7 @@ func (v *Provider) checkWebhookSecretValidity(ctx context.Context, cw clockwork.
 
 		if cw.Now().After(ts) {
 			errm := fmt.Sprintf("token has expired at %s", resp.TokenExpiration.Format(time.RFC1123))
-			return fmt.Errorf(errm)
+			return fmt.Errorf("%s", errm)
 		}
 	}
 
@@ -289,6 +290,33 @@ func (v *Provider) SetClient(ctx context.Context, run *params.Run, event *info.E
 		// check the webhook secret is valid and not ratelimited
 		if err := v.checkWebhookSecretValidity(ctx, clockwork.NewRealClock()); err != nil {
 			return fmt.Errorf("the webhook secret is not valid: %w", err)
+		}
+	}
+
+	// Handle GitHub App token scoping for both global and repo-level configuration
+	if event.InstallationID > 0 {
+		token := ""
+		if repo != nil && v.pacInfo != nil && v.Logger != nil && v.eventEmitter != nil {
+			v.Logger.Debugf("setupAuthenticatedClient: scoping github app token")
+			scopedToken, err := ScopeTokenToListOfRepos(ctx, v, v.pacInfo, repo, run, event, v.eventEmitter, v.Logger)
+			if err != nil {
+				return fmt.Errorf("failed to scope token: %w", err)
+			}
+			token = scopedToken
+		}
+		switch {
+		case token != "":
+			event.Provider.Token = token
+		case len(v.RepositoryIDs) > 0 || len(v.RepositoryNames) > 0:
+			// Defer scoping until after ScopeTokenToListOfRepos so CreateToken can
+			// look up extra repos from the configmap first.  When no additional repos
+			// are configured, scope the token to only the triggering repo.
+			ns := info.GetNS(ctx)
+			scopedToken, err := v.GetAppToken(ctx, run.Clients.Kube, event.Provider.URL, event.InstallationID, ns)
+			if err != nil {
+				return fmt.Errorf("failed to scope token to triggering repository: %w", err)
+			}
+			event.Provider.Token = scopedToken
 		}
 	}
 
