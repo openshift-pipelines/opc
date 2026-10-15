@@ -1495,8 +1495,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
-github.com/openshift-pipelines/hub v1.17.9 h1:vUUrMr5bvXKXwB1lORDdJBmxiQRAMRPQV3k2eC+4LQo=
-github.com/openshift-pipelines/hub v1.17.9/go.mod h1:4omAJ8o2Ef3d6U7JUe9OYXzOgaO4aMx6RjfNfW43xlk=
+github.com/openshift-pipelines/hub v1.17.10 h1:7nBxAGWlrHTAOlrhLd9udP4xUjT757KAanT6H4anVuE=
+github.com/openshift-pipelines/hub v1.17.10/go.mod h1:Q6mxJ8sQuMltIxYaMRfK7xsujWacLSQoC1KNkFlPO2E=
 github.com/openshift-pipelines/manual-approval-gate v0.2.2 h1:bFZCEem0ZyYfyqpbv3hxbgjMJIjNBUfC+NIdUnm1fvA=
 github.com/openshift-pipelines/manual-approval-gate v0.2.2/go.mod h1:MPfHaCniOrhaoFEB8t/QHATOCfxJAz5fYZoPSRxK9zE=
 github.com/openshift-pipelines/pipelines-as-code v0.27.4 h1:7ArDtxHHDyyoA6A1mKOTJD/uzVNYOWkwdpRrbSoff9o=

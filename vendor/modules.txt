@@ -1650,7 +1650,7 @@ github.com/tektoncd/cli/pkg/triggertemplate
 github.com/tektoncd/cli/pkg/trustedresources
 github.com/tektoncd/cli/pkg/version
 github.com/tektoncd/cli/pkg/workspaces
-# github.com/tektoncd/hub v1.17.3 => github.com/openshift-pipelines/hub v1.17.9
+# github.com/tektoncd/hub v1.17.3 => github.com/openshift-pipelines/hub v1.17.10
 ## explicit; go 1.25.13
 github.com/tektoncd/hub/api/pkg/cli/app
 github.com/tektoncd/hub/api/pkg/cli/cmd
@@ -2917,7 +2917,7 @@ sigs.k8s.io/structured-merge-diff/v4/value
 sigs.k8s.io/yaml
 sigs.k8s.io/yaml/goyaml.v2
 # github.com/google/gnostic-models => github.com/google/gnostic-models v0.7.1
-# github.com/tektoncd/hub => github.com/openshift-pipelines/hub v1.17.9
+# github.com/tektoncd/hub => github.com/openshift-pipelines/hub v1.17.10
 # k8s.io/api => k8s.io/api v0.30.0
 # k8s.io/apimachinery => k8s.io/apimachinery v0.30.0
 # k8s.io/client-go => k8s.io/client-go v0.30.0

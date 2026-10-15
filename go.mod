@@ -12,7 +12,7 @@ require (
 
 replace (
 	github.com/google/gnostic-models => github.com/google/gnostic-models v0.7.1
-	github.com/tektoncd/hub => github.com/openshift-pipelines/hub v1.17.9
+	github.com/tektoncd/hub => github.com/openshift-pipelines/hub v1.17.10
 	k8s.io/api => k8s.io/api v0.30.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.30.0
 	k8s.io/client-go => k8s.io/client-go v0.30.0
