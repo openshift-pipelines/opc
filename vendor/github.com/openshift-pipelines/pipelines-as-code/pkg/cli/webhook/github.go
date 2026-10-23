@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/google/go-github/v85/github"
+	"github.com/google/go-github/v91/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli/prompt"
@@ -130,18 +130,18 @@ func (gh *gitHubConfig) askGHWebhookConfig(repoURL, controllerURL, apiURL, perso
 
 func (gh *gitHubConfig) create(ctx context.Context) error {
 	hook := &github.Hook{
-		Name:   github.Ptr("web"),
-		Active: github.Ptr(true),
+		Name:   new("web"),
+		Active: new(true),
 		Events: []string{
 			"issue_comment",
 			triggertype.PullRequest.String(),
 			"push",
 		},
 		Config: &github.HookConfig{
-			URL:         github.Ptr(gh.controllerURL),
-			ContentType: github.Ptr("json"),
-			InsecureSSL: github.Ptr("0"),
-			Secret:      github.Ptr(gh.webhookSecret),
+			URL:         new(gh.controllerURL),
+			ContentType: new("json"),
+			InsecureSSL: new("0"),
+			Secret:      new(gh.webhookSecret),
 		},
 	}
 
@@ -178,10 +178,10 @@ func (gh *gitHubConfig) newGHClientByToken(ctx context.Context) (*github.Client,
 	)
 
 	if gh.APIURL == "" || gh.APIURL == keys.PublicGithubAPIURL {
-		return github.NewClient(oauth2.NewClient(ctx, ts)), nil
+		return github.NewClient(github.WithHTTPClient(oauth2.NewClient(ctx, ts)))
 	}
 
-	gprovider, err := github.NewClient(oauth2.NewClient(ctx, ts)).WithEnterpriseURLs(gh.APIURL, gh.APIURL)
+	gprovider, err := github.NewClient(github.WithHTTPClient(oauth2.NewClient(ctx, ts)), github.WithEnterpriseURLs(gh.APIURL, gh.APIURL))
 	if err != nil {
 		return nil, err
 	}
