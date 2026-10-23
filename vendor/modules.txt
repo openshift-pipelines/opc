@@ -1199,8 +1199,8 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-pipelines/manual-approval-gate v0.2.2
-## explicit; go 1.21
+# github.com/openshift-pipelines/manual-approval-gate v0.2.3
+## explicit; go 1.26.10
 github.com/openshift-pipelines/manual-approval-gate/pkg/actions
 github.com/openshift-pipelines/manual-approval-gate/pkg/apis/approvaltask
 github.com/openshift-pipelines/manual-approval-gate/pkg/apis/approvaltask/v1alpha1
