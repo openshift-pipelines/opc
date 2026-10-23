@@ -213,7 +213,7 @@ func (r *RuntimeSort) Less(i, j int) bool {
 // e.g. If OriginalPosition(0) returns 5 than the
 // item currently at position 0 was at position 5 in the original unsorted array.
 func (r *RuntimeSort) OriginalPosition(ix int) int {
-	if ix < 0 || ix > len(r.origPosition) {
+	if ix < 0 || ix >= len(r.origPosition) {
 		return -1
 	}
 	return r.origPosition[ix]
