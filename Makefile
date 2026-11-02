@@ -2,7 +2,6 @@ PAC_VERSION := $(shell sed -n '/[ ]*github.com\/openshift-pipelines\/pipelines-a
 TKN_VERSION := $(shell sed -n '/[ ]*github.com\/tektoncd\/cli v[0-9]*\.[0-9]*\.[0-9]*/ { s/.* v//;p ;}' go.mod)
 RESULTS_VERSION := $(shell sed -n '/[ ]*github.com\/tektoncd\/results v[0-9]*\.[0-9]*\.[0-9]*/ { s/.* v//;p ;}' go.mod)
 MAG_VERSION := $(shell sed -n '/[ ]*github.com\/openshift-pipelines\/manual-approval-gate v[0-9]*\.[0-9]*\.[0-9]*/ { s/.* v//;p ;}' go.mod)
-ASSIST_VERSION := $(shell sed -n '/[ ]*github.com\/openshift-pipelines\/tekton-assist v[0-9]*\.[0-9]*\.[0-9]*/ { s/.* v//;p ;}' go.mod)
 
 GO := go
 GOVERSION := 1.25
@@ -28,14 +27,13 @@ build: mkbin generate ## builds binary and updates version in pkg/version
 windows: mkbin generate
 	env GOOS=windows GOARCH=amd64 $(GO) build -mod=vendor $(FLAGS)  -v -o bin/$(BINARYNAME).exe main.go
 
-generate: version-file ## updates version of pipeline-as-code, cli, mag, assist and results in pkg/version file
+generate: version-file ## updates version of pipeline-as-code, cli, mag and results in pkg/version file
 version-file:
-	echo '{"pac": "$(PAC_VERSION)", "tkn": "$(TKN_VERSION)", "results": "$(RESULTS_VERSION)", "manualapprovalgate": "$(MAG_VERSION)", "assist": "$(ASSIST_VERSION)", "opc": "$(OPC_VERSION)"}' > pkg/version.json
+	echo '{"pac": "$(PAC_VERSION)", "tkn": "$(TKN_VERSION)", "results": "$(RESULTS_VERSION)", "manualapprovalgate": "$(MAG_VERSION)", "opc": "$(OPC_VERSION)"}' > pkg/version.json
 
-version-updates: ## updates pipeline-as-code, cli, mag, assist and results version in go.mod
+version-updates: ## updates pipeline-as-code, cli, mag and results version in go.mod
 	$(GO) get -u github.com/openshift-pipelines/pipelines-as-code
 	$(GO) get -u github.com/openshift-pipelines/manual-approval-gate
-	$(GO) get -u github.com/openshift-pipelines/tekton-assist
 	$(GO) get -u github.com/tektoncd/cli
 	$(GO) get -u github.com/tektoncd/results
 	$(GO) mod tidy

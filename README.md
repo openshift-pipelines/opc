@@ -16,7 +16,6 @@ i.e:
 
 The following commands help you understand and effectively use the OpenShift Pipelines CLI:
 
-- `opc assist`: diagnose Tekton resources
 - `opc hub`: search and install from Tekton Hub
 - `opc pac`: add and manage git repositories (pipelines as code)
 - `opc results` : interact with results api
