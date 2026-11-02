@@ -13,7 +13,6 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac"
 	pacversion "github.com/openshift-pipelines/pipelines-as-code/pkg/cmd/tknpac/versioncmd"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params"
-	assistcli "github.com/openshift-pipelines/tekton-assist/pkg/cli"
 	"github.com/spf13/cobra"
 	tkncli "github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd"
@@ -30,7 +29,6 @@ See https://pipelinesascode.com for more details`
 	tknShortDesc     = "CLI to interact with Openshift Pipelines resources"
 	resultsShortDesc = "CLI to interact with Tekton Results API."
 	magShortDesc     = "CLI to interact with Manual Approval Gate."
-	assistShortDesc  = "CLI to analyze and diagnose Tekton failures with AI assistance."
 	binaryName       = `opc`
 )
 
@@ -60,16 +58,10 @@ func main() {
 	results.Short = resultsShortDesc
 	tkn.AddCommand(results)
 
-	// adding tekton assist
-	assist := assistcli.RootCommand()
-	assist.Use = "assist"
-	assist.Short = assistShortDesc
-	tkn.AddCommand(assist)
-
 	pluginList := plugins.GetAllTknPluginFromPaths()
 	newPluginList := []string{}
 	// remove integrated commands from the plugin list
-	excludedPlugins := []string{"pac", "assist", "results"}
+	excludedPlugins := []string{"pac", "results"}
 	for _, value := range pluginList {
 		if !slices.Contains(excludedPlugins, value) {
 			newPluginList = append(newPluginList, value)
