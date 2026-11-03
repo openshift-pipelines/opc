@@ -5,20 +5,19 @@ import (
 	"fmt"
 
 	"github.com/google/go-github/scrape"
-	githubv84 "github.com/google/go-github/v84/github"
-	"github.com/google/go-github/v85/github"
+	"github.com/google/go-github/v91/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
 )
 
 // generateManifest generate manifest from the given options.
 func generateManifest(opts *bootstrapOpts) ([]byte, error) {
 	sc := scrape.AppManifest{
-		Name:           github.Ptr(opts.GithubApplicationName),
-		URL:            github.Ptr(opts.GithubApplicationURL),
+		Name:           new(opts.GithubApplicationName),
+		URL:            new(opts.GithubApplicationURL),
 		HookAttributes: map[string]string{"url": opts.RouteName},
-		RedirectURL:    github.Ptr(fmt.Sprintf("http://localhost:%d", opts.webserverPort)),
-		Description:    github.Ptr("Pipeline as Code Application"),
-		Public:         github.Ptr(true),
+		RedirectURL:    new(fmt.Sprintf("http://localhost:%d", opts.webserverPort)),
+		Description:    new("Pipeline as Code Application"),
+		Public:         new(true),
 		DefaultEvents: []string{
 			"check_run",
 			"check_suite",
@@ -27,13 +26,13 @@ func generateManifest(opts *bootstrapOpts) ([]byte, error) {
 			triggertype.PullRequest.String(),
 			"push",
 		},
-		DefaultPermissions: &githubv84.InstallationPermissions{
-			Checks:       githubv84.Ptr("write"),
-			Contents:     githubv84.Ptr("write"),
-			Issues:       githubv84.Ptr("write"),
-			Members:      githubv84.Ptr("read"),
-			Metadata:     githubv84.Ptr("read"),
-			PullRequests: githubv84.Ptr("write"),
+		DefaultPermissions: &github.InstallationPermissions{
+			Checks:       new("write"),
+			Contents:     new("write"),
+			Issues:       new("write"),
+			Members:      new("read"),
+			Metadata:     new("read"),
+			PullRequests: new("write"),
 		},
 	}
 	return json.Marshal(sc)
@@ -42,10 +41,10 @@ func generateManifest(opts *bootstrapOpts) ([]byte, error) {
 // getGHClient get github client.
 func getGHClient(opts *bootstrapOpts) (*github.Client, error) {
 	if opts.GithubAPIURL == defaultPublicGithub {
-		return github.NewClient(nil), nil
+		return github.NewClient()
 	}
 
-	gprovider, err := github.NewClient(nil).WithEnterpriseURLs(opts.GithubAPIURL, "")
+	gprovider, err := github.NewClient(github.WithEnterpriseURLs(opts.GithubAPIURL, opts.GithubAPIURL))
 	if err != nil {
 		return nil, err
 	}
