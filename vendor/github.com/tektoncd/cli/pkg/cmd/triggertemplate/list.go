@@ -47,6 +47,14 @@ func listCommand(p cli.Params) *cobra.Command {
 or
 
 	tkn tt ls -n bar
+
+List TriggerTemplates as a JSON array:
+
+	tkn triggertemplate list -o json
+
+List TriggerTemplates as a YAML array:
+
+	tkn triggertemplate list -o yaml
 `
 
 	c := &cobra.Command{
@@ -70,9 +78,9 @@ or
 			tts, err := triggertemplate.List(cs, metav1.ListOptions{}, namespace)
 			if err != nil {
 				if opts.AllNamespaces {
-					return fmt.Errorf("failed to list TriggerTemplates from all namespaces: %v", err)
+					return fmt.Errorf("failed to list TriggerTemplates from all namespaces: %w", err)
 				}
-				return fmt.Errorf("failed to list TriggerTemplates from %s namespace: %v", namespace, err)
+				return fmt.Errorf("failed to list TriggerTemplates from %s namespace: %w", namespace, err)
 			}
 
 			output, err := cmd.LocalFlags().GetString("output")

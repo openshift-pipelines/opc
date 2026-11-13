@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/deleter"
+	"github.com/tektoncd/cli/pkg/exitcode"
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
 	taskpkg "github.com/tektoncd/cli/pkg/task"
@@ -32,7 +33,6 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 type deleteOptions struct {
@@ -64,15 +64,30 @@ func trExists(args []string, p cli.Params) ([]string, error) {
 func deleteCommand(p cli.Params) *cobra.Command {
 	opts := &options.DeleteOptions{Resource: "TaskRun", ForceDelete: false, DeleteAllNs: false}
 	deleteOpts := &deleteOptions{}
-	f := cliopts.NewPrintFlags("delete")
 	eg := `Delete TaskRuns with names 'foo' and 'bar' in namespace 'quux':
 
     tkn taskrun delete foo bar -n quux
 
+Delete TaskRuns and print JSON:
+
+    tkn taskrun delete foo bar -n quux -o json
+
+Delete all TaskRuns and print JSON:
+
+    tkn taskrun delete --all -n quux -o json
+
+Delete TaskRuns associated with a Task:
+
+    tkn taskrun delete --task my-task -n quux -o json
+
 or
 
     tkn tr rm foo bar -n quux
-`
+
+Deleting a TaskRun owned by a running PipelineRun requires --force when using structured output.
+
+Using -o json or -o yaml skips the confirmation prompt.`
+	var output string
 
 	c := &cobra.Command{
 		Use:               "delete",
@@ -89,7 +104,12 @@ or
 			s := &cli.Stream{
 				In:  cmd.InOrStdin(),
 				Out: cmd.OutOrStdout(),
-				Err: cmd.OutOrStderr(),
+				Err: cmd.ErrOrStderr(),
+			}
+
+			outputFormat := formatted.NormalizeOutput(output)
+			if outputFormat != "" && !formatted.IsStructured(outputFormat) {
+				return exitcode.New(exitcode.InvalidInput, "invalid output format %q: must be json or yaml", outputFormat)
 			}
 
 			if deleteOpts.TaskName != "" {
@@ -122,30 +142,41 @@ or
 				return errs
 			}
 
-			if err := opts.CheckOptions(s, availableTrs, p.Namespace()); err != nil {
+			checkOpts := opts
+			if formatted.IsStructured(output) {
+				s.Err = cmd.ErrOrStderr()
+
+				structuredOpts := *opts
+				structuredOpts.ForceDelete = true
+				checkOpts = &structuredOpts
+			}
+
+			if err := checkOpts.CheckOptions(s, availableTrs, p.Namespace()); err != nil {
 				return err
 			}
 
-			if err := deleteTaskRuns(s, p, availableTrs, opts); err != nil {
+			if err := deleteTaskRuns(s, p, availableTrs, opts, outputFormat); err != nil {
 				return err
 			}
 			return errs
 		},
 	}
-	f.AddFlags(c)
 	c.Flags().BoolVarP(&opts.ForceDelete, "force", "f", false, "Whether to force deletion (default: false)")
 	c.Flags().StringVarP(&deleteOpts.TaskName, "task", "t", "", "The name of a Task whose TaskRuns should be deleted (does not delete the task)")
 	c.Flags().BoolVarP(&opts.DeleteAllNs, "all", "", false, "Delete all TaskRuns in a namespace (default: false)")
 	c.Flags().IntVarP(&opts.Keep, "keep", "", 0, "Keep n most recent number of TaskRuns")
 	c.Flags().IntVarP(&opts.KeepSince, "keep-since", "", 0, "When deleting all TaskRuns keep the ones that has been completed since n minutes")
 	c.Flags().BoolVarP(&opts.IgnoreRunning, "ignore-running", "i", true, "ignore running TaskRun")
+	c.Flags().StringVarP(&output, "output", "o", "", formatted.DeleteOutputFlagUsage)
 	c.Flags().BoolVarP(&opts.IgnoreRunningPipelinerun, "ignore-running-pipelinerun", "", true, "ignore deleting taskruns of a running PipelineRun")
 
 	return c
 }
 
-func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options.DeleteOptions) error {
+func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options.DeleteOptions, output string) error {
 	var numberOfDeletedTr, numberOfKeptTr int
+	var safetyErr error
+
 	cs, err := p.Clients()
 	if err != nil {
 		return fmt.Errorf("failed to create tekton client")
@@ -177,10 +208,29 @@ func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options
 			prFinished := ownerPrFinished(cs, *tr)
 
 			if !prFinished && opts.ForceDelete {
-				fmt.Fprintf(s.Out, "warning: Taskrun %s related pipelinerun still running.\n", tr.Name)
+				if formatted.IsStructured(output) {
+					fmt.Fprintf(s.Err, "warning: Taskrun %s related pipelinerun still running.\n", tr.Name)
+				} else {
+					fmt.Fprintf(s.Out, "warning: Taskrun %s related pipelinerun still running.\n", tr.Name)
+				}
 			}
 			if !prFinished && !opts.ForceDelete {
-				fmt.Fprintf(s.Out, "TaskRun(s): %s attached to PipelineRun is still running deleting will restart the completed taskrun. Proceed (y/n): ", tr.Name)
+				if formatted.IsStructured(output) {
+					safetyErr = multierr.Append(
+						safetyErr,
+						fmt.Errorf(
+							"taskrun %s is owned by a running PipelineRun; use --force to delete",
+							tr.Name,
+						),
+					)
+					continue
+				}
+
+				fmt.Fprintf(
+					s.Out,
+					"TaskRun(s): %s attached to PipelineRun is still running deleting will restart the completed taskrun. Proceed (y/n): ",
+					tr.Name,
+				)
 				if err := opts.TakeInput(s, ""); err != nil {
 					continue
 				}
@@ -211,15 +261,35 @@ func deleteTaskRuns(s *cli.Stream, p cli.Params, trNames []string, opts *options
 			return actions.Delete(taskrunGroupResource, cs.Dynamic, cs.Tekton.Discovery(), taskRunName, p.Namespace(), metav1.DeleteOptions{})
 		})
 
-		if opts.Keep > 0 && opts.Keep == len(trToKeep) && len(trToDelete) == 0 {
-			fmt.Fprintf(s.Out, "Associated %s (%d) for Task:%s is/are equal to keep (%d) \n", opts.Resource, len(trToKeep), opts.ParentResourceName, opts.Keep)
-			return nil
+		switch {
+		case opts.Keep > 0 && opts.Keep == len(trToKeep) && len(trToDelete) == 0:
+			if !formatted.IsStructured(output) {
+				fmt.Fprintf(s.Out, "Associated %s (%d) for Task:%s is/are equal to keep (%d) \n", opts.Resource, len(trToKeep), opts.ParentResourceName, opts.Keep)
+				return nil
+			}
+		case opts.Keep > len(trToKeep):
+			if !formatted.IsStructured(output) {
+				fmt.Fprintf(s.Out, "There is/are only %d %s(s) associated for %s: %s \n", len(trToKeep), opts.Resource, opts.ParentResource, opts.ParentResourceName)
+				return nil
+			}
+		default:
+			d.DeleteRelated([]string{opts.ParentResourceName})
 		}
-		if opts.Keep > len(trToKeep) {
-			fmt.Fprintf(s.Out, "There is/are only %d %s(s) associated for %s: %s \n", len(trToKeep), opts.Resource, opts.ParentResource, opts.ParentResourceName)
-			return nil
+	}
+
+	if formatted.IsStructured(output) {
+		deleted := append(d.SuccessfulRelatedDeletes(), d.SuccessfulDeletes()...)
+		if deleted == nil {
+			deleted = []string{}
 		}
-		d.DeleteRelated([]string{opts.ParentResourceName})
+
+		printErr := formatted.PrintStructuredOutput(
+			s.Out,
+			output,
+			formatted.NewDeleteResult(deleted),
+		)
+
+		return multierr.Combine(printErr, d.Errors(), safetyErr)
 	}
 
 	if !opts.DeleteAllNs {

@@ -39,6 +39,12 @@ type Event struct {
 	URL           string // WEB url not the git URL, which would match to the repo.spec
 	SHAURL        string // pretty URL for web browsing for UIs (cli/web)
 	SHATitle      string // commit title for UIs
+	// CommitMetadataIncomplete marks webhook events that need an authenticated commit lookup
+	// before consumers can rely on title, URL, message, author, or committer fields.
+	CommitMetadataIncomplete bool
+	// PipelineRunSourceRevision records the immutable repository revision supplied by an event.
+	// PipelineRun provenance may explicitly select another revision, such as the default branch.
+	PipelineRunSourceRevision string
 
 	// Full commit information populated by provider.GetCommitInfo()
 	SHAMessage        string    // full commit message (not just title)
@@ -56,7 +62,8 @@ type Event struct {
 
 	// HasSkipCommand indicates whether the commit message contains a skip CI command
 	// (e.g., [skip ci], [ci skip], [skip tkn], [tkn skip]). When true, PipelineRun
-	// execution will be skipped unless overridden by a GitOps command (e.g., /test, /retest).
+	// execution will be skipped unless overridden by a GitOps command (e.g., /test, /retest)
+	// or the event came from an incoming webhook, since both are explicit user-triggered runs.
 	// This allows users to bypass CI for documentation changes or minor fixes while still
 	// maintaining the ability to manually trigger builds when needed.
 	HasSkipCommand bool
@@ -74,8 +81,9 @@ type Event struct {
 
 	// TODO: move out inside the provider
 	// Bitbucket Data Center
-	CloneURL string // bitbucket data center has a different url for cloning the repo than normal public html url
-	Provider *Provider
+	CloneURL       string // bitbucket data center has a different url for cloning the repo than normal public html url
+	BBDCProjectKey string // bitbucket data center project key, including the ~ prefix for personal repositories
+	Provider       *Provider
 
 	// GitLab
 	SourceProjectID int64

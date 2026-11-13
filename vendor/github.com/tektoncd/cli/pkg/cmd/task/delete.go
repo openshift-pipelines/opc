@@ -21,6 +21,7 @@ import (
 	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/deleter"
+	"github.com/tektoncd/cli/pkg/exitcode"
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
 	"github.com/tektoncd/cli/pkg/task"
@@ -28,7 +29,6 @@ import (
 	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 // taskExists validates that the arguments are valid Task names
@@ -55,7 +55,6 @@ func taskExists(args []string, p cli.Params) ([]string, error) {
 
 func deleteCommand(p cli.Params) *cobra.Command {
 	opts := &options.DeleteOptions{Resource: "Task", ForceDelete: false, DeleteRelated: false}
-	f := cliopts.NewPrintFlags("delete")
 	eg := `Delete Tasks with names 'foo' and 'bar' in namespace 'quux':
 
     tkn task delete foo bar -n quux
@@ -63,7 +62,35 @@ func deleteCommand(p cli.Params) *cobra.Command {
 or
 
     tkn t rm foo bar -n quux
+
+Delete a Task and print the result as JSON:
+
+    tkn task delete foo -n quux -o json
+
+Delete a Task and print the result as YAML:
+
+    tkn task delete foo -n quux -o yaml
+
+Delete all Tasks in a namespace and print the result as JSON:
+
+    tkn task delete --all -n quux -o json
+
+Delete all Tasks in a namespace and print the result as YAML:
+
+    tkn task delete --all -n quux -o yaml
+
+Delete a Task and its TaskRuns and print the result as JSON:
+
+    tkn task delete foo -n quux --trs -o json
+
+Delete a Task and its TaskRuns and print the result as YAML:
+
+    tkn task delete foo -n quux --trs -o yaml
+
+Using -o json or -o yaml skips the confirmation prompt.
 `
+
+	output := ""
 
 	c := &cobra.Command{
 		Use:     "delete",
@@ -84,6 +111,14 @@ or
 				Err: cmd.OutOrStderr(),
 			}
 
+			if output != "" {
+				output = formatted.NormalizeOutput(output)
+				if !formatted.IsStructured(output) {
+					return exitcode.New(exitcode.InvalidInput, "invalid output format %q: must be json or yaml", output)
+				}
+				opts.ForceDelete = true
+			}
+
 			availableTaskNames, errs := taskExists(args, p)
 			if len(availableTaskNames) == 0 && errs != nil {
 				return errs
@@ -93,13 +128,13 @@ or
 				return err
 			}
 
-			if err := deleteTask(opts, s, p, availableTaskNames); err != nil {
+			if err := deleteTask(opts, s, p, availableTaskNames, output); err != nil {
 				return err
 			}
 			return errs
 		},
 	}
-	f.AddFlags(c)
+	c.Flags().StringVarP(&output, "output", "o", "", formatted.DeleteOutputFlagUsage)
 	c.Flags().BoolVarP(&opts.ForceDelete, "force", "f", false, "Whether to force deletion (default: false)")
 	c.Flags().BoolVarP(&opts.DeleteRelated, "trs", "", false, "Whether to delete Task(s) and related resources (TaskRuns) (default: false)")
 	c.Flags().BoolVarP(&opts.DeleteAllNs, "all", "", false, "Delete all Tasks in a namespace (default: false)")
@@ -107,7 +142,7 @@ or
 	return c
 }
 
-func deleteTask(opts *options.DeleteOptions, s *cli.Stream, p cli.Params, taskNames []string) error {
+func deleteTask(opts *options.DeleteOptions, s *cli.Stream, p cli.Params, taskNames []string, output string) error {
 	taskrunGroupResource := schema.GroupVersionResource{Group: "tekton.dev", Resource: "taskruns"}
 
 	cs, err := p.Clients()
@@ -134,8 +169,21 @@ func deleteTask(opts *options.DeleteOptions, s *cli.Stream, p cli.Params, taskNa
 		d.Delete(taskNames)
 	}
 	if !opts.DeleteAllNs {
+		if formatted.IsStructured(output) {
+			deleted := append(d.SuccessfulRelatedDeletes(), d.SuccessfulDeletes()...)
+			if err := formatted.PrintStructuredOutput(s.Out, output, formatted.NewDeleteResult(deleted)); err != nil {
+				return err
+			}
+			return d.Errors()
+		}
 		d.PrintSuccesses(s)
 	} else if opts.DeleteAllNs {
+		if formatted.IsStructured(output) {
+			if err := formatted.PrintStructuredOutput(s.Out, output, formatted.NewDeleteResult(d.SuccessfulDeletes())); err != nil {
+				return err
+			}
+			return d.Errors()
+		}
 		if d.Errors() == nil {
 			fmt.Fprintf(s.Out, "All Tasks deleted in namespace %q\n", p.Namespace())
 		}

@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	remoteimg "github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/tektoncd/cli/pkg/bundle"
+	"github.com/tektoncd/cli/pkg/exitcode"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"fmt"
@@ -79,6 +81,59 @@ type startOptions struct {
 	PodTemplate           string
 	SkipOptionalWorkspace bool
 	remoteOptions         bundle.RemoteOptions
+	JSONSpec              string
+}
+
+// readJSONSpec resolves a --json flag value to raw bytes.
+// Supported forms:
+//   - "-"      read from stdin
+//   - "@path"  read from the file at path
+//   - anything else is treated as a literal JSON string
+func readJSONSpec(raw string, stdin io.Reader) ([]byte, error) {
+	switch {
+	case raw == "-":
+		b, err := io.ReadAll(stdin)
+		if err != nil {
+			return nil, fmt.Errorf("reading JSON spec from stdin: %w", err)
+		}
+		return b, nil
+	case strings.HasPrefix(raw, "@"):
+		path := raw[1:]
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("reading JSON spec from file %q: %w", path, err)
+		}
+		return b, nil
+	default:
+		return []byte(raw), nil
+	}
+}
+
+func applyTaskRunJSONSpec(tr *v1beta1.TaskRun, raw string, stdin io.Reader) error {
+	b, err := readJSONSpec(raw, stdin)
+	if err != nil {
+		return err
+	}
+	var spec v1beta1.TaskRunSpec
+	if err := json.Unmarshal(b, &spec); err != nil {
+		return fmt.Errorf("invalid JSON spec: %w", err)
+	}
+	if spec.Params != nil {
+		tr.Spec.Params = append(spec.Params, tr.Spec.Params...)
+	}
+	if spec.Workspaces != nil {
+		tr.Spec.Workspaces = append(spec.Workspaces, tr.Spec.Workspaces...)
+	}
+	if spec.ServiceAccountName != "" && tr.Spec.ServiceAccountName == "" {
+		tr.Spec.ServiceAccountName = spec.ServiceAccountName
+	}
+	if spec.Timeout != nil && tr.Spec.Timeout == nil {
+		tr.Spec.Timeout = spec.Timeout
+	}
+	if spec.PodTemplate != nil && tr.Spec.PodTemplate == nil {
+		tr.Spec.PodTemplate = spec.PodTemplate
+	}
+	return nil
 }
 
 // NameArg validates that the first argument is a valid task name
@@ -95,7 +150,11 @@ func NameArg(args []string, p cli.Params, opt *startOptions) error {
 	name, ns := args[0], p.Namespace()
 	t, err := getTaskV1beta1(taskGroupResource, c, name, ns)
 	if err != nil {
-		return fmt.Errorf(errInvalidTask, name, ns)
+		// Keep the friendly "does not exist" message but carry the lookup
+		// error's real exit code (not-found, forbidden, timeout, ...) via
+		// CodeFrom, matching the cancel/describe lookup paths rather than
+		// assuming every failure means the Task is missing.
+		return exitcode.New(exitcode.CodeFrom(err), errInvalidTask, name, ns)
 	}
 	opt.task = t
 	if t.Spec.Params != nil {
@@ -165,23 +224,29 @@ For passing the workspaces via flags:
 `,
 		SilenceUsage:      true,
 		ValidArgsFunction: formatted.ParentCompletion,
-		Args: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := flags.InitParams(p, cmd); err != nil {
 				return err
 			}
+			// Resolving the Task by name requires a live client and the
+			// namespace populated by InitParams, so it runs here rather than in
+			// Args; a lookup failure keeps its real exit code instead of being
+			// blanket-classified as invalid input.
+			if len(args) != 0 && opt.Image == "" {
+				return NameArg(args, p, &opt)
+			}
+			return nil
+		},
+		Args: func(_ *cobra.Command, args []string) error {
 			if opt.UseParamDefaults && (opt.Last || opt.UseTaskRun != "") {
 				return errors.New("cannot use --last or --use-taskrun options with --use-param-defaults option")
 			}
 			format := strings.ToLower(opt.Output)
 			if format != "" && format != "json" && format != "yaml" {
-				return fmt.Errorf("output format specified is %s but must be yaml or json", opt.Output)
+				return exitcode.New(exitcode.InvalidInput, "output format specified is %s but must be yaml or json", opt.Output)
 			}
 			if format != "" && opt.ShowLog {
 				return errors.New("cannot use --output option with --showlog option")
-			}
-			// classic with no image
-			if len(args) != 0 && opt.Image == "" {
-				return NameArg(args, p, &opt)
 			}
 			// image but no task name
 			if len(args) == 0 && opt.Image != "" {
@@ -243,6 +308,7 @@ For passing the workspaces via flags:
 	c.Flags().BoolVarP(&opt.UseParamDefaults, "use-param-defaults", "", false, "use default parameter values without prompting for input")
 	c.Flags().StringVar(&opt.PodTemplate, "pod-template", "", "local or remote file containing a PodTemplate definition")
 	c.Flags().BoolVarP(&opt.SkipOptionalWorkspace, "skip-optional-workspace", "", false, "skips the prompt for optional workspaces")
+	c.Flags().StringVar(&opt.JSONSpec, "json", "", "TaskRun spec as JSON (inline, '-' for stdin, or '@path' for a file)")
 	bundle.AddRemoteFlags(c.Flags(), &opt.remoteOptions)
 
 	return c
@@ -367,6 +433,12 @@ func startTask(opt startOptions, args []string) error {
 		}
 		err := taskRunOpts.UseTaskRunFrom(tr, cs, tname, "Task")
 		if err != nil {
+			return err
+		}
+	}
+
+	if opt.JSONSpec != "" {
+		if err := applyTaskRunJSONSpec(tr, opt.JSONSpec, os.Stdin); err != nil {
 			return err
 		}
 	}
@@ -503,6 +575,10 @@ func printTaskRun(output string, s *cli.Stream, tr interface{}) error {
 }
 
 func (opt *startOptions) getInputs() error {
+	if opt.JSONSpec != "" {
+		return nil
+	}
+
 	if opt.Last && opt.UseTaskRun != "" {
 		fmt.Fprintf(opt.stream.Err, "option --last and option --use-taskrun are not compatible \n")
 		return nil

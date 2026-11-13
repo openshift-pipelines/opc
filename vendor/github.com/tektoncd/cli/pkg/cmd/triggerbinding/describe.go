@@ -53,6 +53,14 @@ func describeCommand(p cli.Params) *cobra.Command {
 or
 
     tkn tb desc foo -n bar
+
+Describe a TriggerBinding as JSON:
+
+    tkn triggerbinding describe foo -n bar -o json
+
+Describe a TriggerBinding as YAML:
+
+    tkn triggerbinding describe foo -n bar -o yaml
 `
 
 	c := &cobra.Command{
@@ -122,7 +130,7 @@ func printTriggerBindingDescription(s *cli.Stream, p cli.Params, tbName string) 
 
 	tb, err := triggerbinding.Get(cs, tbName, metav1.GetOptions{}, p.Namespace())
 	if err != nil {
-		return fmt.Errorf("failed to get TriggerBinding %s from %s namespace: %v", tbName, p.Namespace(), err)
+		return fmt.Errorf("failed to get TriggerBinding %s from %s namespace: %w", tbName, p.Namespace(), err)
 	}
 
 	var data = struct {

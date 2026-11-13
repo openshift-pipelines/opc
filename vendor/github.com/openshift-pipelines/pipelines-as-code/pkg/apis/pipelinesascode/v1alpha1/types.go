@@ -2,7 +2,10 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	duckv1 "knative.dev/pkg/apis/duck/v1"
+)
+
+const (
+	StatusCheckModePerPipelineRun = "per_pipelinerun"
 )
 
 // +genclient
@@ -10,62 +13,13 @@ import (
 
 // Repository is the representation of a Git repository from a Git provider platform.
 // +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Namespaced,shortName=repo
 // +kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.url`
-// +kubebuilder:printcolumn:name="Succeeded",type=string,JSONPath=`.pipelinerun_status[-1].conditions[?(@.type=="Succeeded")].status`
-// +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.pipelinerun_status[-1].conditions[?(@.type=="Succeeded")].reason`
-// +kubebuilder:printcolumn:name="StartTime",type=date,JSONPath=`.pipelinerun_status[-1].startTime`
-// +kubebuilder:printcolumn:name="CompletionTime",type=date,JSONPath=`.pipelinerun_status[-1].completionTime`
 type Repository struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 
-	Spec   RepositorySpec        `json:"spec"`
-	Status []RepositoryRunStatus `json:"pipelinerun_status,omitempty"`
-}
-
-type RepositoryRunStatus struct {
-	duckv1.Status `json:",inline"`
-
-	// PipelineRunName is the name of the PipelineRun
-	// +optional
-	PipelineRunName string `json:"pipelineRunName,omitempty"`
-
-	// StartTime is the time the PipelineRun is actually started.
-	// +optional
-	StartTime *metav1.Time `json:"startTime,omitempty"`
-
-	// CompletionTime is the time the PipelineRun completed.
-	// +optional
-	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
-
-	// SHA is the name of the SHA that has been tested
-	// +optional
-	SHA *string `json:"sha,omitempty"`
-
-	// SHA the URL of the SHA to view it
-	// +optional
-	SHAURL *string `json:"sha_url,omitempty"`
-
-	// Title is the title of the commit SHA that has been tested
-	// +optional
-	Title *string `json:"title,omitempty"`
-
-	// LogURL is the full URL to the log for this run.
-	// +optional
-	LogURL *string `json:"logurl,omitempty"`
-
-	// TargetBranch is the target branch of that run
-	// +optional
-	TargetBranch *string `json:"target_branch,omitempty"`
-
-	// EventType is the event type of that run
-	// +optional
-	EventType *string `json:"event_type,omitempty"`
-
-	// CollectedTaskInfos is the information about tasks
-	CollectedTaskInfos *map[string]TaskInfos `json:"failure_reason,omitempty"`
+	Spec RepositorySpec `json:"spec"`
 }
 
 // TaskInfos contains information about a task.
@@ -185,6 +139,10 @@ type Settings struct {
 	// AIAnalysis contains AI/LLM analysis configuration for automated CI/CD pipeline analysis.
 	// +optional
 	AIAnalysis *AIAnalysisConfig `json:"ai,omitempty"`
+
+	// StatusChecks configures the status checks for the repository.
+	// +optional
+	StatusChecks *StatusChecks `json:"status_checks,omitempty"`
 }
 
 type GitlabSettings struct {
@@ -232,6 +190,30 @@ type ForgejoSettings struct {
 	CommentStrategy string `json:"comment_strategy,omitempty"`
 }
 
+// StatusChecks configures the status checks for the repository.
+type StatusChecks struct {
+	// Enabled defines if the status checks should be reported. Default is false.
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+
+	// Mode defines how the status checks should be reported when is enabled.
+	// Options:
+	// - 'per_pipelinerun': Report the status check of each PipelineRun separately.
+	// +optional
+	// +kubebuilder:validation:Enum="";per_pipelinerun
+	Mode string `json:"mode,omitempty"`
+
+	// UnmatchedConclusion defines the conclusion to report when pipeline run is not matched. Default is 'skipped'.
+	// this will be used only if mode is 'per_pipelinerun'.
+	// Options:
+	// - 'success': Report as success.
+	// - 'neutral': Report as neutral.
+	// - 'skipped': Report as skipped. Default.
+	// +optional
+	// +kubebuilder:validation:Enum="";success;neutral;skipped
+	UnmatchedConclusion string `json:"unmatched_conclusion,omitempty"`
+}
+
 func (s *Settings) Merge(newSettings *Settings) {
 	if newSettings.PipelineRunProvenance != "" && s.PipelineRunProvenance == "" {
 		s.PipelineRunProvenance = newSettings.PipelineRunProvenance
@@ -260,6 +242,10 @@ func (s *Settings) Merge(newSettings *Settings) {
 
 	if newSettings.GitOpsCommandPrefix != "" && s.GitOpsCommandPrefix == "" {
 		s.GitOpsCommandPrefix = newSettings.GitOpsCommandPrefix
+	}
+
+	if newSettings.StatusChecks != nil && s.StatusChecks == nil {
+		s.StatusChecks = newSettings.StatusChecks
 	}
 }
 

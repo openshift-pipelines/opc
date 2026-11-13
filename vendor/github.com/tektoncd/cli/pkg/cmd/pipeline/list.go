@@ -74,6 +74,18 @@ func listCommand(p cli.Params) *cobra.Command {
 		Annotations: map[string]string{
 			"commandType": "main",
 		},
+		Example: `List Pipelines in namespace 'bar':
+
+    tkn pipeline list -n bar
+
+List Pipelines as a JSON array:
+
+    tkn pipeline list -o json
+
+List Pipelines as a YAML array:
+
+    tkn pipeline list -o yaml
+`,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cs, err := p.Clients()
@@ -125,7 +137,7 @@ func printPipelineDetails(s *cli.Stream, p cli.Params, allnamespaces bool, nohea
 	}
 	ps, prs, err := listPipelineDetails(cs, ns)
 	if err != nil {
-		return fmt.Errorf("failed to list Pipelines from namespace %s: %v", ns, err)
+		return fmt.Errorf("failed to list Pipelines from namespace %s: %w", ns, err)
 	}
 
 	var data = struct {

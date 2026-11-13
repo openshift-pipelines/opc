@@ -137,6 +137,14 @@ func describeCommand(p cli.Params) *cobra.Command {
 or
 
    tkn el desc foo -n bar
+
+Describe an EventListener as JSON:
+
+    tkn eventlistener describe foo -n bar -o json
+
+Describe an EventListener as YAML:
+
+    tkn eventlistener describe foo -n bar -o yaml
 `
 
 	c := &cobra.Command{
@@ -227,7 +235,7 @@ func printEventListenerDescription(s *cli.Stream, p cli.Params, elName string) e
 
 	el, err := eventlistener.Get(cs, elName, metav1.GetOptions{}, p.Namespace())
 	if err != nil {
-		return fmt.Errorf("failed to get EventListener %s: %v", elName, err)
+		return fmt.Errorf("failed to get EventListener %s: %w", elName, err)
 	}
 
 	var data = struct {

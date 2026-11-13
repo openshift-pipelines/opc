@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	apipac "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/keys"
 	pacerrors "github.com/openshift-pipelines/pipelines-as-code/pkg/errors"
@@ -43,6 +44,12 @@ type FetchedResourcesForRun struct {
 	PipelineURL string
 }
 
+// Contains a validation rule for an annotation key, with a function to validate the value of the annotation.
+type AnnotationValidationRule struct {
+	Key      string
+	Validate func(string) error
+}
+
 func NewTektonTypes() TektonTypes {
 	return TektonTypes{
 		ValidationErrors: []*pacerrors.PacYamlValidations{},
@@ -50,6 +57,23 @@ func NewTektonTypes() TektonTypes {
 }
 
 var yamlDocSeparatorRe = regexp.MustCompile(`(?m)^---\s*$`)
+
+// Hardcoded list of annotation validation rules for PipelineRun annotations.
+// Each rule specifies an annotation key and a validation function that checks the value of the annotation.
+var pipelineRunAnnotationRules = []AnnotationValidationRule{
+	{
+		Key: apipac.BitbucketRequiredBuildParent,
+		Validate: func(value string) error {
+			if !utf8.ValidString(value) {
+				return fmt.Errorf("value is not valid UTF-8")
+			}
+			if utf8.RuneCountInString(value) > 210 {
+				return fmt.Errorf("value must not exceed 210 characters")
+			}
+			return nil
+		},
+	},
+}
 
 // detectAtleastNameOrGenerateNameAndSchemaFromPipelineRun detects the name or
 // generateName of a yaml files even if there is an error decoding it as tekton types.
@@ -143,27 +167,49 @@ func inlineTasks(tasks []tektonv1.PipelineTask, ropt *Opts, remoteResource Fetch
 }
 
 type Opts struct {
-	GenerateName  bool     // whether to GenerateName
-	RemoteTasks   bool     // whether to parse annotation to fetch tasks from remote
-	SkipInlining  []string // task to skip inlining
-	ProviderToken string
+	GenerateName       bool     // whether to GenerateName
+	RemoteTasks        bool     // whether to parse annotation to fetch tasks from remote
+	SkipInlining       []string // task to skip inlining
+	ProviderToken      string
+	RepositoryRevision string // revision for repository-local Task and Pipeline references
+}
+
+// SplitDocuments splits raw YAML data into its documents, the same way
+// ReadTektonTypes does.
+func SplitDocuments(data string) []string {
+	return yamlDocSeparatorRe.Split(data, -1)
+}
+
+// hasYAMLContent checks if a document contains actual YAML content
+// beyond comments and whitespace. Returns false for comment-only or empty documents.
+func hasYAMLContent(doc string) bool {
+	for _, line := range strings.Split(doc, "\n") {
+		trimmed := strings.TrimSpace(line)
+		// Skip empty lines and comment lines
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		// Found non-comment, non-whitespace content
+		return true
+	}
+	return false
 }
 
 func ReadTektonTypes(ctx context.Context, log *zap.SugaredLogger, data string) (TektonTypes, error) {
 	types := NewTektonTypes()
 	decoder := k8scheme.Codecs.UniversalDeserializer()
-	docs := yamlDocSeparatorRe.Split(data, -1)
+	docs := SplitDocuments(data)
 	debugf(log, "ReadTektonTypes: data length=%d docs=%d", len(data), len(docs))
 
 	for _, doc := range docs {
-		if strings.TrimSpace(doc) == "" {
+		if !hasYAMLContent(doc) {
 			continue
 		}
 
 		obj, _, err := decoder.Decode([]byte(doc), nil, nil)
 		if err != nil {
 			dt, dv := detectAtleastNameOrGenerateNameAndSchemaFromPipelineRun(doc)
-			debugf(log, "ReadTektonTypes: decode error for doc name=%s schema=%s err=%v", dt, dv, err)
+			warnf(log, "ReadTektonTypes: decode error for doc name=%s schema=%s err=%v", dt, dv, err)
 			types.ValidationErrors = append(types.ValidationErrors, &pacerrors.PacYamlValidations{
 				Name:   dt,
 				Err:    fmt.Errorf("error decoding yaml document: %w", err),
@@ -215,29 +261,52 @@ func ReadTektonTypes(ctx context.Context, log *zap.SugaredLogger, data string) (
 // Pipeline/PipelineRuns/Tasks and resolve them inline as a single PipelineRun
 // generateName can be set as True to set the name as a generateName + "-" for
 // unique pipelinerun.
-func Resolve(ctx context.Context, cs *params.Run, logger *zap.SugaredLogger, providerintf provider.Interface, types TektonTypes, event *info.Event, ropt *Opts) ([]*tektonv1.PipelineRun, []string, error) {
+func Resolve(ctx context.Context, cs *params.Run, logger *zap.SugaredLogger, providerintf provider.Interface, types TektonTypes, event *info.Event, ropt *Opts) ([]*tektonv1.PipelineRun, error) {
 	if len(types.PipelineRuns) == 0 {
-		return []*tektonv1.PipelineRun{}, nil, fmt.Errorf("could not find any PipelineRun in your .tekton/ directory")
+		return []*tektonv1.PipelineRun{}, fmt.Errorf("could not find any PipelineRun in your .tekton/ directory")
 	}
 	debugf(logger, "Resolve: pipelineruns=%d pipelines=%d tasks=%d remote_tasks=%t generate_name=%t", len(types.PipelineRuns), len(types.Pipelines), len(types.Tasks), ropt.RemoteTasks, ropt.GenerateName)
 
 	if _, err := MetadataResolve(types.PipelineRuns); err != nil {
-		return []*tektonv1.PipelineRun{}, nil, err
+		return []*tektonv1.PipelineRun{}, err
 	}
 
 	rt := &matcher.RemoteTasks{
-		Run:               cs,
-		Event:             event,
-		ProviderInterface: providerintf,
-		Logger:            logger,
+		Run:                cs,
+		Event:              event,
+		ProviderInterface:  providerintf,
+		Logger:             logger,
+		RepositoryRevision: ropt.RepositoryRevision,
 	}
 
 	fetchedResources, err := resolveRemoteResources(ctx, rt, types, ropt)
 	if err != nil {
-		return []*tektonv1.PipelineRun{}, nil, err
+		return []*tektonv1.PipelineRun{}, err
 	}
 	debugf(logger, "Resolve: resolved pipelineruns=%d", len(fetchedResources))
-	return fetchedResources, rt.DeprecatedHubResources, nil
+	return fetchedResources, nil
+}
+
+func validatePipelineRunAnnotations(pr *tektonv1.PipelineRun) error {
+	for _, rule := range pipelineRunAnnotationRules {
+		value, exists := pr.GetAnnotations()[rule.Key]
+		if !exists {
+			continue
+		}
+
+		if err := rule.Validate(value); err != nil {
+			return fmt.Errorf("annotation %s: %w", rule.Key, err)
+		}
+	}
+
+	return nil
+}
+
+func pipelineRunName(pr *tektonv1.PipelineRun) string {
+	if name := pr.GetName(); name != "" {
+		return name
+	}
+	return pr.GetGenerateName()
 }
 
 func MetadataResolve(prs []*tektonv1.PipelineRun) ([]*tektonv1.PipelineRun, error) {
@@ -262,6 +331,12 @@ func MetadataResolve(prs []*tektonv1.PipelineRun) ([]*tektonv1.PipelineRun, erro
 		// Don't overwrite the annotation if there is some who already exist set by the user in repo
 		if prun.GetAnnotations() == nil {
 			prun.Annotations = map[string]string{}
+		}
+		// validate pr annotations after they are initialized to avoid nil pointer dereference.
+		// this will stop all pipeline runs from being processed if any of them have invalid annotations
+		// and return an error indicating which pipeline run has the issue.
+		if err := validatePipelineRunAnnotations(prun); err != nil {
+			return []*tektonv1.PipelineRun{}, fmt.Errorf("invalid pipeline run %s annotations: %w", pipelineRunName(prun), err)
 		}
 		prun.GetLabels()[apipac.OriginalPRName] = formatting.CleanValueKubernetes(originPipelineRunName)
 		prun.GetAnnotations()[apipac.OriginalPRName] = originPipelineRunName
