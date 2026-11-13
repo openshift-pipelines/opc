@@ -116,6 +116,14 @@ func describeCommand(p cli.Params) *cobra.Command {
 or
 
    tkn t desc foo -n bar
+
+Describe a Task as JSON:
+
+    tkn task describe foo -n bar -o json
+
+Describe a Task as YAML:
+
+    tkn task describe foo -n bar -o yaml
 `
 
 	c := &cobra.Command{
@@ -186,7 +194,7 @@ func printTaskDescription(s *cli.Stream, p cli.Params, tname string) error {
 
 	t, err := getTask(taskGroupResource, cs, tname, p.Namespace())
 	if err != nil {
-		return fmt.Errorf("failed to get Task %s: %v", tname, err)
+		return fmt.Errorf("failed to get Task %s: %w", tname, err)
 	}
 
 	opts := metav1.ListOptions{
@@ -195,7 +203,7 @@ func printTaskDescription(s *cli.Stream, p cli.Params, tname string) error {
 
 	var taskRuns *v1.TaskRunList
 	if err := actions.ListV1(taskrunGroupResource, cs, opts, p.Namespace(), &taskRuns); err != nil {
-		return fmt.Errorf("failed to get TaskRuns for Task %s: %v", tname, err)
+		return fmt.Errorf("failed to get TaskRuns for Task %s: %w", tname, err)
 	}
 
 	// this is required as the same label is getting added for task

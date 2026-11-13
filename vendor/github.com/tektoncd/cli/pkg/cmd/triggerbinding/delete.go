@@ -21,12 +21,12 @@ import (
 	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/deleter"
+	"github.com/tektoncd/cli/pkg/exitcode"
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
 	"github.com/tektoncd/cli/pkg/triggerbinding"
 	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 // triggerBindingExists validates that the arguments are valid TriggerBinding names
@@ -52,7 +52,6 @@ func triggerBindingExists(args []string, p cli.Params) ([]string, error) {
 
 func deleteCommand(p cli.Params) *cobra.Command {
 	opts := &options.DeleteOptions{Resource: "triggerbinding", ForceDelete: false, DeleteAllNs: false}
-	f := cliopts.NewPrintFlags("delete")
 	eg := `Delete TriggerBindings with names 'foo' and 'bar' in namespace 'quux'
 
     tkn triggerbinding delete foo bar -n quux
@@ -60,7 +59,27 @@ func deleteCommand(p cli.Params) *cobra.Command {
 or
 
     tkn tb rm foo bar -n quux
+
+Delete a TriggerBinding and print the result as JSON:
+
+    tkn triggerbinding delete foo -n quux -o json
+
+Delete a TriggerBinding and print the result as YAML:
+
+    tkn triggerbinding delete foo -n quux -o yaml
+
+Delete all TriggerBindings in a namespace and print the result as JSON:
+
+    tkn triggerbinding delete --all -n quux -o json
+
+Delete all TriggerBindings in a namespace and print the result as YAML:
+
+    tkn triggerbinding delete --all -n quux -o yaml
+
+Using -o json or -o yaml skips the confirmation prompt.
 `
+
+	output := ""
 
 	c := &cobra.Command{
 		Use:               "delete",
@@ -80,6 +99,14 @@ or
 				Err: cmd.OutOrStderr(),
 			}
 
+			if output != "" {
+				output = formatted.NormalizeOutput(output)
+				if !formatted.IsStructured(output) {
+					return exitcode.New(exitcode.InvalidInput, "invalid output format %q: must be json or yaml", output)
+				}
+				opts.ForceDelete = true
+			}
+
 			availableTbs, errs := triggerBindingExists(args, p)
 			if len(availableTbs) == 0 && errs != nil {
 				return errs
@@ -89,20 +116,20 @@ or
 				return err
 			}
 
-			if err := deleteTriggerBindings(s, p, availableTbs, opts.DeleteAllNs); err != nil {
+			if err := deleteTriggerBindings(s, p, availableTbs, opts.DeleteAllNs, output); err != nil {
 				return err
 			}
 			return errs
 		},
 	}
-	f.AddFlags(c)
+	c.Flags().StringVarP(&output, "output", "o", "", formatted.DeleteOutputFlagUsage)
 	c.Flags().BoolVarP(&opts.ForceDelete, "force", "f", false, "Whether to force deletion (default: false)")
 	c.Flags().BoolVarP(&opts.DeleteAllNs, "all", "", false, "Delete all TriggerBindings in a namespace (default: false)")
 
 	return c
 }
 
-func deleteTriggerBindings(s *cli.Stream, p cli.Params, tbNames []string, deleteAll bool) error {
+func deleteTriggerBindings(s *cli.Stream, p cli.Params, tbNames []string, deleteAll bool, output string) error {
 	cs, err := p.Clients()
 	if err != nil {
 		return fmt.Errorf("failed to create tekton client")
@@ -119,6 +146,12 @@ func deleteTriggerBindings(s *cli.Stream, p cli.Params, tbNames []string, delete
 	}
 	d.Delete(tbNames)
 
+	if formatted.IsStructured(output) {
+		if err := formatted.PrintStructuredOutput(s.Out, output, formatted.NewDeleteResult(d.SuccessfulDeletes())); err != nil {
+			return err
+		}
+		return d.Errors()
+	}
 	if !deleteAll {
 		d.PrintSuccesses(s)
 	} else if deleteAll {

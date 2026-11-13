@@ -12,10 +12,9 @@ import (
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/info"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/secrets"
-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // SetupAuthenticatedClient sets up the authenticated VCS client with proper token scoping.
@@ -40,20 +39,21 @@ func SetupAuthenticatedClient(
 		run.Info.Kube.Namespace != "" &&
 		run.Info.Controller.GlobalRepository != "" {
 		var err error
-		if globalRepo, err = run.Clients.PipelineAsCode.PipelinesascodeV1alpha1().Repositories(run.Info.Kube.Namespace).Get(
-			ctx, run.Info.Controller.GlobalRepository, metav1.GetOptions{},
-		); err != nil {
+		if globalRepo, err = run.GetRepository(ctx, run.Info.Kube.Namespace, run.Info.Controller.GlobalRepository); err != nil {
 			logger.Errorf("cannot get global repository: %v", err)
 		}
 	}
-	// Determine secret namespace BEFORE merging repos
-	// This preserves the ability to detect when credentials come from global repo
 	secretNS := repo.GetNamespace()
 	inheritedGlobalSecret := false
-	if repo.Spec.GitProvider != nil && repo.Spec.GitProvider.Secret == nil &&
-		globalRepo != nil && globalRepo.Spec.GitProvider != nil && globalRepo.Spec.GitProvider.Secret != nil {
-		secretNS = globalRepo.GetNamespace()
-		inheritedGlobalSecret = true
+	// GitHub Apps use the controller secret, so Repository credential inheritance
+	// is irrelevant to them. For webhook providers, resolve it before merging so
+	// a local endpoint cannot be hidden by the global Repository defaults.
+	if event.InstallationID <= 0 {
+		var err error
+		secretNS, inheritedGlobalSecret, err = secrets.ResolveInheritedSecret(repo, globalRepo)
+		if err != nil {
+			return err
+		}
 	}
 	logger.Debugf("setupAuthenticatedClient: repo=%s/%s secret_namespace=%s", repo.GetNamespace(), repo.GetName(), secretNS)
 	// merge global repo settings into local repo (after determining secret namespace)

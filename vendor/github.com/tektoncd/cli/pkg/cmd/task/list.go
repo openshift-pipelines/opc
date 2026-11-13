@@ -64,6 +64,18 @@ func listCommand(p cli.Params) *cobra.Command {
 		Annotations: map[string]string{
 			"commandType": "main",
 		},
+		Example: `List Tasks in namespace 'bar':
+
+    tkn task list -n bar
+
+List Tasks as a JSON array:
+
+    tkn task list -o json
+
+List Tasks as a YAML array:
+
+    tkn task list -o yaml
+`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cs, err := p.Clients()
 			if err != nil {
@@ -114,7 +126,7 @@ func printTaskDetails(s *cli.Stream, p cli.Params, allnamespaces bool, noheaders
 
 	var tasks *v1.TaskList
 	if err := actions.ListV1(taskGroupResource, cs, metav1.ListOptions{}, ns, &tasks); err != nil {
-		return fmt.Errorf("failed to list Tasks from namespace %s: %v", ns, err)
+		return fmt.Errorf("failed to list Tasks from namespace %s: %w", ns, err)
 	}
 
 	var data = struct {

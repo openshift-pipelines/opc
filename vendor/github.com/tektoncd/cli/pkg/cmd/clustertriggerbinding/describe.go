@@ -52,6 +52,14 @@ func describeCommand(p cli.Params) *cobra.Command {
 or
 
     tkn ctb desc foo
+
+Describe a ClusterTriggerBinding as JSON:
+
+    tkn clustertriggerbinding describe foo -o json
+
+Describe a ClusterTriggerBinding as YAML:
+
+    tkn clustertriggerbinding describe foo -o yaml
 `
 
 	c := &cobra.Command{
@@ -121,7 +129,7 @@ func printClusterTriggerBindingDescription(s *cli.Stream, p cli.Params, ctbName 
 
 	ctb, err := clustertriggerbinding.Get(cs, ctbName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to get ClusterTriggerBinding %s: %v", ctbName, err)
+		return fmt.Errorf("failed to get ClusterTriggerBinding %s: %w", ctbName, err)
 	}
 
 	var data = struct {

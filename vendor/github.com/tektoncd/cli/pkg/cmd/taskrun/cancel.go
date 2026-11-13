@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/exitcode"
 	"github.com/tektoncd/cli/pkg/formatted"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +39,17 @@ func cancelCommand(p cli.Params) *cobra.Command {
 	eg := `Cancel the TaskRun named 'foo' from namespace 'bar':
 
     tkn taskrun cancel foo -n bar
+
+Cancel a TaskRun and print the result as JSON:
+
+    tkn taskrun cancel foo -n bar -o json
+
+Cancel a TaskRun and print the result as YAML:
+
+    tkn taskrun cancel foo -n bar -o yaml
 `
+
+	output := ""
 
 	c := &cobra.Command{
 		Use:               "cancel",
@@ -56,14 +67,19 @@ func cancelCommand(p cli.Params) *cobra.Command {
 				Err: cmd.OutOrStderr(),
 			}
 
-			return cancelTaskRun(p, s, args[0])
+			return cancelTaskRun(p, s, args[0], output)
 		},
 	}
 
+	c.Flags().StringVarP(&output, "output", "o", "", formatted.OutputFlagUsage)
 	return c
 }
 
-func cancelTaskRun(p cli.Params, s *cli.Stream, trName string) error {
+func cancelTaskRun(p cli.Params, s *cli.Stream, trName string, output string) error {
+	if output != "" && !formatted.IsStructured(output) {
+		return exitcode.New(exitcode.InvalidInput, "invalid output format %q: must be json or yaml", output)
+	}
+
 	cs, err := p.Clients()
 	if err != nil {
 		return fmt.Errorf("failed to create tekton client")
@@ -72,7 +88,7 @@ func cancelTaskRun(p cli.Params, s *cli.Stream, trName string) error {
 	var taskrun *v1.TaskRun
 	err = actions.GetV1(taskrunGroupResource, cs, trName, p.Namespace(), metav1.GetOptions{}, &taskrun)
 	if err != nil {
-		return fmt.Errorf("failed to find TaskRun: %s", trName)
+		return exitcode.New(exitcode.CodeFrom(err), "failed to find TaskRun: %s", trName)
 	}
 
 	if len(taskrun.Status.Conditions) > 0 {
@@ -82,7 +98,13 @@ func cancelTaskRun(p cli.Params, s *cli.Stream, trName string) error {
 	}
 
 	if _, err := patch(cs, trName, metav1.PatchOptions{}, p.Namespace()); err != nil {
-		return fmt.Errorf("failed to cancel TaskRun %s: %v", trName, err)
+		return fmt.Errorf("failed to cancel TaskRun %s: %w", trName, err)
+	}
+
+	if formatted.IsStructured(output) {
+		return formatted.PrintStructuredOutput(s.Out, output, formatted.NewCancelResult(
+			"TaskRun", taskrun.Name, p.Namespace(), formatted.CancelledStatus,
+		))
 	}
 
 	fmt.Fprintf(s.Out, "TaskRun cancelled: %s\n", taskrun.Name)

@@ -22,11 +22,11 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/clustertriggerbinding"
 	"github.com/tektoncd/cli/pkg/deleter"
+	"github.com/tektoncd/cli/pkg/exitcode"
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
 	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 // clusterTriggerBindingExists validates that the arguments are valid ClusterTriggerBinding names
@@ -51,7 +51,6 @@ func clusterTriggerBindingExists(args []string, p cli.Params) ([]string, error) 
 
 func deleteCommand(p cli.Params) *cobra.Command {
 	opts := &options.DeleteOptions{Resource: "clustertriggerbinding", ForceDelete: false, DeleteAll: false}
-	f := cliopts.NewPrintFlags("delete")
 	eg := `Delete ClusterTriggerBindings with names 'foo' and 'bar'
 
     tkn clustertriggerbinding delete foo bar
@@ -59,7 +58,27 @@ func deleteCommand(p cli.Params) *cobra.Command {
 or
 
     tkn ctb rm foo bar
+
+Delete a ClusterTriggerBinding and print the result as JSON:
+
+    tkn clustertriggerbinding delete foo -o json
+
+Delete a ClusterTriggerBinding and print the result as YAML:
+
+    tkn clustertriggerbinding delete foo -o yaml
+
+Delete all ClusterTriggerBindings and print the result as JSON:
+
+    tkn clustertriggerbinding delete --all -o json
+
+Delete all ClusterTriggerBindings and print the result as YAML:
+
+    tkn clustertriggerbinding delete --all -o yaml
+
+Using -o json or -o yaml skips the confirmation prompt.
 `
+
+	output := ""
 
 	c := &cobra.Command{
 		Use:               "delete",
@@ -79,6 +98,14 @@ or
 				Err: cmd.OutOrStderr(),
 			}
 
+			if output != "" {
+				output = formatted.NormalizeOutput(output)
+				if !formatted.IsStructured(output) {
+					return exitcode.New(exitcode.InvalidInput, "invalid output format %q: must be json or yaml", output)
+				}
+				opts.ForceDelete = true
+			}
+
 			availbleCTBs, errs := clusterTriggerBindingExists(args, p)
 			if len(availbleCTBs) == 0 && errs != nil {
 				return errs
@@ -88,20 +115,20 @@ or
 				return err
 			}
 
-			if err := deleteClusterTriggerBindings(s, p, availbleCTBs, opts.DeleteAll); err != nil {
+			if err := deleteClusterTriggerBindings(s, p, availbleCTBs, opts.DeleteAll, output); err != nil {
 				return err
 			}
 			return errs
 		},
 	}
-	f.AddFlags(c)
+	c.Flags().StringVarP(&output, "output", "o", "", formatted.DeleteOutputFlagUsage)
 	c.Flags().BoolVarP(&opts.ForceDelete, "force", "f", false, "Whether to force deletion (default: false)")
 	c.Flags().BoolVarP(&opts.DeleteAll, "all", "", false, "Delete all ClusterTriggerBindings (default: false)")
 
 	return c
 }
 
-func deleteClusterTriggerBindings(s *cli.Stream, p cli.Params, ctbNames []string, deleteAll bool) error {
+func deleteClusterTriggerBindings(s *cli.Stream, p cli.Params, ctbNames []string, deleteAll bool, output string) error {
 	cs, err := p.Clients()
 	if err != nil {
 		return fmt.Errorf("failed to create tekton client")
@@ -118,6 +145,12 @@ func deleteClusterTriggerBindings(s *cli.Stream, p cli.Params, ctbNames []string
 	}
 	d.Delete(ctbNames)
 
+	if formatted.IsStructured(output) {
+		if err := formatted.PrintStructuredOutput(s.Out, output, formatted.NewDeleteResult(d.SuccessfulDeletes())); err != nil {
+			return err
+		}
+		return d.Errors()
+	}
 	if !deleteAll {
 		d.PrintSuccesses(s)
 	} else if deleteAll {

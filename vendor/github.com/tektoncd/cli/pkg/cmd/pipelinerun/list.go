@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/exitcode"
 	"github.com/tektoncd/cli/pkg/formatted"
 	prsort "github.com/tektoncd/cli/pkg/pipelinerun/sort"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
@@ -66,6 +67,14 @@ func listCommand(p cli.Params) *cobra.Command {
 List all PipelineRuns in a namespace 'foo':
 
     tkn pr list -n foo
+
+List PipelineRuns as a JSON array:
+
+    tkn pipelinerun list -o json
+
+List PipelineRuns as a YAML array:
+
+    tkn pipelinerun list -o yaml
 `
 
 	c := &cobra.Command{
@@ -84,12 +93,12 @@ List all PipelineRuns in a namespace 'foo':
 			}
 
 			if opts.Limit < 0 {
-				return fmt.Errorf("limit was %d but must be a positive number", opts.Limit)
+				return exitcode.New(exitcode.InvalidInput, "limit was %d but must be a positive number", opts.Limit)
 			}
 
 			prs, err := list(p, pipeline, opts.Limit, opts.LabelSelector, opts.AllNamespaces)
 			if err != nil {
-				return fmt.Errorf("failed to list PipelineRuns from namespace %s: %v", p.Namespace(), err)
+				return fmt.Errorf("failed to list PipelineRuns from namespace %s: %w", p.Namespace(), err)
 			}
 
 			if prs != nil && opts.Reverse {

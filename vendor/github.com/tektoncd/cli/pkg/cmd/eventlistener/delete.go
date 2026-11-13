@@ -22,11 +22,11 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/deleter"
 	"github.com/tektoncd/cli/pkg/eventlistener"
+	"github.com/tektoncd/cli/pkg/exitcode"
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
 	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 // eventListenerExists validates that the arguments are valid EventListener names
@@ -52,7 +52,6 @@ func eventListenerExists(args []string, p cli.Params) ([]string, error) {
 
 func deleteCommand(p cli.Params) *cobra.Command {
 	opts := &options.DeleteOptions{Resource: "eventlistener", ForceDelete: false, DeleteAllNs: false}
-	f := cliopts.NewPrintFlags("delete")
 	eg := `Delete EventListeners with names 'foo' and 'bar' in namespace 'bar'
 
     tkn eventlistener delete foo bar -n quux
@@ -60,7 +59,27 @@ func deleteCommand(p cli.Params) *cobra.Command {
 or
 
     tkn el rm foo bar -n quux
+
+Delete an EventListener and print the result as JSON:
+
+    tkn eventlistener delete foo -n quux -o json
+
+Delete an EventListener and print the result as YAML:
+
+    tkn eventlistener delete foo -n quux -o yaml
+
+Delete all EventListeners in a namespace and print the result as JSON:
+
+    tkn eventlistener delete --all -n quux -o json
+
+Delete all EventListeners in a namespace and print the result as YAML:
+
+    tkn eventlistener delete --all -n quux -o yaml
+
+Using -o json or -o yaml skips the confirmation prompt.
 `
+
+	output := ""
 
 	c := &cobra.Command{
 		Use:               "delete",
@@ -80,6 +99,14 @@ or
 				Err: cmd.OutOrStderr(),
 			}
 
+			if output != "" {
+				output = formatted.NormalizeOutput(output)
+				if !formatted.IsStructured(output) {
+					return exitcode.New(exitcode.InvalidInput, "invalid output format %q: must be json or yaml", output)
+				}
+				opts.ForceDelete = true
+			}
+
 			availableELs, errs := eventListenerExists(args, p)
 			if len(availableELs) == 0 && errs != nil {
 				return errs
@@ -89,20 +116,20 @@ or
 				return err
 			}
 
-			if err := deleteEventListeners(s, p, availableELs, opts.DeleteAllNs); err != nil {
+			if err := deleteEventListeners(s, p, availableELs, opts.DeleteAllNs, output); err != nil {
 				return err
 			}
 			return errs
 		},
 	}
-	f.AddFlags(c)
+	c.Flags().StringVarP(&output, "output", "o", "", formatted.DeleteOutputFlagUsage)
 	c.Flags().BoolVarP(&opts.ForceDelete, "force", "f", false, "Whether to force deletion (default: false)")
 	c.Flags().BoolVarP(&opts.DeleteAllNs, "all", "", false, "Delete all EventListeners in a namespace (default: false)")
 
 	return c
 }
 
-func deleteEventListeners(s *cli.Stream, p cli.Params, elNames []string, deleteAll bool) error {
+func deleteEventListeners(s *cli.Stream, p cli.Params, elNames []string, deleteAll bool, output string) error {
 	cs, err := p.Clients()
 	if err != nil {
 		return fmt.Errorf("failed to create tekton client")
@@ -118,6 +145,12 @@ func deleteEventListeners(s *cli.Stream, p cli.Params, elNames []string, deleteA
 	}
 	d.Delete(elNames)
 
+	if formatted.IsStructured(output) {
+		if err := formatted.PrintStructuredOutput(s.Out, output, formatted.NewDeleteResult(d.SuccessfulDeletes())); err != nil {
+			return err
+		}
+		return d.Errors()
+	}
 	if !deleteAll {
 		d.PrintSuccesses(s)
 	} else if deleteAll {

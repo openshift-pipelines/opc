@@ -47,6 +47,14 @@ func listCommand(p cli.Params) *cobra.Command {
 or
 
 	tkn ctb ls
+
+List ClusterTriggerBindings as a JSON array:
+
+	tkn clustertriggerbinding list -o json
+
+List ClusterTriggerBindings as a YAML array:
+
+	tkn clustertriggerbinding list -o yaml
 `
 
 	c := &cobra.Command{
@@ -65,7 +73,7 @@ or
 
 			tbs, err := clustertriggerbinding.List(cs, metav1.ListOptions{})
 			if err != nil {
-				return fmt.Errorf("failed to list ClusterTriggerBindings: %v", err)
+				return fmt.Errorf("failed to list ClusterTriggerBindings: %w", err)
 			}
 
 			output, err := cmd.LocalFlags().GetString("output")

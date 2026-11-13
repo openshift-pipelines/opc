@@ -49,6 +49,14 @@ func listCommand(p cli.Params) *cobra.Command {
 or
 
 	tkn el ls -n bar
+
+List EventListeners as a JSON array:
+
+	tkn eventlistener list -o json
+
+List EventListeners as a YAML array:
+
+	tkn eventlistener list -o yaml
 `
 
 	c := &cobra.Command{
@@ -73,9 +81,9 @@ or
 			els, err := eventlistener.List(cs, metav1.ListOptions{}, namespace)
 			if err != nil {
 				if opts.AllNamespaces {
-					return fmt.Errorf("failed to list EventListeners from all namespaces: %v", err)
+					return fmt.Errorf("failed to list EventListeners from all namespaces: %w", err)
 				}
-				return fmt.Errorf("failed to list EventListeners from %s namespace: %v", namespace, err)
+				return fmt.Errorf("failed to list EventListeners from %s namespace: %w", namespace, err)
 			}
 
 			output, err := cmd.LocalFlags().GetString("output")

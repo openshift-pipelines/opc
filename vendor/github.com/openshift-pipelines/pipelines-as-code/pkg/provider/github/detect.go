@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/google/go-github/v85/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/opscomments"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/triggertype"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/provider"
@@ -76,7 +76,8 @@ func (v *Provider) detectTriggerTypeFromPayload(ghEventType string, eventInt any
 		}
 		return "", fmt.Sprintf("pull_request: unsupported action \"%s\"", event.GetAction())
 	case *github.IssueCommentEvent:
-		if event.GetAction() != "created" {
+		isEdiCommentEvent := event.GetAction() == "edited" && v.pacInfo.SupportEditedComments
+		if event.GetAction() != "created" && !isEdiCommentEvent {
 			return "", fmt.Sprintf("issue_comment: unsupported action \"%s\"", event.GetAction())
 		}
 
@@ -104,7 +105,8 @@ func (v *Provider) detectTriggerTypeFromPayload(ghEventType string, eventInt any
 		}
 		return "", fmt.Sprintf("check_run: unsupported action \"%s\"", event.GetAction())
 	case *github.CommitCommentEvent:
-		if event.GetAction() != "created" {
+		isEdiCommentEvent := event.GetAction() == "edited" && v.pacInfo.SupportEditedComments
+		if event.GetAction() != "created" && !isEdiCommentEvent {
 			return "", fmt.Sprintf("commit_comment: unsupported action \"%s\"", event.GetAction())
 		}
 

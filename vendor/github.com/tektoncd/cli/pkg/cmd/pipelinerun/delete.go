@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/deleter"
+	"github.com/tektoncd/cli/pkg/exitcode"
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/options"
 	prsort "github.com/tektoncd/cli/pkg/pipelinerun/sort"
@@ -31,7 +32,6 @@ import (
 	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 // prExists validates that the arguments are valid PipelineRun names
@@ -58,7 +58,6 @@ func prExists(args []string, p cli.Params) ([]string, error) {
 
 func deleteCommand(p cli.Params) *cobra.Command {
 	opts := &options.DeleteOptions{Resource: "PipelineRun", ForceDelete: false, ParentResource: "Pipeline", DeleteAllNs: false}
-	f := cliopts.NewPrintFlags("delete")
 	eg := `Delete PipelineRuns with names 'foo' and 'bar' in namespace 'quux':
 
     tkn pipelinerun delete foo bar -n quux
@@ -66,7 +65,43 @@ func deleteCommand(p cli.Params) *cobra.Command {
 or
 
     tkn pr rm foo bar -n quux
+
+Delete a PipelineRun and print the result as JSON:
+
+    tkn pipelinerun delete foo -n quux -o json
+
+Delete a PipelineRun and print the result as YAML:
+
+    tkn pipelinerun delete foo -n quux -o yaml
+
+Delete all PipelineRuns in a namespace and print the result as JSON:
+
+    tkn pipelinerun delete --all -n quux -o json
+
+Delete all PipelineRuns in a namespace and print the result as YAML:
+
+    tkn pipelinerun delete --all -n quux -o yaml
+
+Delete all but the 2 most recent PipelineRuns and print the result as JSON:
+
+    tkn pipelinerun delete --keep 2 -n quux -o json
+
+Delete all but the 2 most recent PipelineRuns and print the result as YAML:
+
+    tkn pipelinerun delete --keep 2 -n quux -o yaml
+
+Delete PipelineRuns for a Pipeline and print the result as JSON:
+
+    tkn pipelinerun delete --pipeline foo -n quux -o json
+
+Delete PipelineRuns for a Pipeline and print the result as YAML:
+
+    tkn pipelinerun delete --pipeline foo -n quux -o yaml
+
+Using -o json or -o yaml skips the confirmation prompt.
 `
+
+	output := ""
 
 	c := &cobra.Command{
 		Use:               "delete",
@@ -85,6 +120,14 @@ or
 				In:  cmd.InOrStdin(),
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
+			}
+
+			if output != "" {
+				output = formatted.NormalizeOutput(output)
+				if !formatted.IsStructured(output) {
+					return exitcode.New(exitcode.InvalidInput, "invalid output format %q: must be json or yaml", output)
+				}
+				opts.ForceDelete = true
 			}
 
 			if opts.Keep < 0 && opts.KeepSince < 0 {
@@ -116,13 +159,13 @@ or
 				return err
 			}
 
-			if err := deletePipelineRuns(s, p, availablePrs, opts); err != nil {
+			if err := deletePipelineRuns(s, p, availablePrs, opts, output); err != nil {
 				return err
 			}
 			return errs
 		},
 	}
-	f.AddFlags(c)
+	c.Flags().StringVarP(&output, "output", "o", "", formatted.DeleteOutputFlagUsage)
 	c.Flags().BoolVarP(&opts.ForceDelete, "force", "f", false, "Whether to force deletion (default: false)")
 	c.Flags().StringVarP(&opts.ParentResourceName, "pipeline", "p", "", "The name of a Pipeline whose PipelineRuns should be deleted (does not delete the Pipeline)")
 	c.Flags().IntVarP(&opts.Keep, "keep", "", 0, "Keep n most recent number of PipelineRuns")
@@ -133,7 +176,7 @@ or
 	return c
 }
 
-func deletePipelineRuns(s *cli.Stream, p cli.Params, prNames []string, opts *options.DeleteOptions) error {
+func deletePipelineRuns(s *cli.Stream, p cli.Params, prNames []string, opts *options.DeleteOptions, output string) error {
 	var numberOfDeletedPr, numberOfKeptPr int
 	prGroupResource := schema.GroupVersionResource{Group: "tekton.dev", Resource: "pipelineruns"}
 
@@ -182,14 +225,25 @@ func deletePipelineRuns(s *cli.Stream, p cli.Params, prNames []string, opts *opt
 		})
 
 		if len(prtodelete) == 0 && opts.Keep > 0 && opts.Keep == len(prtokeep) {
-			fmt.Fprintf(s.Out, "Associated %s (%d) for Pipeline:%s is/are equal to keep (%d) \n", opts.Resource, len(prtokeep), opts.ParentResourceName, opts.Keep)
-			return nil
+			msg := fmt.Sprintf("Associated %s (%d) for Pipeline:%s is/are equal to keep (%d) \n", opts.Resource, len(prtokeep), opts.ParentResourceName, opts.Keep)
+			return printOutput(s, output, msg)
 		}
 		if opts.Keep > len(prtokeep) {
-			fmt.Fprintf(s.Out, "There is/are only %d %s(s) associated for Pipeline: %s \n", len(prtokeep), opts.Resource, opts.ParentResourceName)
-			return nil
+			msg := fmt.Sprintf("There is/are only %d %s(s) associated for Pipeline: %s \n", len(prtokeep), opts.Resource, opts.ParentResourceName)
+			return printOutput(s, output, msg)
 		}
 		d.DeleteRelated([]string{opts.ParentResourceName})
+	}
+
+	if formatted.IsStructured(output) {
+		deleted := d.SuccessfulDeletes()
+		if !opts.DeleteAllNs && opts.ParentResourceName != "" {
+			deleted = d.SuccessfulRelatedDeletes()
+		}
+		if err := formatted.PrintStructuredOutput(s.Out, output, formatted.NewDeleteResult(deleted)); err != nil {
+			return err
+		}
+		return d.Errors()
 	}
 
 	if !opts.DeleteAllNs {
@@ -240,6 +294,14 @@ func deletePipelineRuns(s *cli.Stream, p cli.Params, prNames []string, opts *opt
 		}
 	}
 	return d.Errors()
+}
+
+func printOutput(s *cli.Stream, output, msg string) error {
+	if formatted.IsStructured(output) {
+		return formatted.PrintStructuredOutput(s.Out, output, formatted.NewDeleteResult(nil))
+	}
+	fmt.Fprint(s.Out, msg)
+	return nil
 }
 
 func pipelineRunLister(cs *cli.Clients, keep, since int, ns string, ignoreRunning bool) func(string) ([]string, error) {

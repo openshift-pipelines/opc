@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/exitcode"
 	"github.com/tektoncd/cli/pkg/formatted"
 	taskpkg "github.com/tektoncd/cli/pkg/task"
 	trsort "github.com/tektoncd/cli/pkg/taskrun/sort"
@@ -69,6 +70,14 @@ func listCommand(p cli.Params) *cobra.Command {
 List all TaskRuns of Task 'foo' in namespace 'bar':
 
     tkn taskrun list foo -n bar
+
+List TaskRuns as a JSON array:
+
+    tkn taskrun list -o json
+
+List TaskRuns as a YAML array:
+
+    tkn taskrun list -o yaml
 `
 
 	c := &cobra.Command{
@@ -86,12 +95,12 @@ List all TaskRuns of Task 'foo' in namespace 'bar':
 			}
 
 			if opts.Limit < 0 {
-				return fmt.Errorf("limit was %d but must be a positive number", opts.Limit)
+				return exitcode.New(exitcode.InvalidInput, "limit was %d but must be a positive number", opts.Limit)
 			}
 
 			trs, err := list(p, task, opts.Limit, opts.LabelSelector, opts.AllNamespaces)
 			if err != nil {
-				return fmt.Errorf("failed to list TaskRuns from namespace %s: %v", p.Namespace(), err)
+				return fmt.Errorf("failed to list TaskRuns from namespace %s: %w", p.Namespace(), err)
 			}
 
 			if trs != nil && opts.Reverse {

@@ -1,5 +1,5 @@
 /*
-CoCopyright 2022 Red Hat
+Copyright 2022 Red Hat
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -56,21 +56,29 @@ const (
 	OnLabel                = pipelinesascode.GroupName + "/on-label"
 	OnPathChangeIgnore     = pipelinesascode.GroupName + "/on-path-change-ignore"
 	OnCelExpression        = pipelinesascode.GroupName + "/on-cel-expression"
+	OnPipelineRun          = pipelinesascode.GroupName + "/on-pipelinerun"
+	GroupID                = pipelinesascode.GroupName + "/group-id"
+	FollowUps              = pipelinesascode.GroupName + "/followups"
 	TargetNamespace        = pipelinesascode.GroupName + "/target-namespace"
 	MaxKeepRuns            = pipelinesascode.GroupName + "/max-keep-runs"
 	CancelInProgress       = pipelinesascode.GroupName + "/cancel-in-progress"
 	LogURL                 = pipelinesascode.GroupName + "/log-url"
 	ExecutionOrder         = pipelinesascode.GroupName + "/execution-order"
 	SCMReportingPLRStarted = pipelinesascode.GroupName + "/scm-reporting-plr-started"
-	SecretCreated          = pipelinesascode.GroupName + "/secret-created"
 	CloneURL               = pipelinesascode.GroupName + "/clone-url"
-	// PublicGithubAPIURL default is "https://api.github.com" but it can be overridden by X-GitHub-Enterprise-Host header.
+	// AutoTrustedProviderHostnames annotates the controller ConfigMap with the
+	// hostnames the controller learnt on its own, so that it can tell them apart
+	// from the ones an administrator configured deliberately.
+	AutoTrustedProviderHostnames = pipelinesascode.GroupName + "/auto-trusted-provider-hostnames"
+	// PublicGithubAPIURL is the API URL of the public github.com instance.
 	PublicGithubAPIURL   = "https://api.github.com"
 	GithubApplicationID  = "github-application-id"
 	GithubPrivateKey     = "github-private-key"
 	ResultsRecordSummary = "results.tekton.dev/recordSummaryAnnotations"
 
-	SpanContextAnnotation = "tekton.dev/pipelinerunSpanContext"
+	SpanContextAnnotation        = "tekton.dev/pipelinerunSpanContext"
+	BitbucketProjectKey          = pipelinesascode.GroupName + "/bitbucket-project-key"
+	BitbucketRequiredBuildParent = pipelinesascode.GroupName + "/bitbucket-required-build-parent"
 )
 
 var ParamsRe = regexp.MustCompile(`{{([^}]{2,})}}`)

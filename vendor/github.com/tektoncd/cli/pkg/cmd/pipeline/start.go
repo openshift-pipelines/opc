@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -30,6 +31,7 @@ import (
 	"github.com/tektoncd/cli/pkg/actions"
 	"github.com/tektoncd/cli/pkg/cli"
 	prcmd "github.com/tektoncd/cli/pkg/cmd/pipelinerun"
+	"github.com/tektoncd/cli/pkg/exitcode"
 	"github.com/tektoncd/cli/pkg/file"
 	"github.com/tektoncd/cli/pkg/flags"
 	"github.com/tektoncd/cli/pkg/formatted"
@@ -82,6 +84,32 @@ type startOptions struct {
 	PodTemplate           string
 	SkipOptionalWorkspace bool
 	ResolverType          string
+	JSONSpec              string
+}
+
+// readJSONSpec resolves a --json flag value to raw bytes.
+// Supported forms:
+//   - "-"      read from stdin
+//   - "@path"  read from the file at path
+//   - anything else is treated as a literal JSON string
+func readJSONSpec(raw string, stdin io.Reader) ([]byte, error) {
+	switch {
+	case raw == "-":
+		b, err := io.ReadAll(stdin)
+		if err != nil {
+			return nil, fmt.Errorf("reading JSON spec from stdin: %w", err)
+		}
+		return b, nil
+	case strings.HasPrefix(raw, "@"):
+		path := raw[1:]
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("reading JSON spec from file %q: %w", path, err)
+		}
+		return b, nil
+	default:
+		return []byte(raw), nil
+	}
 }
 
 func startCommand(p cli.Params) *cobra.Command {
@@ -147,10 +175,10 @@ For passing the workspaces via flags:
 		SilenceUsage: true,
 
 		ValidArgsFunction: formatted.ParentCompletion,
+		PreRunE: func(cmd *cobra.Command, _ []string) error {
+			return flags.InitParams(p, cmd)
+		},
 		Args: func(cmd *cobra.Command, args []string) error {
-			if err := flags.InitParams(p, cmd); err != nil {
-				return err
-			}
 			if opt.Last && opt.UsePipelineRun != "" {
 				return errors.New("option --last and option --use-pipelinerun can't be specify together")
 			}
@@ -190,7 +218,7 @@ For passing the workspaces via flags:
 
 			format := strings.ToLower(opt.Output)
 			if format != "" && format != "json" && format != "yaml" && format != "name" {
-				return fmt.Errorf("output format specified is %s but must be yaml or json", opt.Output)
+				return exitcode.New(exitcode.InvalidInput, "output format specified is %s but must be yaml or json", opt.Output)
 			}
 			if format != "" && opt.ShowLog {
 				return errors.New("cannot use --output option with --showlog option")
@@ -242,7 +270,7 @@ For passing the workspaces via flags:
 	c.Flags().BoolVarP(&opt.UseParamDefaults, "use-param-defaults", "", false, "use default parameter values without prompting for input")
 	c.Flags().StringVar(&opt.PodTemplate, "pod-template", "", "local or remote file containing a PodTemplate definition")
 	c.Flags().BoolVarP(&opt.SkipOptionalWorkspace, "skip-optional-workspace", "", false, "skips the prompt for optional workspaces")
-	c.Flags().BoolVarP(&opt.ExitWithPrError, "exit-with-pipelinerun-error", "E", false, "when using --showlog, exit with pipelinerun to the unix shell, 0 if success, 1 if error, 2 on unknown status")
+	c.Flags().BoolVarP(&opt.ExitWithPrError, "exit-with-pipelinerun-error", "E", false, "when using --showlog, exit with pipelinerun to the unix shell, 0 if success, 1 if error or unknown status")
 
 	c.Flags().StringVarP(&opt.ServiceAccountName, "serviceaccount", "s", "", "pass the serviceaccount name")
 	_ = c.RegisterFlagCompletionFunc("serviceaccount",
@@ -264,6 +292,8 @@ For passing the workspaces via flags:
 			return []string{"hub", "git", "http", "cluster", "bundle", "remote"}, cobra.ShellCompDirectiveNoFileComp
 		},
 	)
+
+	c.Flags().StringVar(&opt.JSONSpec, "json", "", "PipelineRun spec as JSON (inline, '-' for stdin, or '@path' for a file)")
 
 	return c
 }
@@ -572,6 +602,37 @@ func (opt *startOptions) createObjectMeta(lastPipelineRun *v1beta1.PipelineRun, 
 }
 
 // configurePipelineRun applies common configurations to a PipelineRun
+func (opt *startOptions) applyJSONSpec(pr *v1beta1.PipelineRun, stdin io.Reader) error {
+	if opt.JSONSpec == "" {
+		return nil
+	}
+	raw, err := readJSONSpec(opt.JSONSpec, stdin)
+	if err != nil {
+		return err
+	}
+	var spec v1beta1.PipelineRunSpec
+	if err := json.Unmarshal(raw, &spec); err != nil {
+		return fmt.Errorf("invalid JSON spec: %w", err)
+	}
+
+	if spec.Params != nil {
+		pr.Spec.Params = append(spec.Params, pr.Spec.Params...)
+	}
+	if spec.Workspaces != nil {
+		pr.Spec.Workspaces = append(spec.Workspaces, pr.Spec.Workspaces...)
+	}
+	if spec.ServiceAccountName != "" && pr.Spec.ServiceAccountName == "" {
+		pr.Spec.ServiceAccountName = spec.ServiceAccountName
+	}
+	if spec.Timeouts != nil && pr.Spec.Timeouts == nil {
+		pr.Spec.Timeouts = spec.Timeouts
+	}
+	if spec.PodTemplate != nil && pr.Spec.PodTemplate == nil {
+		pr.Spec.PodTemplate = spec.PodTemplate
+	}
+	return nil
+}
+
 func (opt *startOptions) configurePipelineRun(pr *v1beta1.PipelineRun, cs *cli.Clients) error {
 	// Apply timeouts
 	if opt.TimeOut != "" {
@@ -723,6 +784,10 @@ func (opt *startOptions) createAndRunPipelineRun(pr *v1beta1.PipelineRun, pipeli
 		return err
 	}
 
+	if err := opt.applyJSONSpec(pr, os.Stdin); err != nil {
+		return err
+	}
+
 	// Configure the PipelineRun with common settings
 	if err := opt.configurePipelineRun(pr, cs); err != nil {
 		return err
@@ -798,6 +863,10 @@ func (opt *startOptions) startPipeline(pipelineStart *v1beta1.Pipeline) error {
 		pr.Spec.Status = ""
 	}
 
+	if err := opt.applyJSONSpec(pr, os.Stdin); err != nil {
+		return err
+	}
+
 	// Configure the PipelineRun with common settings
 	if err := opt.configurePipelineRun(pr, cs); err != nil {
 		return err
@@ -809,6 +878,11 @@ func (opt *startOptions) startPipeline(pipelineStart *v1beta1.Pipeline) error {
 
 func (opt *startOptions) getInput(pipeline *v1beta1.Pipeline) error {
 	params.FilterParamsByType(pipeline.Spec.Params)
+
+	if opt.JSONSpec != "" {
+		return nil
+	}
+
 	if !opt.Last && opt.UsePipelineRun == "" {
 		skipParams, err := params.ParseParams(opt.Params)
 		if err != nil {
