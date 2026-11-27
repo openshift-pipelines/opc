@@ -965,7 +965,7 @@ github.com/spiffe/go-spiffe/v2/spiffeid
 # github.com/subosito/gotenv v1.6.0
 ## explicit; go 1.18
 github.com/subosito/gotenv
-# github.com/tektoncd/cli v0.46.3
+# github.com/tektoncd/cli v0.46.4
 ## explicit; go 1.26.10
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/bundle
