@@ -1163,7 +1163,7 @@ github.com/syndtr/goleveldb/leveldb/opt
 github.com/syndtr/goleveldb/leveldb/storage
 github.com/syndtr/goleveldb/leveldb/table
 github.com/syndtr/goleveldb/leveldb/util
-# github.com/tektoncd/cli v0.45.4
+# github.com/tektoncd/cli v0.45.5
 ## explicit; go 1.27.3
 github.com/tektoncd/cli/pkg/actions
 github.com/tektoncd/cli/pkg/bundle
@@ -1326,7 +1326,7 @@ github.com/tektoncd/triggers/pkg/client/clientset/versioned/typed/triggers/v1bet
 # github.com/thales-e-security/pool v0.0.2
 ## explicit; go 1.12
 github.com/thales-e-security/pool
-# github.com/theupdateframework/go-tuf v0.7.0
+# github.com/theupdateframework/go-tuf v0.7.1
 ## explicit; go 1.20
 github.com/theupdateframework/go-tuf
 github.com/theupdateframework/go-tuf/client

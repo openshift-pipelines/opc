@@ -7,7 +7,7 @@ require (
 	github.com/openshift-pipelines/pipelines-as-code v0.48.4
 	github.com/openshift-pipelines/tekton-assist v0.1.1
 	github.com/spf13/cobra v1.10.2
-	github.com/tektoncd/cli v0.45.4
+	github.com/tektoncd/cli v0.45.5
 	github.com/tektoncd/results v0.19.0
 )
 
@@ -222,7 +222,7 @@ require (
 	github.com/tektoncd/pipeline v1.12.3 // indirect
 	github.com/tektoncd/triggers v0.36.0 // indirect
 	github.com/thales-e-security/pool v0.0.2 // indirect
-	github.com/theupdateframework/go-tuf v0.7.0 // indirect
+	github.com/theupdateframework/go-tuf v0.7.1 // indirect
 	github.com/theupdateframework/go-tuf/v2 v2.4.2-0.20260407074541-7e8f69f906ef // indirect
 	github.com/transparency-dev/formats v0.1.1 // indirect
 	github.com/transparency-dev/merkle v0.0.2 // indirect
