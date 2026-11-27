@@ -644,8 +644,8 @@ github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
 github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d h1:vfofYNRScrDdvS342BElfbETmL1Aiz3i2t0zfRj16Hs=
 github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d/go.mod h1:RRCYJbIwD5jmqPI9XoAFR0OcDxqUctll6zUj/+B4S48=
-github.com/tektoncd/cli v0.45.4 h1:pFeSOdkHd+1f4yjp0PPd8z0wGcxWnG4TUu4YnsgsXZQ=
-github.com/tektoncd/cli v0.45.4/go.mod h1:1HJ/tu4ffTKBrDAA3UHrzFHql3O4MouK0p3IbnWQCa4=
+github.com/tektoncd/cli v0.45.5 h1:ootq5AE80HSlkMA3JEuD0h5diQFQilVinelwpFGdzAE=
+github.com/tektoncd/cli v0.45.5/go.mod h1:HeVI1T0JOdw6HZ7rbizVN9uPgWktsDdnKxRQOyfbqvg=
 github.com/tektoncd/pipeline v1.12.3 h1:/+ebZXsPY7PzPSBaZAEyE0wCtb1WL3gn1v2JBcV1u44=
 github.com/tektoncd/pipeline v1.12.3/go.mod h1:n8Uw4DZ02ZMO0r2rQnctiqn/TFmu0FUTKd5QVKkFIf0=
 github.com/tektoncd/pipelines-as-code v0.48.3 h1:29p2J0xBbnOVMlTZmnL9ORp6k+pi0gVnnbizFNTMMiM=
@@ -656,8 +656,8 @@ github.com/tektoncd/triggers v0.36.0 h1:nyNkMN3L+TvpRHQXDIXc8hqicj494Xx9Dv2+8wgj
 github.com/tektoncd/triggers v0.36.0/go.mod h1:O3kGLFBWDgjgvlGNdGWcrV2rVoRvgousDKhTwCSeakU=
 github.com/thales-e-security/pool v0.0.2 h1:RAPs4q2EbWsTit6tpzuvTFlgFRJ3S8Evf5gtvVDbmPg=
 github.com/thales-e-security/pool v0.0.2/go.mod h1:qtpMm2+thHtqhLzTwgDBj/OuNnMpupY8mv0Phz0gjhU=
-github.com/theupdateframework/go-tuf v0.7.0 h1:CqbQFrWo1ae3/I0UCblSbczevCCbS31Qvs5LdxRWqRI=
-github.com/theupdateframework/go-tuf v0.7.0/go.mod h1:uEB7WSY+7ZIugK6R1hiBMBjQftaFzn7ZCDJcp1tCUug=
+github.com/theupdateframework/go-tuf v0.7.1 h1:Aog4aeC0kMpZno/N16uSGP0yrJHB4ZH1uGuiICj7fQU=
+github.com/theupdateframework/go-tuf v0.7.1/go.mod h1:qp61mIYjcpISwN32wWs+mxc5F3TrtVMzFe/yap5grY8=
 github.com/theupdateframework/go-tuf/v2 v2.4.2-0.20260407074541-7e8f69f906ef h1:jJac5InhEfD0Z46/d5RayZjoavf/se7bPZpOgg8GLrM=
 github.com/theupdateframework/go-tuf/v2 v2.4.2-0.20260407074541-7e8f69f906ef/go.mod h1:cLUSJ2cgR194lNWfp+TJT4P8PX7qGleCXdudqlCMtOE=
 github.com/tidwall/gjson v1.19.0 h1:xwxm7n691Uf3u5OFjzngavjGTh55KX5q/9w9xHW88JU=
