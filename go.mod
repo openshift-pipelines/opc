@@ -7,7 +7,7 @@ require (
 	github.com/openshift-pipelines/pipelines-as-code v0.50.3
 	github.com/openshift-pipelines/tekton-assist v0.1.1
 	github.com/spf13/cobra v1.10.2
-	github.com/tektoncd/cli v0.46.3
+	github.com/tektoncd/cli v0.46.4
 	github.com/tektoncd/results v0.20.0
 )
 
